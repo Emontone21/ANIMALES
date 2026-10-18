@@ -45,6 +45,17 @@ export async function obtenerAnimal(id: string): Promise<AnimalDetalle | null> {
   return data;
 }
 
+/** Reportes publicados por un usuario, más nuevos primero (incluye cerrados). */
+export async function listarMisAnimales(usuarioId: string): Promise<AnimalDetalle[]> {
+  const { data, error } = await supabase
+    .from('animales_detalle')
+    .select('*')
+    .eq('creado_por', usuarioId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
 export async function listarAvistamientos(animalId: string): Promise<AvistamientoDetalle[]> {
   const { data, error } = await supabase
     .from('avistamientos_detalle')
@@ -154,6 +165,14 @@ export function useAnimal(id: string | undefined) {
     queryKey: clavesReportes.animal(id ?? ''),
     queryFn: () => obtenerAnimal(id as string),
     enabled: Boolean(id),
+  });
+}
+
+export function useMisAnimales(usuarioId: string | null | undefined) {
+  return useQuery({
+    queryKey: ['animales', 'mios', usuarioId ?? ''],
+    queryFn: () => listarMisAnimales(usuarioId as string),
+    enabled: Boolean(usuarioId),
   });
 }
 

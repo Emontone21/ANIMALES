@@ -37,3 +37,19 @@ Pedido del dueño del proyecto: nada local. Supabase corre en su plan gratuito e
 ## 2026-10-17 · Mapa web con MapLibre GL JS, nativo con MapLibre React Native
 
 MapLibre React Native no corre en el navegador, así que los componentes de mapa tienen dos implementaciones con el mismo contrato (`MapaReportes`, `MapaSelector`): `.tsx` para Android/iOS y `.web.tsx` con `maplibre-gl` (BSD-3). El estilo de las capas es JSON del style spec compartido (`estilosCapa.ts`). El worker de MapLibre GL se copia a `public/` en `postinstall` porque Metro no lo sirve desde `node_modules`.
+
+## 2026-10-17 · Llamadas salientes desde Postgres con pg_net
+
+Sin servidor propio, los avisos al servicio de visión y los push a Expo salen de triggers con `pg_net`. Es "best effort": si el servicio está dormido, el bucle interno del Space drena la cola más tarde. Evita Edge Functions y webhooks configurados a mano en el dashboard.
+
+## 2026-10-17 · Mensajería por polling, sin Realtime
+
+Los mensajes se refrescan cada 4 s con TanStack Query. Suficiente para la escala del proyecto y evita mantener suscripciones WebSocket en web y nativo. Si hace falta, Supabase Realtime se puede sumar sin cambiar el esquema.
+
+## 2026-10-17 · Push solo en nativo; en web, pestaña Actividad
+
+Expo Notifications no cubre web push. Las notificaciones se guardan siempre en la tabla `notificaciones` (visible en Actividad) y además salen por push a los tokens registrados desde la app nativa, directamente a la Expo Push API (no exige credenciales para el envío básico).
+
+## 2026-10-17 · Moderación mínima sin roles de Auth
+
+`perfiles.es_moderador` se asigna por SQL. Los moderadores ven y resuelven denuncias y ocultan publicaciones (`animales.oculto`); tres denuncias de personas distintas ocultan solas. No hay panel de administración más allá de eso.

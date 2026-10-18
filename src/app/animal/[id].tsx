@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { MapaRecorrido } from '@/components/mapa/MapaRecorrido';
 import { AccionesAnimal } from '@/components/reportes/AccionesAnimal';
+import { BotonEscribir } from '@/components/reportes/BotonEscribir';
 import { Coincidencias } from '@/components/reportes/Coincidencias';
 import { Historial } from '@/components/reportes/Historial';
 import { Cargando } from '@/components/ui/Cargando';
@@ -73,12 +74,12 @@ export default function PantallaAnimal() {
     );
   }
 
-  // Último contacto compartido por quien lo resguardó, mientras siga resguardado.
-  const contacto =
+  // Último cambio a "resguardado": quién lo tiene y el contacto que eligió compartir.
+  const resguardo =
     a.estado === 'resguardado'
-      ? (cambios.data?.find((c) => c.estado_nuevo === 'resguardado' && c.contacto_compartido)
-          ?.contacto_compartido ?? null)
+      ? (cambios.data?.find((c) => c.estado_nuevo === 'resguardado') ?? null)
       : null;
+  const contacto = resguardo?.contacto_compartido ?? null;
 
   return (
     <Pantalla scroll bordes={['left', 'right']}>
@@ -107,10 +108,24 @@ export default function PantallaAnimal() {
         {t.animal.avistamientos(a.cantidad_avistamientos)}
       </Texto>
 
+      {a.oculto ? <Mensaje texto={t.animal.oculto} tipo="error" /> : null}
       {a.estado === 'reunido' ? <Mensaje texto={t.animal.casoCerrado} tipo="exito" /> : null}
       {contacto ? <Mensaje texto={`${t.animal.contacto}: ${contacto}`} /> : null}
 
       <AccionesAnimal animal={a} />
+
+      <BotonEscribir
+        animalId={a.id}
+        otroUsuarioId={a.creado_por}
+        titulo={t.mensajes.escribirAPublicador}
+      />
+      {resguardo && resguardo.usuario_id !== a.creado_por ? (
+        <BotonEscribir
+          animalId={a.id}
+          otroUsuarioId={resguardo.usuario_id}
+          titulo={t.mensajes.escribirAResguardo}
+        />
+      ) : null}
 
       {a.estado !== 'reunido' ? <Coincidencias animalId={a.id} /> : null}
 

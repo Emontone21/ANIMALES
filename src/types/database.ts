@@ -19,6 +19,7 @@ export type Database = {
           id: string;
           nombre_publico: string;
           avatar_path: string | null;
+          es_moderador: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -26,6 +27,7 @@ export type Database = {
           id: string;
           nombre_publico: string;
           avatar_path?: string | null;
+          es_moderador?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -33,6 +35,7 @@ export type Database = {
           id?: string;
           nombre_publico?: string;
           avatar_path?: string | null;
+          es_moderador?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -51,6 +54,7 @@ export type Database = {
           foto_principal_path: string;
           creado_por: string;
           ultimo_avistamiento_en: string | null;
+          oculto: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -66,6 +70,7 @@ export type Database = {
           foto_principal_path: string;
           creado_por: string;
           ultimo_avistamiento_en?: string | null;
+          oculto?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -81,6 +86,7 @@ export type Database = {
           foto_principal_path?: string;
           creado_por?: string;
           ultimo_avistamiento_en?: string | null;
+          oculto?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -262,8 +268,165 @@ export type Database = {
         };
         Relationships: [];
       };
+      push_tokens: {
+        Row: {
+          token: string;
+          usuario_id: string;
+          plataforma: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          token: string;
+          usuario_id: string;
+          plataforma: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          token?: string;
+          usuario_id?: string;
+          plataforma?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      notificaciones: {
+        Row: {
+          id: string;
+          usuario_id: string;
+          tipo: Database['public']['Enums']['tipo_notificacion'];
+          titulo: string;
+          cuerpo: string;
+          datos: Json;
+          leida_en: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          usuario_id: string;
+          tipo: Database['public']['Enums']['tipo_notificacion'];
+          titulo: string;
+          cuerpo: string;
+          datos?: Json;
+          leida_en?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          usuario_id?: string;
+          tipo?: Database['public']['Enums']['tipo_notificacion'];
+          titulo?: string;
+          cuerpo?: string;
+          datos?: Json;
+          leida_en?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      conversaciones: {
+        Row: {
+          id: string;
+          animal_id: string;
+          participante_a: string;
+          participante_b: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          animal_id: string;
+          participante_a: string;
+          participante_b: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          animal_id?: string;
+          participante_a?: string;
+          participante_b?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      mensajes: {
+        Row: {
+          id: string;
+          conversacion_id: string;
+          emisor_id: string;
+          cuerpo: string;
+          leido_en: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          conversacion_id: string;
+          emisor_id: string;
+          cuerpo: string;
+          leido_en?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          conversacion_id?: string;
+          emisor_id?: string;
+          cuerpo?: string;
+          leido_en?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
+      conversaciones_detalle: {
+        Row: {
+          id: string;
+          animal_id: string;
+          animal_foto_path: string;
+          animal_especie: Database['public']['Enums']['especie'];
+          otro_id: string;
+          otro_nombre: string;
+          ultimo_mensaje: string | null;
+          ultimo_mensaje_en: string | null;
+          no_leidos: number;
+          updated_at: string;
+        };
+        Relationships: [];
+      };
+      mensajes_detalle: {
+        Row: {
+          id: string;
+          conversacion_id: string;
+          emisor_id: string;
+          emisor_nombre: string;
+          cuerpo: string;
+          leido_en: string | null;
+          created_at: string;
+        };
+        Relationships: [];
+      };
+      denuncias_detalle: {
+        Row: {
+          id: string;
+          animal_id: string;
+          avistamiento_id: string | null;
+          usuario_id: string;
+          denunciante_nombre: string;
+          motivo: Database['public']['Enums']['motivo_denuncia'];
+          detalle: string | null;
+          estado: Database['public']['Enums']['estado_denuncia'];
+          created_at: string;
+          animal_foto_path: string;
+          animal_especie: Database['public']['Enums']['especie'];
+          animal_descripcion: string | null;
+          animal_oculto: boolean;
+          animal_estado: Database['public']['Enums']['estado_animal'];
+        };
+        Relationships: [];
+      };
       coincidencias_detalle: {
         Row: {
           id: string;
@@ -306,6 +469,7 @@ export type Database = {
           lng: number;
           ultimo_visto_en: string;
           cantidad_avistamientos: number;
+          oculto: boolean;
         };
         Relationships: [];
       };
@@ -361,6 +525,14 @@ export type Database = {
       };
     };
     Functions: {
+      abrir_conversacion: {
+        Args: { p_animal_id: string; p_otro_usuario: string };
+        Returns: string;
+      };
+      es_moderador: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
       resolver_coincidencia: {
         Args: { p_id: string; p_confirmada: boolean };
         Returns: string | null;
@@ -403,6 +575,7 @@ export type Database = {
       };
     };
     Enums: {
+      tipo_notificacion: 'coincidencia' | 'avistamiento' | 'estado' | 'mensaje';
       estado_coincidencia: 'pendiente' | 'confirmada' | 'rechazada';
       estado_cola: 'pendiente' | 'procesando' | 'hecho' | 'error';
       motivo_denuncia: 'spam' | 'contenido_inapropiado' | 'informacion_falsa' | 'maltrato' | 'otro';

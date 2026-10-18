@@ -15,6 +15,19 @@ export type CambioEstadoDetalle = Database['public']['Views']['cambios_estado_de
 export type MotivoDenuncia = Database['public']['Enums']['motivo_denuncia'];
 export type CoincidenciaDetalle = Database['public']['Views']['coincidencias_detalle']['Row'];
 export type EstadoCoincidencia = Database['public']['Enums']['estado_coincidencia'];
+export type Notificacion = Database['public']['Tables']['notificaciones']['Row'];
+export type TipoNotificacion = Database['public']['Enums']['tipo_notificacion'];
+export type ConversacionDetalle = Database['public']['Views']['conversaciones_detalle']['Row'];
+export type MensajeDetalle = Database['public']['Views']['mensajes_detalle']['Row'];
+export type DenunciaDetalle = Database['public']['Views']['denuncias_detalle']['Row'];
+export type EstadoDenuncia = Database['public']['Enums']['estado_denuncia'];
+
+/** Datos que viajan dentro de una notificación (jsonb `datos`). */
+export type DatosNotificacion = {
+  animal_id?: string;
+  coincidencia_id?: string;
+  conversacion_id?: string;
+};
 
 /** [longitud, latitud], el orden que usan GeoJSON y MapLibre. */
 export type LngLat = [number, number];

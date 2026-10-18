@@ -9,6 +9,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 
 import { Colores } from '@/constants/tema';
 import { AuthProvider, useAuth } from '@/features/auth/AuthProvider';
+import { usePush } from '@/features/notificaciones/push';
 import { t } from '@/i18n/es-UY';
 
 SplashScreen.preventAutoHideAsync();
@@ -32,6 +33,7 @@ export default function RootLayout() {
 
 function Navegacion() {
   const { usuario, cargando } = useAuth();
+  usePush(usuario?.id);
 
   useEffect(() => {
     if (!cargando) {
@@ -49,6 +51,8 @@ function Navegacion() {
       }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="animal/[id]" options={{ title: t.animal.titulo }} />
+      <Stack.Screen name="conversacion/[id]" options={{ title: t.mensajes.titulo }} />
+      <Stack.Screen name="moderacion" options={{ title: t.moderacion.titulo }} />
 
       {/* Solo sin sesión. Al ingresar, el router cierra estas pantallas solo. */}
       <Stack.Protected guard={!usuario}>

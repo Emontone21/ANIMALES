@@ -1,10 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Boton } from '@/components/ui/Boton';
+import { Cargando } from '@/components/ui/Cargando';
+import { EtiquetaEstado } from '@/components/ui/Etiqueta';
 import { Mensaje } from '@/components/ui/Mensaje';
 import { Pantalla } from '@/components/ui/Pantalla';
 import { Texto } from '@/components/ui/Texto';
@@ -12,12 +15,16 @@ import { Colores, Espacio, Radio } from '@/constants/tema';
 import { cerrarSesion } from '@/features/auth/acciones';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { usePerfil } from '@/features/perfil/api';
+import { useMisAnimales } from '@/features/reportes/api';
 import { t } from '@/i18n/es-UY';
+import { haceCuanto } from '@/lib/fechas';
+import { urlFoto } from '@/lib/imagenes';
 
 export default function PantallaPerfil() {
   const router = useRouter();
   const { usuario } = useAuth();
   const { data: perfil } = usePerfil(usuario?.id);
+  const misAnimales = useMisAnimales(usuario?.id);
   const [saliendo, setSaliendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,13 +66,65 @@ export default function PantallaPerfil() {
       {error ? <Mensaje texto={error} tipo="error" /> : null}
 
       {usuario ? (
-        <Boton
-          titulo={t.auth.salir}
-          icono="log-out-outline"
-          variante="secundario"
-          cargando={saliendo}
-          onPress={() => void salir()}
-        />
+        <>
+          {perfil?.es_moderador ? (
+            <Boton
+              titulo={t.moderacion.abrirPanel}
+              icono="shield-checkmark"
+              variante="secundario"
+              onPress={() => router.push('/moderacion')}
+            />
+          ) : null}
+
+          <Texto variante="subtitulo">{t.perfil.misReportes}</Texto>
+          {misAnimales.isPending ? (
+            <Cargando />
+          ) : misAnimales.isError ? (
+            <Mensaje
+              texto={misAnimales.error.message}
+              tipo="error"
+              onReintentar={() => void misAnimales.refetch()}
+            />
+          ) : misAnimales.data.length === 0 ? (
+            <Texto variante="secundario">{t.perfil.sinReportes}</Texto>
+          ) : (
+            <View style={estilos.lista}>
+              {misAnimales.data.map((a) => (
+                <Pressable
+                  key={a.id}
+                  accessibilityRole="button"
+                  onPress={() => router.push(`/animal/${a.vinculado_a ?? a.id}`)}
+                  style={estilos.fila}>
+                  <Image
+                    source={{ uri: urlFoto(a.foto_principal_path) }}
+                    style={estilos.foto}
+                    contentFit="cover"
+                  />
+                  <View style={estilos.cuerpo}>
+                    <EtiquetaEstado estado={a.estado} />
+                    <Texto numberOfLines={1}>
+                      {t.especie[a.especie]}
+                      {a.color ? ` · ${a.color}` : ''}
+                    </Texto>
+                    <Texto variante="pequeno">
+                      {haceCuanto(a.created_at)} ·{' '}
+                      {t.animal.avistamientos(a.cantidad_avistamientos)}
+                    </Texto>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color={Colores.textoSecundario} />
+                </Pressable>
+              ))}
+            </View>
+          )}
+
+          <Boton
+            titulo={t.auth.salir}
+            icono="log-out-outline"
+            variante="secundario"
+            cargando={saliendo}
+            onPress={() => void salir()}
+          />
+        </>
       ) : (
         <>
           <Boton titulo={t.auth.ingresar} onPress={() => router.push('/auth/ingresar')} />
@@ -101,4 +160,15 @@ const estilos = StyleSheet.create({
     backgroundColor: Colores.primarioSuave,
   },
   centrado: { textAlign: 'center' },
+  lista: { gap: Espacio.s },
+  fila: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Espacio.m,
+    padding: Espacio.s,
+    borderRadius: Radio.m,
+    backgroundColor: Colores.fondoSuave,
+  },
+  foto: { width: 56, height: 56, borderRadius: Radio.s, backgroundColor: Colores.borde },
+  cuerpo: { flex: 1, gap: Espacio.xs },
 });

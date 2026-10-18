@@ -40,12 +40,14 @@ npx supabase db push        # subir migraciones al proyecto en la nube (tras sup
 - `src/components/ui/`: componentes genéricos reutilizables. `mapa/`, `reportes/`, `auth/`: componentes por área.
 - `src/features/<área>/`: acceso a datos (`api.ts`), hooks y acciones. Único lugar que llama a Supabase.
 - `src/lib/`: utilidades sin React (supabase, imágenes, ubicación, fechas, env).
-- `supabase/`: configuración, migraciones, seed. `services/vision/`: microservicio Python (fase 3).
+- `supabase/`: configuración, migraciones (0001–0006), seed. `services/vision/`: microservicio Python de reconocimiento.
 - `public/`: archivos estáticos de la web. `vercel.json`: despliegue.
 
 ## Fases
 
 1. Proyecto base, auth, mapa, publicación con foto. **(hecha)**
-2. Interacciones: "lo vi acá también", estados, historial, recorrido, denuncias.
-3. Reconocimiento: cola, servicio de visión, pgvector, coincidencias con confirmar/rechazar.
-4. Notificaciones push, mensajería, moderación, pulido.
+2. Interacciones: "lo vi acá también", estados, historial, recorrido, denuncias. **(hecha)**
+3. Reconocimiento: cola, servicio de visión, pgvector, coincidencias con confirmar/rechazar. **(hecha)**
+4. Notificaciones, mensajería, moderación. **(hecha)**
+
+Pendiente de configuración externa (lo hace el dueño del proyecto): proyecto Supabase con migraciones aplicadas, proyecto Vercel con variables, Space de Hugging Face para el servicio de visión. Ver README.

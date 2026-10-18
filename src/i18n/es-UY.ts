@@ -6,6 +6,7 @@
 import type {
   Especie,
   EstadoAnimal,
+  EstadoDenuncia,
   MotivoDenuncia,
   Tamanio,
   TipoAvistamiento,
@@ -29,6 +30,7 @@ export const t = {
   tabs: {
     mapa: 'Mapa',
     publicar: 'Publicar',
+    actividad: 'Actividad',
     perfil: 'Perfil',
   },
   mapa: {
@@ -86,6 +88,7 @@ export const t = {
     sinDescripcion: 'Sin descripción.',
     vinculadoAviso: 'Este reporte se unió a otro del mismo animal. Te llevamos al caso principal.',
     casoCerrado: 'Este caso está cerrado: el animal volvió con su familia.',
+    oculto: 'Esta publicación fue ocultada por moderación y no aparece en el mapa.',
     requiereCuentaAcciones: 'Para avisar que lo viste o cambiar el estado necesitás una cuenta.',
     acciones: {
       loVi: 'Lo vi acá también',
@@ -166,6 +169,46 @@ export const t = {
     resueltas: (n: number) =>
       n === 1 ? '1 coincidencia ya resuelta' : `${n} coincidencias ya resueltas`,
   },
+  actividad: {
+    titulo: 'Actividad',
+    requiereCuenta:
+      'Con una cuenta vas a ver acá las novedades de los casos que seguís y tus mensajes.',
+    novedades: 'Novedades',
+    mensajes: 'Mensajes',
+    sinNovedades: 'Todavía no hay novedades. Seguí un caso o publicá uno y te avisamos acá.',
+    sinMensajes: 'No tenés conversaciones. Desde un reporte podés escribirle a quien lo publicó.',
+    sinMensajesAun: 'Sin mensajes todavía',
+    marcarTodasLeidas: 'Marcar todas como leídas',
+  },
+  mensajes: {
+    titulo: 'Mensajes',
+    requiereCuenta: 'Para enviar mensajes necesitás una cuenta.',
+    escribirAPublicador: 'Escribirle a quien publicó',
+    escribirAResguardo: 'Escribirle a quien lo resguarda',
+    aviso:
+      'Hablás dentro de la app: tu email y tu teléfono no se comparten. Compartí solo lo que quieras.',
+    vacio: 'Todavía no hay mensajes. Escribí el primero.',
+    placeholder: 'Escribí un mensaje…',
+    enviar: 'Enviar',
+    verReporte: 'Ver el reporte',
+  },
+  moderacion: {
+    titulo: 'Moderación',
+    intro: 'Denuncias recibidas. Ocultar una publicación la saca del mapa sin borrarla.',
+    soloModeradores: 'Esta pantalla es solo para moderadores.',
+    vacio: 'No hay denuncias.',
+    oculta: 'Oculta',
+    ocultar: 'Ocultar publicación',
+    mostrar: 'Volver a mostrar',
+    marcarRevisada: 'Marcar revisada',
+    descartar: 'Descartar',
+    abrirPanel: 'Panel de moderación',
+  },
+  estadoDenuncia: {
+    pendiente: 'Pendiente',
+    revisada: 'Revisada',
+    descartada: 'Descartada',
+  } satisfies Record<EstadoDenuncia, string>,
   motivoDenuncia: {
     spam: 'Spam o publicidad',
     contenido_inapropiado: 'Contenido inapropiado',
@@ -247,6 +290,8 @@ export const t = {
     sinCuenta: 'Con una cuenta podés publicar animales y avisar cuando ves uno.',
     privacidad: 'Tu email no se muestra a nadie. Solo se ve tu nombre público.',
     version: (v: string) => `Versión ${v}`,
+    misReportes: 'Mis reportes',
+    sinReportes: 'Todavía no publicaste ningún animal.',
   },
   fechas: {
     ahora: 'recién',

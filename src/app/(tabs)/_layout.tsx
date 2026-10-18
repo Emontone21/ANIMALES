@@ -33,6 +33,10 @@ export default function TabsLayout() {
         name="publicar"
         options={{ title: t.tabs.publicar, tabBarIcon: icono('add-circle', 4) }}
       />
+      <Tabs.Screen
+        name="actividad"
+        options={{ title: t.tabs.actividad, tabBarIcon: icono('notifications') }}
+      />
       <Tabs.Screen name="perfil" options={{ title: t.tabs.perfil, tabBarIcon: icono('person') }} />
     </Tabs>
   );

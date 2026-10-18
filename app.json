@@ -59,6 +59,13 @@
           "photosPermission": "Encontrados accede a tus fotos para que elijas una del animal que encontraste.",
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#1E6F5C",
+          "defaultChannel": "default"
+        }
       ]
     ],
     "experiments": {
