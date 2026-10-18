@@ -11,7 +11,7 @@ import { Mensaje } from '@/components/ui/Mensaje';
 import { Pantalla } from '@/components/ui/Pantalla';
 import { Texto } from '@/components/ui/Texto';
 import { Colores, Espacio, Radio } from '@/constants/tema';
-import { useAnimalesMapa } from '@/features/reportes/api';
+import { useAnimalesMapa, useAvistamientos } from '@/features/reportes/api';
 import {
   aplicarFiltros,
   FILTROS_INICIALES,
@@ -31,6 +31,13 @@ export default function PantallaMapa() {
 
   const visibles = useMemo(() => aplicarFiltros(animales, filtros), [animales, filtros]);
   const seleccionado = visibles.find((a) => a.id === seleccionadoId) ?? null;
+  // Recorrido del animal seleccionado (solo se dibuja si tiene más de un avistamiento).
+  const avistamientos = useAvistamientos(seleccionado?.id);
+  const recorrido = useMemo(
+    () =>
+      seleccionado && avistamientos.data && avistamientos.data.length > 1 ? avistamientos.data : [],
+    [seleccionado, avistamientos.data],
+  );
 
   const irAMiUbicacion = async () => {
     setBuscandoGps(true);
@@ -51,6 +58,7 @@ export default function PantallaMapa() {
         <MapaReportes
           ref={mapaRef}
           animales={visibles}
+          recorrido={recorrido}
           onSeleccionar={(id) => {
             setSeleccionadoId(id);
             const animal = visibles.find((a) => a.id === id);

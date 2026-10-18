@@ -22,8 +22,13 @@ import {
   PAINT_CLUSTER_NUMERO,
   PAINT_PUNTO,
 } from '@/components/mapa/estilosCapa';
+import { agregarCapasRecorrido } from '@/components/mapa/capasWeb';
 import { configurarMapLibreWeb } from '@/components/mapa/maplibreWeb';
-import { animalesAGeoJSON, type MapaReportesProps } from '@/components/mapa/tipos';
+import {
+  animalesAGeoJSON,
+  type MapaReportesProps,
+  recorridoAGeoJSON,
+} from '@/components/mapa/tipos';
 import { t } from '@/i18n/es-UY';
 import { ENV } from '@/lib/env';
 import { MONTEVIDEO, ZOOM_CIUDAD } from '@/lib/ubicacion';
@@ -32,12 +37,19 @@ import { MONTEVIDEO, ZOOM_CIUDAD } from '@/lib/ubicacion';
  * Mapa principal en el navegador (MapLibre GL JS). Mismo estilo de capas que
  * la versión nativa; la fuente GeoJSON se actualiza cuando cambian los animales.
  */
-export function MapaReportes({ animales, onSeleccionar, onDeseleccionar, ref }: MapaReportesProps) {
+export function MapaReportes({
+  animales,
+  recorrido = [],
+  onSeleccionar,
+  onDeseleccionar,
+  ref,
+}: MapaReportesProps) {
   const contenedorRef = useRef<HTMLElement | null>(null);
   const mapaRef = useRef<MapaGL | null>(null);
   const cargadoRef = useRef(false);
   // Últimos datos recibidos, por si el mapa todavía no terminó de cargar.
   const datosRef = useRef(animalesAGeoJSON(animales));
+  const recorridoRef = useRef(recorridoAGeoJSON(recorrido));
 
   // Callbacks siempre actuales sin re-crear el mapa.
   const callbacksRef = useRef({ onSeleccionar, onDeseleccionar });
@@ -132,6 +144,10 @@ export function MapaReportes({ animales, onSeleccionar, onDeseleccionar, ref }: 
         });
       }
 
+      // El recorrido va debajo de los marcadores: se agrega antes de la capa de puntos.
+      agregarCapasRecorrido(mapa, recorridoRef.current);
+      mapa.moveLayer(ID_CAPA_PUNTO);
+
       cargadoRef.current = true;
     });
 
@@ -149,6 +165,14 @@ export function MapaReportes({ animales, onSeleccionar, onDeseleccionar, ref }: 
       (mapa.getSource(ID_FUENTE_ANIMALES) as GeoJSONSource | undefined)?.setData(datosRef.current);
     }
   }, [animales]);
+
+  useEffect(() => {
+    recorridoRef.current = recorridoAGeoJSON(recorrido);
+    const mapa = mapaRef.current;
+    if (mapa && cargadoRef.current) {
+      agregarCapasRecorrido(mapa, recorridoRef.current);
+    }
+  }, [recorrido]);
 
   // En react-native-web la ref de un View es el elemento del DOM.
   return <View ref={contenedorRef as never} style={estilos.mapa} />;

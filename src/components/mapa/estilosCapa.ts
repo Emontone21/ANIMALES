@@ -1,6 +1,7 @@
 import type {
   CircleLayerSpecification,
   FilterSpecification,
+  LineLayerSpecification,
   SymbolLayerSpecification,
 } from '@maplibre/maplibre-gl-style-spec';
 
@@ -55,4 +56,44 @@ export const PAINT_PUNTO: CircleLayerSpecification['paint'] = {
   'circle-stroke-width': ['match', ['get', 'estado'], 'resguardado', 4, 2.5],
   'circle-stroke-color': ['match', ['get', 'estado'], 'resguardado', Colores.primario, '#FFFFFF'],
   'circle-opacity': ['match', ['get', 'estado'], 'reunido', 0.45, 1],
+};
+
+// --- Recorrido de un animal (línea entre avistamientos + puntos numerados) ---
+
+export const ID_FUENTE_RECORRIDO = 'recorrido';
+export const ID_CAPA_RECORRIDO_LINEA = 'recorrido-linea';
+export const ID_CAPA_RECORRIDO_PUNTO = 'recorrido-punto';
+export const ID_CAPA_RECORRIDO_NUMERO = 'recorrido-numero';
+
+export const FILTRO_LINEA: FilterSpecification = ['==', ['geometry-type'], 'LineString'];
+export const FILTRO_PUNTO_RECORRIDO: FilterSpecification = ['==', ['geometry-type'], 'Point'];
+
+export const PAINT_RECORRIDO_LINEA: LineLayerSpecification['paint'] = {
+  'line-color': Colores.primario,
+  'line-width': 3,
+  'line-opacity': 0.85,
+  'line-dasharray': [2, 1.5],
+};
+
+export const LAYOUT_RECORRIDO_LINEA: LineLayerSpecification['layout'] = {
+  'line-cap': 'round',
+  'line-join': 'round',
+};
+
+export const PAINT_RECORRIDO_PUNTO: CircleLayerSpecification['paint'] = {
+  'circle-radius': 11,
+  'circle-color': ['match', ['get', 'tipo'], 'resguardado', Colores.primario, '#FFFFFF'],
+  'circle-stroke-width': 2.5,
+  'circle-stroke-color': Colores.primario,
+};
+
+export const LAYOUT_RECORRIDO_NUMERO: SymbolLayerSpecification['layout'] = {
+  'text-field': ['to-string', ['get', 'orden']],
+  'text-size': 12,
+  'text-font': ['Noto Sans Bold'],
+  'text-allow-overlap': true,
+};
+
+export const PAINT_RECORRIDO_NUMERO: SymbolLayerSpecification['paint'] = {
+  'text-color': ['match', ['get', 'tipo'], 'resguardado', '#FFFFFF', Colores.primario],
 };

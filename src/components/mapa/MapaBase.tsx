@@ -1,4 +1,11 @@
-import { Camera, type CameraRef, Map, type MapProps } from '@maplibre/maplibre-react-native';
+import {
+  Camera,
+  type CameraRef,
+  type InitialViewState,
+  type LngLatBounds,
+  Map,
+  type MapProps,
+} from '@maplibre/maplibre-react-native';
 import type { ReactNode, Ref } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -13,10 +20,15 @@ export type MapaBaseProps = {
   children?: ReactNode;
   centroInicial?: LngLat;
   zoomInicial?: number;
+  /** Si se pasa, la cámara arranca encuadrando estos límites [oeste, sur, este, norte]. */
+  limitesIniciales?: LngLatBounds;
+  interactivo?: boolean;
   cameraRef?: Ref<CameraRef>;
   onPress?: MapProps['onPress'];
   onRegionDidChange?: MapProps['onRegionDidChange'];
 };
+
+const PADDING_LIMITES = { top: 48, bottom: 48, left: 48, right: 48 };
 
 /**
  * Mapa de MapLibre con el estilo de OpenFreeMap, centrado en Montevideo.
@@ -26,10 +38,16 @@ export function MapaBase({
   children,
   centroInicial = MONTEVIDEO,
   zoomInicial = ZOOM_CIUDAD,
+  limitesIniciales,
+  interactivo = true,
   cameraRef,
   onPress,
   onRegionDidChange,
 }: MapaBaseProps) {
+  const vistaInicial: InitialViewState = limitesIniciales
+    ? { bounds: limitesIniciales, padding: PADDING_LIMITES }
+    : { center: centroInicial, zoom: zoomInicial };
+
   return (
     <View style={estilos.contenedor}>
       <Map
@@ -37,12 +55,16 @@ export function MapaBase({
         mapStyle={ENV.mapStyleUrl}
         attribution={false}
         logo={false}
-        compass
+        compass={interactivo}
         compassPosition={{ top: 8, right: 8 }}
         touchPitch={false}
+        dragPan={interactivo}
+        touchZoom={interactivo}
+        doubleTapZoom={interactivo}
+        touchRotate={interactivo}
         onPress={onPress}
         onRegionDidChange={onRegionDidChange}>
-        <Camera ref={cameraRef} initialViewState={{ center: centroInicial, zoom: zoomInicial }} />
+        <Camera ref={cameraRef} initialViewState={vistaInicial} />
         {children}
       </Map>
       <View style={estilos.atribucion} pointerEvents="none">

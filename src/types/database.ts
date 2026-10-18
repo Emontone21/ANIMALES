@@ -155,8 +155,95 @@ export type Database = {
         };
         Relationships: [];
       };
+      seguimientos: {
+        Row: {
+          usuario_id: string;
+          animal_id: string;
+          created_at: string;
+        };
+        Insert: {
+          usuario_id: string;
+          animal_id: string;
+          created_at?: string;
+        };
+        Update: {
+          usuario_id?: string;
+          animal_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      denuncias: {
+        Row: {
+          id: string;
+          animal_id: string;
+          avistamiento_id: string | null;
+          usuario_id: string;
+          motivo: Database['public']['Enums']['motivo_denuncia'];
+          detalle: string | null;
+          estado: Database['public']['Enums']['estado_denuncia'];
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          animal_id: string;
+          avistamiento_id?: string | null;
+          usuario_id: string;
+          motivo: Database['public']['Enums']['motivo_denuncia'];
+          detalle?: string | null;
+          estado?: Database['public']['Enums']['estado_denuncia'];
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          animal_id?: string;
+          avistamiento_id?: string | null;
+          usuario_id?: string;
+          motivo?: Database['public']['Enums']['motivo_denuncia'];
+          detalle?: string | null;
+          estado?: Database['public']['Enums']['estado_denuncia'];
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
+      animales_detalle: {
+        Row: {
+          id: string;
+          especie: Database['public']['Enums']['especie'];
+          tamanio: Database['public']['Enums']['tamanio'] | null;
+          color: string | null;
+          tiene_collar: boolean;
+          descripcion: string | null;
+          estado: Database['public']['Enums']['estado_animal'];
+          vinculado_a: string | null;
+          foto_principal_path: string;
+          creado_por: string;
+          creador_nombre: string;
+          created_at: string;
+          ultimo_avistamiento_en: string | null;
+          lat: number;
+          lng: number;
+          ultimo_visto_en: string;
+          cantidad_avistamientos: number;
+        };
+        Relationships: [];
+      };
+      cambios_estado_detalle: {
+        Row: {
+          id: string;
+          animal_id: string;
+          usuario_id: string;
+          usuario_nombre: string;
+          estado_anterior: Database['public']['Enums']['estado_animal'];
+          estado_nuevo: Database['public']['Enums']['estado_animal'];
+          contacto_compartido: string | null;
+          nota: string | null;
+          created_at: string;
+        };
+        Relationships: [];
+      };
       animales_mapa: {
         Row: {
           id: string;
@@ -195,6 +282,28 @@ export type Database = {
       };
     };
     Functions: {
+      registrar_avistamiento: {
+        Args: {
+          p_animal_id: string;
+          p_foto_path: string;
+          p_lat: number;
+          p_lng: number;
+          p_visto_en?: string;
+          p_nota?: string | null;
+        };
+        Returns: string;
+      };
+      cambiar_estado_animal: {
+        Args: {
+          p_animal_id: string;
+          p_estado_nuevo: Database['public']['Enums']['estado_animal'];
+          p_contacto_compartido?: string | null;
+          p_nota?: string | null;
+          p_lat?: number | null;
+          p_lng?: number | null;
+        };
+        Returns: undefined;
+      };
       publicar_animal: {
         Args: {
           p_especie: Database['public']['Enums']['especie'];
@@ -211,6 +320,8 @@ export type Database = {
       };
     };
     Enums: {
+      motivo_denuncia: 'spam' | 'contenido_inapropiado' | 'informacion_falsa' | 'maltrato' | 'otro';
+      estado_denuncia: 'pendiente' | 'revisada' | 'descartada';
       especie: 'perro' | 'gato' | 'otro';
       tamanio: 'chico' | 'mediano' | 'grande';
       estado_animal: 'avistado' | 'resguardado' | 'reunido' | 'vinculado';

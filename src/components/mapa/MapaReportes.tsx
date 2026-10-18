@@ -22,6 +22,7 @@ import {
   PAINT_CLUSTER_NUMERO,
   PAINT_PUNTO,
 } from '@/components/mapa/estilosCapa';
+import { CapaRecorrido } from '@/components/mapa/CapaRecorrido';
 import { MapaBase } from '@/components/mapa/MapaBase';
 import { animalesAGeoJSON, type MapaReportesProps } from '@/components/mapa/tipos';
 
@@ -29,7 +30,13 @@ import { animalesAGeoJSON, type MapaReportesProps } from '@/components/mapa/tipo
  * Mapa principal en Android/iOS (MapLibre React Native): marcadores de
  * animales como capa de círculos con clustering nativo.
  */
-export function MapaReportes({ animales, onSeleccionar, onDeseleccionar, ref }: MapaReportesProps) {
+export function MapaReportes({
+  animales,
+  recorrido = [],
+  onSeleccionar,
+  onDeseleccionar,
+  ref,
+}: MapaReportesProps) {
   const cameraRef = useRef<CameraRef>(null);
   const fuenteRef = useRef<GeoJSONSourceRef>(null);
 
@@ -57,6 +64,7 @@ export function MapaReportes({ animales, onSeleccionar, onDeseleccionar, ref }: 
 
   return (
     <MapaBase cameraRef={cameraRef} onPress={onDeseleccionar}>
+      {recorrido.length > 1 ? <CapaRecorrido avistamientos={recorrido} /> : null}
       <GeoJSONSource
         id={ID_FUENTE_ANIMALES}
         ref={fuenteRef}

@@ -1,26 +1,44 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { MapaRecorrido } from '@/components/mapa/MapaRecorrido';
+import { AccionesAnimal } from '@/components/reportes/AccionesAnimal';
+import { Historial } from '@/components/reportes/Historial';
 import { Cargando } from '@/components/ui/Cargando';
 import { Etiqueta, EtiquetaEspecie, EtiquetaEstado } from '@/components/ui/Etiqueta';
 import { Mensaje } from '@/components/ui/Mensaje';
 import { Pantalla } from '@/components/ui/Pantalla';
 import { Texto } from '@/components/ui/Texto';
 import { Colores, Espacio, Radio } from '@/constants/tema';
-import { usePerfil } from '@/features/perfil/api';
-import { useAnimal, useAvistamientos } from '@/features/reportes/api';
+import {
+  armarHistorial,
+  useAnimal,
+  useAvistamientos,
+  useCambiosEstado,
+} from '@/features/reportes/api';
 import { t } from '@/i18n/es-UY';
-import { fechaHoraCorta, haceCuanto } from '@/lib/fechas';
+import { haceCuanto } from '@/lib/fechas';
 import { urlFoto } from '@/lib/imagenes';
-import type { AvistamientoDetalle } from '@/types/dominio';
 
 export default function PantallaAnimal() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const animal = useAnimal(id);
   const avistamientos = useAvistamientos(id);
-  const autor = usePerfil(animal.data?.creado_por);
+  const cambios = useCambiosEstado(id);
+
+  // Un reporte vinculado redirige al caso principal.
+  const vinculadoA = animal.data?.estado === 'vinculado' ? animal.data.vinculado_a : null;
+  useEffect(() => {
+    if (vinculadoA) router.replace(`/animal/${vinculadoA}`);
+  }, [vinculadoA, router]);
+
+  const historial = useMemo(
+    () => armarHistorial(avistamientos.data ?? [], cambios.data ?? []),
+    [avistamientos.data, cambios.data],
+  );
 
   if (animal.isPending) return <Cargando />;
 
@@ -46,6 +64,21 @@ export default function PantallaAnimal() {
 
   const a = animal.data;
 
+  if (vinculadoA) {
+    return (
+      <Pantalla scroll>
+        <Mensaje texto={t.animal.vinculadoAviso} />
+      </Pantalla>
+    );
+  }
+
+  // Último contacto compartido por quien lo resguardó, mientras siga resguardado.
+  const contacto =
+    a.estado === 'resguardado'
+      ? (cambios.data?.find((c) => c.estado_nuevo === 'resguardado' && c.contacto_compartido)
+          ?.contacto_compartido ?? null)
+      : null;
+
   return (
     <Pantalla scroll bordes={['left', 'right']}>
       <Image
@@ -68,56 +101,42 @@ export default function PantallaAnimal() {
 
       {a.color ? <Texto variante="subtitulo">{a.color}</Texto> : null}
       <Texto>{a.descripcion ?? t.animal.sinDescripcion}</Texto>
-
       <Texto variante="secundario">
-        {t.animal.publicadoPor(autor.data?.nombre_publico ?? '…')} · {haceCuanto(a.created_at)}
+        {t.animal.publicadoPor(a.creador_nombre)} · {haceCuanto(a.created_at)} ·{' '}
+        {t.animal.avistamientos(a.cantidad_avistamientos)}
       </Texto>
 
-      <Mensaje texto={t.animal.proximamente} />
+      {a.estado === 'reunido' ? <Mensaje texto={t.animal.casoCerrado} tipo="exito" /> : null}
+      {contacto ? <Mensaje texto={`${t.animal.contacto}: ${contacto}`} /> : null}
+
+      <AccionesAnimal animal={a} />
+
+      {avistamientos.data && avistamientos.data.length > 0 ? (
+        <>
+          <Texto variante="subtitulo">{t.animal.recorrido}</Texto>
+          <MapaRecorrido
+            key={avistamientos.data.map((av) => av.id).join(',')}
+            avistamientos={avistamientos.data}
+          />
+        </>
+      ) : null}
 
       <Texto variante="subtitulo">{t.animal.historial}</Texto>
-      {avistamientos.isPending ? (
+      {avistamientos.isPending || cambios.isPending ? (
         <Cargando />
-      ) : avistamientos.isError ? (
+      ) : avistamientos.isError || cambios.isError ? (
         <Mensaje
-          texto={avistamientos.error.message}
+          texto={avistamientos.error?.message ?? cambios.error?.message ?? t.comunes.errorGenerico}
           tipo="error"
-          onReintentar={() => void avistamientos.refetch()}
+          onReintentar={() => {
+            void avistamientos.refetch();
+            void cambios.refetch();
+          }}
         />
       ) : (
-        avistamientos.data.map((av) => <FilaAvistamiento key={av.id} avistamiento={av} />)
+        <Historial eventos={historial} />
       )}
     </Pantalla>
-  );
-}
-
-function FilaAvistamiento({ avistamiento }: { avistamiento: AvistamientoDetalle }) {
-  const icono =
-    avistamiento.tipo === 'encontrado'
-      ? 'flag'
-      : avistamiento.tipo === 'resguardado'
-        ? 'home'
-        : 'eye';
-  return (
-    <View style={estilos.fila}>
-      <View style={estilos.filaIcono}>
-        <Ionicons name={icono} size={18} color={Colores.primario} />
-      </View>
-      <View style={estilos.filaCuerpo}>
-        <Texto style={estilos.filaTitulo}>
-          {t.tipoAvistamiento[avistamiento.tipo]} {avistamiento.usuario_nombre}
-        </Texto>
-        <Texto variante="pequeno">{fechaHoraCorta(avistamiento.visto_en)}</Texto>
-        {avistamiento.nota ? <Texto variante="secundario">{avistamiento.nota}</Texto> : null}
-      </View>
-      {avistamiento.foto_path ? (
-        <Image
-          source={{ uri: urlFoto(avistamiento.foto_path) }}
-          style={estilos.miniatura}
-          contentFit="cover"
-        />
-      ) : null}
-    </View>
   );
 }
 
@@ -129,22 +148,4 @@ const estilos = StyleSheet.create({
     backgroundColor: Colores.fondoSuave,
   },
   etiquetas: { flexDirection: 'row', flexWrap: 'wrap', gap: Espacio.s },
-  fila: {
-    flexDirection: 'row',
-    gap: Espacio.m,
-    padding: Espacio.m,
-    borderRadius: Radio.m,
-    backgroundColor: Colores.fondoSuave,
-  },
-  filaIcono: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radio.redondo,
-    backgroundColor: Colores.primarioSuave,
-  },
-  filaCuerpo: { flex: 1, gap: Espacio.xs },
-  filaTitulo: { fontWeight: '600' },
-  miniatura: { width: 56, height: 56, borderRadius: Radio.s },
 });

@@ -3,7 +3,13 @@
  * Ningún componente escribe texto visible inline: lo importa de acá.
  */
 
-import type { Especie, EstadoAnimal, Tamanio, TipoAvistamiento } from '@/types/dominio';
+import type {
+  Especie,
+  EstadoAnimal,
+  MotivoDenuncia,
+  Tamanio,
+  TipoAvistamiento,
+} from '@/types/dominio';
 
 export const t = {
   app: {
@@ -74,11 +80,76 @@ export const t = {
     conCollar: 'Con collar',
     sinCollar: 'Sin collar',
     publicadoPor: (nombre: string) => `Publicado por ${nombre}`,
-    historial: 'Historial de avistamientos',
+    historial: 'Historial',
+    recorrido: 'Recorrido',
     avistamientos: (n: number) => (n === 1 ? '1 avistamiento' : `${n} avistamientos`),
     sinDescripcion: 'Sin descripción.',
-    proximamente: 'En la próxima versión vas a poder avisar que lo viste o que lo resguardaste.',
+    vinculadoAviso: 'Este reporte se unió a otro del mismo animal. Te llevamos al caso principal.',
+    casoCerrado: 'Este caso está cerrado: el animal volvió con su familia.',
+    requiereCuentaAcciones: 'Para avisar que lo viste o cambiar el estado necesitás una cuenta.',
+    acciones: {
+      loVi: 'Lo vi acá también',
+      resguardar: 'Me lo llevé / está resguardado',
+      reunido: 'Se reunió con su familia',
+      reabrir: 'Se volvió a escapar',
+      seguir: 'Seguir',
+      siguiendo: 'Siguiendo',
+      denunciar: 'Denunciar',
+      denunciado: 'Denuncia enviada',
+    },
+    contacto: 'Contacto para recuperarlo',
+    cambioEstado: {
+      titulo: (estado: string) => `Cambio de estado: ${estado}`,
+      por: (nombre: string) => `por ${nombre}`,
+    },
+    modalAvistamiento: {
+      titulo: '¿Dónde y cuándo lo viste?',
+      nota: 'Nota (opcional)',
+      notaPlaceholder: 'Cómo estaba, hacia dónde iba…',
+      enviar: 'Registrar avistamiento',
+      exito: '¡Gracias! Avistamiento registrado.',
+    },
+    modalResguardo: {
+      titulo: 'Lo tenés a salvo',
+      intro:
+        'Contanos cómo contactarte si aparece la familia. Es opcional y lo ve cualquiera que abra el reporte.',
+      contacto: 'Contacto que querés compartir',
+      contactoPlaceholder: 'Ej: WhatsApp 099 123 456 o "escribime por la app"',
+      nota: 'Nota (opcional)',
+      notaPlaceholder: 'Dónde está, cómo está…',
+      ubicacion: '¿Dónde está ahora? (opcional)',
+      enviar: 'Marcar como resguardado',
+    },
+    modalReunido: {
+      titulo: '¿Se reunió con su familia?',
+      intro:
+        'El caso se cierra y deja de aparecer entre los activos. Lo podés reabrir si se vuelve a escapar.',
+      nota: 'Nota (opcional)',
+      notaPlaceholder: 'Cómo lo encontraron…',
+      enviar: 'Confirmar',
+    },
+    modalReabrir: {
+      titulo: '¿Se volvió a escapar?',
+      intro: 'El caso vuelve a estar activo en el mapa.',
+      enviar: 'Reabrir el caso',
+    },
+    modalDenuncia: {
+      titulo: 'Denunciar esta publicación',
+      intro: 'Contanos qué pasa. Solo lo ve el equipo de moderación.',
+      motivo: 'Motivo',
+      detalle: 'Detalle (opcional)',
+      detallePlaceholder: 'Qué viste…',
+      enviar: 'Enviar denuncia',
+      exito: 'Gracias. Vamos a revisarla.',
+    },
   },
+  motivoDenuncia: {
+    spam: 'Spam o publicidad',
+    contenido_inapropiado: 'Contenido inapropiado',
+    informacion_falsa: 'Información falsa',
+    maltrato: 'Maltrato animal',
+    otro: 'Otro',
+  } satisfies Record<MotivoDenuncia, string>,
   publicar: {
     titulo: 'Publicar un animal encontrado',
     intro:
