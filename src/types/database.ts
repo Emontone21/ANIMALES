@@ -96,6 +96,10 @@ export type Database = {
           ubicacion: unknown;
           visto_en: string;
           nota: string | null;
+          embedding: string | null;
+          bbox_recorte: Json | null;
+          procesado_en: string | null;
+          error_procesamiento: string | null;
           created_at: string;
         };
         Insert: {
@@ -107,6 +111,10 @@ export type Database = {
           ubicacion: unknown;
           visto_en?: string;
           nota?: string | null;
+          embedding?: string | null;
+          bbox_recorte?: Json | null;
+          procesado_en?: string | null;
+          error_procesamiento?: string | null;
           created_at?: string;
         };
         Update: {
@@ -206,8 +214,79 @@ export type Database = {
         };
         Relationships: [];
       };
+      coincidencias: {
+        Row: {
+          id: string;
+          animal_origen: string;
+          animal_candidato: string;
+          avistamiento_origen: string | null;
+          avistamiento_candidato: string | null;
+          similitud: number;
+          distancia_m: number | null;
+          horas_diferencia: number | null;
+          estado: Database['public']['Enums']['estado_coincidencia'];
+          resuelta_por: string | null;
+          resuelta_en: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          animal_origen: string;
+          animal_candidato: string;
+          avistamiento_origen?: string | null;
+          avistamiento_candidato?: string | null;
+          similitud: number;
+          distancia_m?: number | null;
+          horas_diferencia?: number | null;
+          estado?: Database['public']['Enums']['estado_coincidencia'];
+          resuelta_por?: string | null;
+          resuelta_en?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          animal_origen?: string;
+          animal_candidato?: string;
+          avistamiento_origen?: string | null;
+          avistamiento_candidato?: string | null;
+          similitud?: number;
+          distancia_m?: number | null;
+          horas_diferencia?: number | null;
+          estado?: Database['public']['Enums']['estado_coincidencia'];
+          resuelta_por?: string | null;
+          resuelta_en?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
+      coincidencias_detalle: {
+        Row: {
+          id: string;
+          animal_origen: string;
+          animal_candidato: string;
+          similitud: number;
+          distancia_m: number | null;
+          horas_diferencia: number | null;
+          estado: Database['public']['Enums']['estado_coincidencia'];
+          resuelta_por: string | null;
+          resuelta_en: string | null;
+          created_at: string;
+          origen_foto_path: string;
+          origen_especie: Database['public']['Enums']['especie'];
+          origen_estado: Database['public']['Enums']['estado_animal'];
+          origen_descripcion: string | null;
+          candidato_foto_path: string;
+          candidato_especie: Database['public']['Enums']['especie'];
+          candidato_estado: Database['public']['Enums']['estado_animal'];
+          candidato_descripcion: string | null;
+        };
+        Relationships: [];
+      };
       animales_detalle: {
         Row: {
           id: string;
@@ -282,6 +361,10 @@ export type Database = {
       };
     };
     Functions: {
+      resolver_coincidencia: {
+        Args: { p_id: string; p_confirmada: boolean };
+        Returns: string | null;
+      };
       registrar_avistamiento: {
         Args: {
           p_animal_id: string;
@@ -320,6 +403,8 @@ export type Database = {
       };
     };
     Enums: {
+      estado_coincidencia: 'pendiente' | 'confirmada' | 'rechazada';
+      estado_cola: 'pendiente' | 'procesando' | 'hecho' | 'error';
       motivo_denuncia: 'spam' | 'contenido_inapropiado' | 'informacion_falsa' | 'maltrato' | 'otro';
       estado_denuncia: 'pendiente' | 'revisada' | 'descartada';
       especie: 'perro' | 'gato' | 'otro';

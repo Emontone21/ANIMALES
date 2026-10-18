@@ -13,6 +13,8 @@ export type AvistamientoDetalle = Database['public']['Views']['avistamientos_det
 export type AnimalDetalle = Database['public']['Views']['animales_detalle']['Row'];
 export type CambioEstadoDetalle = Database['public']['Views']['cambios_estado_detalle']['Row'];
 export type MotivoDenuncia = Database['public']['Enums']['motivo_denuncia'];
+export type CoincidenciaDetalle = Database['public']['Views']['coincidencias_detalle']['Row'];
+export type EstadoCoincidencia = Database['public']['Enums']['estado_coincidencia'];
 
 /** [longitud, latitud], el orden que usan GeoJSON y MapLibre. */
 export type LngLat = [number, number];

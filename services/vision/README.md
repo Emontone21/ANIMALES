@@ -1,0 +1,47 @@
+# Servicio de visión
+
+Microservicio Python (FastAPI) que calcula el embedding de cada foto de animal y dispara la búsqueda de coincidencias en Supabase. Corre gratis en un **Space de Hugging Face** (Docker, CPU básica).
+
+## Modelos (licencias permisivas)
+
+| Uso | Modelo | Licencia |
+|---|---|---|
+| Detectar y recortar al animal | `hustvl/yolos-tiny` | Apache 2.0 |
+| Embedding (384 dimensiones) | `facebook/dinov2-small` | Apache 2.0 |
+
+Si no detecta ningún animal usa la foto entera. YOLOv8 queda descartado por ser AGPL.
+
+## Cómo funciona
+
+1. Cada avistamiento con foto entra a `cola_vision` (trigger en Supabase) y, si `config_app.vision_url` está seteada, Supabase llama a `POST /procesar` con el header `X-Vision-Secret`.
+2. El servicio descarga la foto del bucket público, recorta al animal, calcula el embedding y llama a la RPC `guardar_embedding`.
+3. La RPC guarda el vector, compara por similitud coseno contra los demás animales de la misma especie dentro del radio y la ventana de tiempo configurados, y crea filas en `coincidencias` (estado `pendiente`).
+4. Si el Space estaba dormido y el webhook se perdió, un bucle interno revisa la cola cada `INTERVALO_COLA_SEG` segundos y `POST /procesar-pendientes` la drena a mano.
+
+## Desplegar en Hugging Face Spaces
+
+1. Creá un Space nuevo: tipo **Docker**, hardware **CPU basic** (gratis), visibilidad pública o privada.
+2. Subí el contenido de esta carpeta (`Dockerfile`, `requirements.txt`, `app/`). Podés hacerlo con git: el Space es un repo.
+3. En **Settings → Variables and secrets** cargá `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (secret) y `VISION_SECRET` (secret, un string largo al azar).
+4. Esperá el build (descarga los modelos; tarda unos minutos). Probá `https://<usuario>-<space>.hf.space/salud`.
+5. En Supabase, SQL Editor:
+
+   ```sql
+   update config_app set valor = 'https://<usuario>-<space>.hf.space' where clave = 'vision_url';
+   update config_app set valor = '<el mismo VISION_SECRET>' where clave = 'vision_secret';
+   ```
+
+El plan gratuito duerme el Space tras 48 h sin tráfico; el primer request lo despierta (tarda hasta un minuto). Las coincidencias de ese intervalo llegan cuando se procesa la cola.
+
+## Ajustar el umbral
+
+`config_app` guarda `umbral_similitud` (0.80 por defecto), `radio_coincidencia_m` (15 000) y `ventana_coincidencia_dias` (60). Las coincidencias confirmadas y rechazadas quedan en `coincidencias` con su `similitud`: con esa tabla se calibra el umbral.
+
+```sql
+select estado, round(avg(similitud)::numeric, 3) as promedio, count(*)
+from coincidencias where estado <> 'pendiente' group by estado;
+```
+
+## Correr en otro lado
+
+Cualquier host que corra Docker sirve. Variables en `.env.example`. Puerto 7860.

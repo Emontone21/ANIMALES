@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { MapaRecorrido } from '@/components/mapa/MapaRecorrido';
 import { AccionesAnimal } from '@/components/reportes/AccionesAnimal';
+import { Coincidencias } from '@/components/reportes/Coincidencias';
 import { Historial } from '@/components/reportes/Historial';
 import { Cargando } from '@/components/ui/Cargando';
 import { Etiqueta, EtiquetaEspecie, EtiquetaEstado } from '@/components/ui/Etiqueta';
@@ -110,6 +111,8 @@ export default function PantallaAnimal() {
       {contacto ? <Mensaje texto={`${t.animal.contacto}: ${contacto}`} /> : null}
 
       <AccionesAnimal animal={a} />
+
+      {a.estado !== 'reunido' ? <Coincidencias animalId={a.id} /> : null}
 
       {avistamientos.data && avistamientos.data.length > 0 ? (
         <>

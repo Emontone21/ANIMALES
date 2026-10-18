@@ -143,6 +143,29 @@ export const t = {
       exito: 'Gracias. Vamos a revisarla.',
     },
   },
+  coincidencias: {
+    titulo: 'Posibles coincidencias',
+    intro:
+      'El reconocimiento de imágenes encontró reportes parecidos. Mirá las fotos y decidí vos: nada se une solo.',
+    vacio:
+      'Todavía no hay coincidencias. Las fotos se comparan automáticamente; si aparece algo, lo vas a ver acá.',
+    requiereCuenta: 'Para confirmar o rechazar una coincidencia necesitás una cuenta.',
+    similitud: (porcentaje: number) => `${porcentaje} % parecido`,
+    distancia: (km: number) => (km < 1 ? `a ${Math.round(km * 1000)} m` : `a ${km.toFixed(1)} km`),
+    tiempo: (horas: number) =>
+      horas < 1
+        ? 'con menos de 1 h de diferencia'
+        : horas < 48
+          ? `con ${Math.round(horas)} h de diferencia`
+          : `con ${Math.round(horas / 24)} días de diferencia`,
+    esElMismo: 'Es el mismo animal',
+    noEsElMismo: 'No es el mismo',
+    verOtro: 'Ver el otro reporte',
+    confirmada: 'Listo: los reportes quedaron unidos.',
+    rechazada: 'Gracias. Lo anotamos para afinar el reconocimiento.',
+    resueltas: (n: number) =>
+      n === 1 ? '1 coincidencia ya resuelta' : `${n} coincidencias ya resueltas`,
+  },
   motivoDenuncia: {
     spam: 'Spam o publicidad',
     contenido_inapropiado: 'Contenido inapropiado',
