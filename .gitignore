@@ -1,0 +1,51 @@
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native (generados con prebuild; no se versionan)
+/ios
+/android
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# env (nunca subir claves)
+.env
+.env.*
+!.env.example
+
+# typescript
+*.tsbuildinfo
+
+# Supabase local
+supabase/.temp/
+supabase/.branches/
+supabase/signing_keys.json
+
+# Servicio de visión (fase 3)
+services/vision/.venv/
+services/vision/__pycache__/
+
+# Generado por postinstall (scripts/copiar-worker-maplibre.js)
+public/maplibre-gl-worker.mjs
