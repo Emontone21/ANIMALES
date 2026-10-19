@@ -25,7 +25,7 @@ import { AnchoMaximo, Espacio, Margen, Radio } from '@/constants/tema';
 import { useDisposicion } from '@/hooks/useDisposicion';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
-import { haceCuanto } from '@/lib/fechas';
+import { desdeCuando, haceCuanto } from '@/lib/fechas';
 import { urlFoto } from '@/lib/imagenes';
 import type {
   AnimalDetalle,
@@ -71,8 +71,32 @@ export function DetalleCaso({ animal: a, avistamientos, cambios, historial, onVo
   const acciones = useAccionesCaso(a, resguardo);
   const abierto = a.estado === 'avistado' || a.estado === 'resguardado';
   const hayBotones = acciones.puedeEscribir || acciones.puedeVerlo;
+  const amplio = disposicion === 'amplio';
+  const esPerdido = a.tipo_reporte === 'perdido';
+  // El dato que la familia eligió mostrar, siempre junto al aviso contra estafas.
+  const contactoFamilia = esPerdido && abierto ? a.contacto_familia : null;
 
-  const titulo = t.animal.tituloCorto(a.especie, a.color, a.tamanio);
+  // Si tiene nombre, va primero ("Toby"); debajo, la descripción corta.
+  const titulo = t.animal.tituloCaso(a.nombre, a.especie, a.color, a.tamanio);
+  const tituloCorto = t.animal.tituloCorto(a.especie, a.color, a.tamanio);
+  const fecha = esPerdido
+    ? t.animal.perdidoDesde(desdeCuando(a.perdido_desde ?? a.created_at))
+    : t.animal.publicado(haceCuanto(a.created_at));
+
+  const avisoEstafa = contactoFamilia ? (
+    <View style={estilos.bloqueFamilia}>
+      <View style={estilos.contacto}>
+        <Texto variante="etiquetaCampo">{t.animal.loBuscan}</Texto>
+        <Texto variante="cuerpoFuerte" selectable>
+          {contactoFamilia}
+        </Texto>
+        <Texto variante="pequeno">{t.animal.contactoFamiliaAyuda}</Texto>
+      </View>
+      <AvisoEstafa />
+    </View>
+  ) : (
+    <AvisoEstafa />
+  );
   const datos = [
     t.especie[a.especie],
     a.tamanio ? t.tamanio[a.tamanio] : null,
@@ -120,12 +144,19 @@ export function DetalleCaso({ animal: a, avistamientos, cambios, historial, onVo
       {a.oculto ? <Mensaje texto={t.animal.oculto} tipo="error" /> : null}
       {a.estado === 'reunido' ? <Mensaje texto={t.animal.casoCerrado} tipo="exito" /> : null}
       <View style={estilos.filaEstado}>
-        <EtiquetaEstado estado={a.estado} />
-        <Texto variante="secundario">{t.animal.publicado(haceCuanto(a.created_at))}</Texto>
+        <EtiquetaEstado estado={a.estado} tipo={a.tipo_reporte} />
+        <Texto variante="secundario">{fecha}</Texto>
       </View>
-      <Texto variante="display" accessibilityRole="header">
-        {titulo}
-      </Texto>
+      <View>
+        <Texto variante="display" accessibilityRole="header">
+          {titulo}
+        </Texto>
+        {a.nombre ? (
+          <Texto variante="cuerpoFuerte" color="textoSecundario">
+            {tituloCorto}
+          </Texto>
+        ) : null}
+      </View>
       {a.descripcion ? <Texto color="textoCuerpo">{a.descripcion}</Texto> : null}
       <View style={estilos.datos}>
         {datos.map((dato) => (
@@ -140,8 +171,10 @@ export function DetalleCaso({ animal: a, avistamientos, cambios, historial, onVo
           </Texto>
         </View>
       ) : null}
+      {/* En computadora el contacto de la familia va en la columna izquierda, con el aviso. */}
+      {contactoFamilia && !amplio ? avisoEstafa : null}
       <NovedadesCaso acciones={acciones} />
-      <VistoPorUltimaVez avistamientos={avistamientos} estado={a.estado} />
+      <VistoPorUltimaVez avistamientos={avistamientos} estado={a.estado} tipo={a.tipo_reporte} />
       {a.estado !== 'reunido' ? <Coincidencias animalId={a.id} /> : null}
       <View style={estilos.seccion}>
         <Texto variante="subtitulo" accessibilityRole="header">
@@ -152,13 +185,13 @@ export function DetalleCaso({ animal: a, avistamientos, cambios, historial, onVo
         ) : historial.error ? (
           <Mensaje texto={historial.error} tipo="error" onReintentar={historial.onReintentar} />
         ) : (
-          <Historial eventos={historial.eventos} estado={a.estado} />
+          <Historial eventos={historial.eventos} estado={a.estado} tipo={a.tipo_reporte} />
         )}
       </View>
     </>
   );
 
-  if (disposicion === 'amplio') {
+  if (amplio) {
     return (
       <View style={estilos.raiz}>
         <ScrollView contentContainerStyle={estilos.scrollAmplio}>
@@ -169,7 +202,7 @@ export function DetalleCaso({ animal: a, avistamientos, cambios, historial, onVo
                 <View style={estilos.flotantesSobreFoto}>{botonesFlotantes}</View>
               </View>
               {hayBotones ? <BotonesCaso acciones={acciones} /> : null}
-              {abierto ? <AvisoEstafa /> : null}
+              {abierto ? avisoEstafa : null}
             </View>
             <View style={estilos.columnaDerecha}>{contenido}</View>
           </View>
@@ -206,7 +239,7 @@ export function DetalleCaso({ animal: a, avistamientos, cambios, historial, onVo
           )}
           <View style={[estilos.contenido, medio && estilos.contenidoMedio]}>
             {contenido}
-            {abierto ? <AvisoEstafa /> : null}
+            {abierto && !contactoFamilia ? avisoEstafa : null}
           </View>
         </View>
       </ScrollView>
@@ -280,6 +313,7 @@ const crear = crearEstilos((c) => ({
     borderRadius: Radio.l,
     backgroundColor: c.superficieSuave,
   },
+  bloqueFamilia: { gap: Espacio.sm },
   seccion: { gap: Espacio.m },
   cargando: { alignSelf: 'flex-start' },
   barra: {

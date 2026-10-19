@@ -9,10 +9,13 @@ import { Texto } from '@/components/ui/Texto';
 import { Espacio, Radio } from '@/constants/tema';
 import { useAuth } from '@/features/auth/AuthProvider';
 import {
+  familiaDelPerdido,
   otroAnimal,
+  puedeResolver,
   useCoincidencias,
   useResolverCoincidencia,
 } from '@/features/coincidencias/api';
+import { usePerfil } from '@/features/perfil/api';
 import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 import { urlFoto } from '@/lib/imagenes';
@@ -25,12 +28,16 @@ const SUPERPOSICION = 16;
 
 /**
  * "Posibles coincidencias" (6.10): otros reportes que el reconocimiento de
- * imágenes cree que son el mismo animal. Una persona confirma o rechaza; nunca se une solo.
+ * imágenes cree que son el mismo animal. Una persona confirma o rechaza; nunca
+ * se une solo. Si el par incluye un perdido decide su familia; entre dos
+ * encontrados, quien publicó alguno o un moderador. El resto ve un mensaje de espera.
  */
 export function Coincidencias({ animalId }: Props) {
   const router = useRouter();
   const estilos = useEstilos(crear);
   const { usuario } = useAuth();
+  const { data: perfil } = usePerfil(usuario?.id);
+  const esModerador = perfil?.es_moderador ?? false;
   const coincidencias = useCoincidencias(animalId);
   const resolver = useResolverCoincidencia(animalId);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -69,15 +76,13 @@ export function Coincidencias({ animalId }: Props) {
       {resolver.isError ? (
         <Mensaje texto={resolver.error.message || t.comunes.errorGenerico} tipo="error" />
       ) : null}
-      {!usuario && pendientes.length > 0 ? (
-        <Mensaje texto={t.coincidencias.requiereCuenta} />
-      ) : null}
 
       {pendientes.map((c) => {
         const otro = otroAnimal(c, animalId);
         const propia = c.animal_origen === animalId ? c.origen_foto_path : c.candidato_foto_path;
         const porcentaje = Math.round(c.similitud * 100);
         const km = c.distancia_m === null ? null : c.distancia_m / 1000;
+        const decide = puedeResolver(c, usuario?.id, esModerador);
         return (
           <View key={c.id} style={estilos.coincidencia}>
             <View style={estilos.encabezado}>
@@ -99,14 +104,23 @@ export function Coincidencias({ animalId }: Props) {
                 />
               </View>
               <Texto style={estilos.resumen}>
-                {t.coincidencias.resumen(otro.especie, km, porcentaje)}
+                {t.coincidencias.resumen(otro.especie, otro.tipo, otro.nombre, km, porcentaje)}
                 {c.horas_diferencia !== null
                   ? ` ${t.coincidencias.tiempoOracion(c.horas_diferencia)}`
                   : ''}
               </Texto>
             </View>
+            {decide ? null : (
+              <Mensaje
+                texto={
+                  familiaDelPerdido(c)
+                    ? t.coincidencias.esperaFamilia
+                    : t.coincidencias.esperaPublicadores
+                }
+              />
+            )}
             <View style={estilos.botones}>
-              {usuario ? (
+              {decide ? (
                 <>
                   <Boton
                     titulo={t.coincidencias.esElMismo}

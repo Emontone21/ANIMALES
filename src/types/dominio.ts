@@ -6,6 +6,8 @@ export type Especie = Database['public']['Enums']['especie'];
 export type Tamanio = Database['public']['Enums']['tamanio'];
 export type EstadoAnimal = Database['public']['Enums']['estado_animal'];
 export type TipoAvistamiento = Database['public']['Enums']['tipo_avistamiento'];
+/** perdido: lo publica su familia · encontrado: lo publica quien lo encontró. */
+export type TipoReporte = Database['public']['Enums']['tipo_reporte'];
 
 export type Perfil = Database['public']['Tables']['perfiles']['Row'];
 export type AnimalEnMapa = Database['public']['Views']['animales_mapa']['Row'];
@@ -36,7 +38,11 @@ export const ESPECIES: Especie[] = ['perro', 'gato', 'otro'];
 export const TAMANIOS: Tamanio[] = ['chico', 'mediano', 'grande'];
 
 export type NuevoReporte = {
+  tipo: TipoReporte;
   especie: Especie;
+  /** Solo en perdidos: el nombre y el contacto que la familia decide mostrar. */
+  nombre: string;
+  contactoFamilia: string;
   tamanio: Tamanio | null;
   color: string;
   tieneCollar: boolean;

@@ -38,7 +38,7 @@ export function TarjetaCaso({
 }: Props) {
   const estilos = useEstilos(crear);
   const { animal, km } = caso;
-  const titulo = t.animal.tituloCorto(animal.especie, animal.color, animal.tamanio);
+  const titulo = t.animal.tituloCaso(animal.nombre, animal.especie, animal.color, animal.tamanio);
   const hace = haceCuanto(animal.ultimo_visto_en);
   const linea = km === null ? hace : t.mapa.distanciaYTiempo(t.mapa.distancia(km), hace);
   const fila = forma === 'fila';
@@ -56,7 +56,7 @@ export function TarjetaCaso({
   return (
     <Pressable
       accessibilityRole="link"
-      accessibilityLabel={`${titulo}. ${t.estado[animal.estado]}. ${linea}`}
+      accessibilityLabel={`${titulo}. ${t.etiquetaEstado(animal.estado, animal.tipo_reporte)}. ${linea}`}
       accessibilityState={{ selected: seleccionado }}
       onPress={onPress}
       onHoverIn={() => onResaltar?.(animal.id)}
@@ -72,7 +72,7 @@ export function TarjetaCaso({
         <>
           {foto}
           <View style={estilos.cuerpoFila}>
-            <EtiquetaEstado estado={animal.estado} />
+            <EtiquetaEstado estado={animal.estado} tipo={animal.tipo_reporte} />
             <Texto variante="tituloTarjeta" numberOfLines={2}>
               {titulo}
             </Texto>
@@ -86,7 +86,7 @@ export function TarjetaCaso({
           <View>
             {foto}
             <View style={estilos.etiqueta}>
-              <EtiquetaEstado estado={animal.estado} />
+              <EtiquetaEstado estado={animal.estado} tipo={animal.tipo_reporte} />
             </View>
           </View>
           <Texto variante="tituloTarjeta" numberOfLines={1} style={estilos.titulo}>

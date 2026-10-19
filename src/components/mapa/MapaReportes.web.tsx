@@ -64,7 +64,11 @@ export function MapaReportes({
   const resaltadoRef = useRef<string | null>(null);
 
   const seleccionado = animales.find((a) => a.id === seleccionadoId) ?? null;
-  const colorTipo = coloresDeEstado(c, seleccionado?.estado ?? 'avistado').anillo;
+  const colorTipo = coloresDeEstado(
+    c,
+    seleccionado?.estado ?? 'avistado',
+    seleccionado?.tipo_reporte,
+  ).anillo;
 
   // Lo último recibido, para los eventos del mapa y por si el estilo todavía no cargó.
   const actual = useRef({
@@ -277,7 +281,7 @@ function aplicarResaltado(mapa: MapaGL, anterior: string | null, nuevo: string |
 
 /** Círculo de 58 con la foto, borde interno en superficie, anillo del tipo y colita (6.6). */
 function elementoFoto(animal: AnimalEnMapa, c: Paleta): HTMLElement {
-  const anillo = coloresDeEstado(c, animal.estado).anillo;
+  const anillo = coloresDeEstado(c, animal.estado, animal.tipo_reporte).anillo;
   const raiz = document.createElement('div');
   raiz.setAttribute('aria-hidden', 'true');
   Object.assign(raiz.style, {

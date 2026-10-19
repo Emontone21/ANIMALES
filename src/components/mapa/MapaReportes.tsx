@@ -69,7 +69,11 @@ export function MapaReportes({
   const coleccion = useMemo(() => animalesAGeoJSON(animales), [animales]);
   const ubicacion = useMemo(() => puntoAGeoJSON(miUbicacion), [miUbicacion]);
   const seleccionado = animales.find((a) => a.id === seleccionadoId) ?? null;
-  const colorTipo = coloresDeEstado(c, seleccionado?.estado ?? 'avistado').anillo;
+  const colorTipo = coloresDeEstado(
+    c,
+    seleccionado?.estado ?? 'avistado',
+    seleccionado?.tipo_reporte,
+  ).anillo;
 
   const manejarPress = async (evento: NativeSyntheticEvent<PressEventWithFeatures>) => {
     const feature = evento.nativeEvent.features[0] as Feature<Point> | undefined;

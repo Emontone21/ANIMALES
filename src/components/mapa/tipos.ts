@@ -70,8 +70,8 @@ export function animalesAGeoJSON(animales: AnimalEnMapa[]): ColeccionAnimales {
       type: 'Feature',
       id: a.id,
       geometry: { type: 'Point', coordinates: [a.lng, a.lat] },
-      // Hasta la Fase 6 (tipo_reporte) todos los reportes son de animales encontrados.
-      properties: { id: a.id, especie: a.especie, estado: a.estado, tipo: 'encontrado' },
+      // tipo da el anillo y el halo naranja de los perdidos (estilosCapa.ts).
+      properties: { id: a.id, especie: a.especie, estado: a.estado, tipo: a.tipo_reporte },
     })),
   };
 }

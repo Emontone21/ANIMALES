@@ -1,10 +1,10 @@
 # Encontrados · animales encontrados en Montevideo
 
-App para reunir perros y gatos perdidos con sus familias. Quien encuentra un animal lo publica en un mapa con una foto; otras personas avisan que lo vieron en otro lugar, que lo resguardaron o que ya volvió a su casa. La app compara las fotos y sugiere cuándo dos reportes podrían ser el mismo animal; una persona confirma, nunca se unen solos. Hay mensajería interna para hablar sin compartir datos personales, notificaciones y un panel de moderación.
+App para reunir perros y gatos perdidos con sus familias. La familia que perdió un animal lo publica en un mapa con una foto, y quien encuentra uno, también; otras personas avisan que lo vieron en otro lugar, que lo resguardaron o que ya volvió a su casa. La app compara las fotos y sugiere cuándo dos reportes podrían ser el mismo animal; una persona confirma, nunca se unen solos. Hay mensajería interna para hablar sin compartir datos personales, notificaciones y un panel de moderación.
 
 Interfaz en español rioplatense. Stack: Expo + React Native + TypeScript (corre en el navegador y, con el mismo código, como app nativa), Supabase en la nube (Auth, Postgres con PostGIS y pgvector, Storage), mapas MapLibre con teselas gratuitas de OpenFreeMap, reconocimiento de imágenes con modelos open source en un Space gratuito de Hugging Face. Se despliega en Vercel.
 
-Estado: las **cuatro fases** del brief están implementadas. Ver [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) y [docs/DECISIONES.md](docs/DECISIONES.md).
+Estado: las fases 1 a 4 del brief y la Fase 6 (reportes de perdidos) están implementadas. Ver [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) y [docs/DECISIONES.md](docs/DECISIONES.md).
 
 Todo corre en la nube: no hace falta Docker ni Android Studio. Solo Node 20+ para desarrollar.
 
@@ -14,7 +14,7 @@ Todo corre en la nube: no hace falta Docker ni Android Studio. Solo Node 20+ par
 
 1. Creá un proyecto en [supabase.com](https://supabase.com) (plan gratuito). Guardá la contraseña de la base.
 2. En **Project Settings → API** copiá la **Project URL**, la clave **anon / publishable** y la **service_role** (esta última es secreta: solo va al servicio de visión).
-3. Aplicá las migraciones de `supabase/migrations/` **en orden** (0001 a 0008). Dos formas:
+3. Aplicá las migraciones de `supabase/migrations/` **en orden** (0001 a 0010). Dos formas:
 
    **a) CLI** (sin instalar nada):
 
@@ -26,9 +26,9 @@ Todo corre en la nube: no hace falta Docker ni Android Studio. Solo Node 20+ par
 
    El `<ref>` está en la URL del dashboard (`supabase.com/dashboard/project/<ref>`).
 
-   **b) Dashboard:** SQL Editor → pegá y ejecutá cada archivo, uno por uno, en orden.
+   **b) Dashboard:** SQL Editor → pegá y ejecutá cada archivo, uno por uno, en orden. La 0009 va sola: agrega un valor a un enum que la 0010 usa, y Postgres no deja usarlo en la misma ejecución.
 
-4. Datos de demo (opcional): ejecutá `supabase/seed.sql` en el SQL Editor. Crea `demo@encontrados.uy` / `demo1234` y tres animales.
+4. Datos de demo (opcional): ejecutá `supabase/seed.sql` en el SQL Editor. Crea `demo@encontrados.uy` / `demo1234`, tres animales encontrados y un perro perdido (Toby) cerca del de Parque Rodó. Cambiá la contraseña de la demo antes de abrir la web al público.
 5. **Authentication → URL Configuration:** Site URL = tu URL de Vercel (cuando la tengas). Redirect URLs: `http://localhost:8081/**`, `https://<tu-sitio>.vercel.app/**`, `encontrados://**`.
 6. Google (opcional): cliente OAuth **Web application** en Google Cloud con redirect `https://<ref>.supabase.co/auth/v1/callback`; pegá client ID y secret en **Authentication → Providers → Google**.
 7. Moderadores (opcional): `update perfiles set es_moderador = true where id = '<uuid>';`
@@ -88,20 +88,31 @@ Las notificaciones in-app funcionan en web sin configurar nada. Para push en And
 Todo en el navegador. Conviene tener dos cuentas: la demo (`demo@encontrados.uy` / `demo1234`) y una tuya.
 
 **Fase 1 · mapa y publicación**
-1. Sin cuenta: mapa de Montevideo con los animales de demo. Filtros por especie, estado y antigüedad. Clic en un marcador abre la tarjeta y el detalle.
+1. Sin cuenta: mapa de Montevideo con los animales de demo. Chips por tipo y, en **Más filtros**, especie, estado y antigüedad. Clic en un marcador muestra su foto y pone su tarjeta primera en **Cerca tuyo**; la tarjeta abre el detalle.
 2. En **Publicar** te pide cuenta. Creá una con email o entrá con la demo.
-3. Publicá un animal con foto, datos, "¿cuándo lo viste?" y ubicación (GPS o punto en el mapa). Caés en el detalle y el animal aparece en el mapa.
+3. **Publicar → Encontré un animal**: foto, datos, "¿cuándo lo viste?" y ubicación (GPS o punto en el mapa). Caés en el detalle y el animal aparece en el mapa.
 
 **Fase 2 · interacciones**
-1. Con tu cuenta, abrí un animal de la demo y tocá **Lo vi acá también**: foto, cuándo, dónde, nota. El historial suma una fila y el mini mapa dibuja el recorrido; en el mapa principal, al seleccionar el animal, se ve la línea entre avistamientos.
+1. Con tu cuenta, abrí un animal de la demo y tocá **Lo vi**: foto, cuándo, dónde, nota. El historial suma una fila y el mini mapa dibuja el recorrido; en el mapa principal, al seleccionar el animal, se ve la línea entre avistamientos.
 2. **Me lo llevé / está resguardado**: escribí un contacto opcional. El estado cambia, el contacto se ve en el detalle y queda en el historial. **Se volvió a escapar** lo reabre.
-3. **Se reunió con su familia** cierra el caso (deja de estar en "Activos"). Solo quien publicó puede reabrirlo.
+3. **Se reunió con su familia** cierra el caso (deja de estar en "Activos"). En un encontrado lo pueden marcar quien lo publicó y quien lo tiene resguardado; reabrirlo, solo quien publicó.
 4. **Seguir** y **Denunciar** (motivo + detalle). Tres denuncias de personas distintas ocultan la publicación.
 
 **Fase 3 · reconocimiento**
 1. Con el servicio de visión configurado, publicá dos reportes con fotos del mismo animal a pocas cuadras y con poca diferencia de tiempo.
 2. En un minuto (más si el Space estaba dormido) el detalle muestra **Posibles coincidencias** con el porcentaje de parecido, distancia y tiempo. Se refresca solo cada 30 s.
-3. **Es el mismo animal** une los reportes: el más viejo queda como principal y el otro redirige a él. **No es el mismo** lo descarta y queda registrado para calibrar el umbral (`config_app.umbral_similitud`).
+3. Entre dos encontrados deciden quien publicó cualquiera de los dos o un moderador. **Es el mismo animal** une los reportes: el más viejo queda como principal y el otro redirige a él. **No es el mismo** lo descarta y queda registrado para calibrar el umbral (`config_app.umbral_similitud`).
+
+**Fase 6 · reportes de perdidos**
+
+Necesitás tres cuentas: la familia, alguien que encuentra y un tercero.
+1. Sin cuenta: en el mapa, los chips **Todos · Perdidos · Encontrados** filtran por tipo; la especie quedó en **Más filtros**. Toby (seed) tiene el anillo naranja y un halo que lo distingue también en escala de grises.
+2. Con la familia: **Publicar → Perdí a mi animal**. Cargá foto, especie, nombre, tamaño, color, collar, señas, "¿Cuándo se perdió?" (en días) y dónde lo vieron por última vez; el formulario avisa que no hace falta la casa exacta. Opcional: un contacto para mostrar. En el detalle: el nombre primero, **Perdido desde el …**, la etiqueta naranja **Perdido** y, si cargaste contacto, **Lo buscan** junto al aviso contra estafas. El punto guardado está redondeado a unos 100 m.
+3. Con el tercero, en ese perdido: **Lo vi** y **Me lo llevé / está resguardado** funcionan; **Se reunió con su familia** y **Se volvió a escapar** no aparecen. Con la familia, sí.
+4. Con quien encuentra: **Publicar → Encontré un animal** con una foto parecida, cerca y después de la pérdida. Con el servicio de visión andando aparece la coincidencia: la familia recibe "Encontraron un animal parecido a <nombre>" y es la única que ve **Es el mismo animal** y **No es el mismo**; el resto ve "Su familia está mirando las fotos…". Al confirmar, el perdido queda como principal; si el encontrado estaba resguardado, el perdido pasa a resguardado con ese contacto.
+5. En un encontrado, **Se reunió con su familia** lo ven quien lo publicó y quien lo tiene resguardado.
+
+Las mismas reglas, probadas directo en la base: el script de `docs/reportes/2026-10-19-perdidos.md` (sección 3).
 
 **Fase 4 · notificaciones, mensajes, moderación**
 1. Con la demo seguí un animal; con tu cuenta registrá un avistamiento sobre ese animal. En la demo, la pestaña **Actividad → Novedades** muestra "Lo vieron de nuevo".

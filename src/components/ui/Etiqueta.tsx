@@ -26,7 +26,10 @@ export function Etiqueta({ texto, fondo, color }: Props) {
   return <EtiquetaBase texto={texto} fondo={c[fondo]} color={c[color]} />;
 }
 
-/** Estado del caso con los colores de la tabla 2.3 de docs/DISENO.md. */
+/**
+ * Estado del caso con los colores de la tabla 2.3 de docs/DISENO.md. Un perdido
+ * que nadie tiene todavía dice "Perdido", en perdidoSuave y textoPerdido.
+ */
 export function EtiquetaEstado({
   estado,
   tipo = 'encontrado',
@@ -36,7 +39,13 @@ export function EtiquetaEstado({
 }) {
   const { c } = useTema();
   const colores = coloresDeEstado(c, estado, tipo);
-  return <EtiquetaBase texto={t.estado[estado]} fondo={colores.fondo} color={colores.texto} />;
+  return (
+    <EtiquetaBase
+      texto={t.etiquetaEstado(estado, tipo)}
+      fondo={colores.fondo}
+      color={colores.texto}
+    />
+  );
 }
 
 function EtiquetaBase({ texto, fondo, color }: { texto: string; fondo: string; color: string }) {

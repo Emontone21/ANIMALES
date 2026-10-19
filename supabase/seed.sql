@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Datos de demo para desarrollo local (se cargan con `supabase db reset`).
--- Crea una usuaria demo y tres animales en Montevideo.
+-- Crea una usuaria demo, tres animales encontrados y uno perdido en Montevideo.
 --   email: demo@encontrados.uy · contraseña: demo1234
 -- Las fotos de demo apuntan a servicios públicos de imágenes de prueba;
 -- las fotos reales viven en el bucket "fotos".
@@ -92,4 +92,26 @@ values (
   'https://placedog.net/640/480?id=31',
   extensions.st_setsrid(extensions.st_makepoint(-56.2560, -34.8880), 4326)::extensions.geography,
   now() - interval '6 days'
+);
+
+-- Perro perdido a unos 300 m del perro encontrado en Parque Rodó: sirve para
+-- probar el mapa (anillo y halo naranja) y, con el servicio de visión andando,
+-- una posible coincidencia. Como en publicar_animal, la ubicación de un perdido
+-- se guarda redondeada a 3 decimales (unos 100 m).
+insert into public.animales (
+  id, especie, tamanio, color, tiene_collar, descripcion, foto_principal_path, creado_por,
+  tipo_reporte, nombre, contacto_familia
+)
+values (
+  'b0000000-0000-4000-8000-000000000004', 'perro', 'mediano', 'marrón con pecho blanco', true,
+  'Collar rojo. Es miedoso con las motos y responde a su nombre.',
+  'https://placedog.net/640/480?id=12', 'a0000000-0000-4000-8000-000000000001',
+  'perdido', 'Toby', 'Escribinos por la app'
+);
+insert into public.avistamientos (animal_id, usuario_id, tipo, foto_path, ubicacion, visto_en, nota)
+values (
+  'b0000000-0000-4000-8000-000000000004', 'a0000000-0000-4000-8000-000000000001', 'perdido',
+  'https://placedog.net/640/480?id=12',
+  extensions.st_setsrid(extensions.st_makepoint(-56.166, -34.913), 4326)::extensions.geography,
+  now() - interval '1 day', 'Se escapó cuando abrimos el portón.'
 );

@@ -11,3 +11,7 @@ docs/reportes/AAAA-MM-DD-<tema>.md, con la fecha del día, que tenga:
    Vercel u otros servicios, con los comandos o el SQL exactos.
 5. Pendientes y riesgos: lo que quedó afuera o conviene revisar.
 El reporte va en el mismo commit que los cambios. Terminá mostrando su ruta.
+
+## Ramas y PR
+Al terminar cada tarea, subí la rama de trabajo y abrí un PR contra main.
+Nunca hagas merge ni push a main.
