@@ -22,8 +22,12 @@ export async function resolverDenuncia(id: string, estado: EstadoDenuncia): Prom
   if (error) throw error;
 }
 
+/** Oculta o muestra una publicación. La RPC valida que quien llama sea moderador. */
 export async function ocultarAnimal(animalId: string, oculto: boolean): Promise<void> {
-  const { error } = await supabase.from('animales').update({ oculto }).eq('id', animalId);
+  const { error } = await supabase.rpc('moderar_animal', {
+    p_animal_id: animalId,
+    p_oculto: oculto,
+  });
   if (error) throw error;
 }
 

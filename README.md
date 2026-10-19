@@ -14,7 +14,7 @@ Todo corre en la nube: no hace falta Docker ni Android Studio. Solo Node 20+ par
 
 1. Creá un proyecto en [supabase.com](https://supabase.com) (plan gratuito). Guardá la contraseña de la base.
 2. En **Project Settings → API** copiá la **Project URL**, la clave **anon / publishable** y la **service_role** (esta última es secreta: solo va al servicio de visión).
-3. Aplicá las migraciones de `supabase/migrations/` **en orden** (0001 a 0006). Dos formas:
+3. Aplicá las migraciones de `supabase/migrations/` **en orden** (0001 a 0007). Dos formas:
 
    **a) CLI** (sin instalar nada):
 
@@ -121,7 +121,7 @@ src/features/       auth, reportes, seguimientos, denuncias, coincidencias, noti
 src/lib/            supabase, imágenes, ubicación, fechas, env
 src/i18n/es-UY.ts   todos los textos
 src/types/          database.ts (esquema), dominio.ts
-supabase/           migrations/ (0001–0006), seed.sql, config.toml
+supabase/           migrations/ (0001–0007), seed.sql, config.toml
 services/vision/    microservicio Python de reconocimiento (Hugging Face Spaces)
 public/             estáticos de la web (worker de MapLibre, generado en postinstall)
 docs/               arquitectura y decisiones

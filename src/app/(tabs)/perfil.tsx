@@ -108,7 +108,10 @@ export default function PantallaPerfil() {
                     </Texto>
                     <Texto variante="pequeno">
                       {haceCuanto(a.created_at)} ·{' '}
-                      {t.animal.avistamientos(a.cantidad_avistamientos)}
+                      {/* Un vinculado ya no tiene avistamientos: pasaron al caso principal. */}
+                      {a.estado === 'vinculado'
+                        ? t.perfil.verCasoPrincipal
+                        : t.animal.avistamientos(a.cantidad_avistamientos)}
                     </Texto>
                   </View>
                   <Ionicons name="chevron-forward" size={20} color={Colores.textoSecundario} />
