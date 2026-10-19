@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { type ComponentProps, type ReactNode, useEffect, useState } from 'react';
 import { View } from 'react-native';
 
+import { HojaTerminos } from '@/components/legal/AceptarTerminos';
 import { ModalAvistamiento } from '@/components/reportes/ModalAvistamiento';
 import { ModalDenuncia } from '@/components/reportes/ModalDenuncia';
 import { ModalEstado, type TipoCambio } from '@/components/reportes/ModalEstado';
@@ -13,6 +14,7 @@ import { Texto } from '@/components/ui/Texto';
 import { Espacio } from '@/constants/tema';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useDenuncia } from '@/features/denuncias/api';
+import { useTerminos } from '@/features/legal/terminos';
 import { useAbrirConversacion } from '@/features/mensajes/api';
 import { useSeguimiento } from '@/features/seguimientos/api';
 import { crearEstilos, useEstilos } from '@/hooks/useTema';
@@ -22,7 +24,14 @@ import type { AnimalDetalle, CambioEstadoDetalle } from '@/types/dominio';
 type NombreIcono = ComponentProps<typeof Ionicons>['name'];
 
 type ModalCaso =
-  'avistamiento' | 'denuncia' | TipoCambio | 'opciones' | 'destinatario' | 'cuenta' | null;
+  | 'avistamiento'
+  | 'denuncia'
+  | TipoCambio
+  | 'opciones'
+  | 'destinatario'
+  | 'cuenta'
+  | 'terminos'
+  | null;
 
 type Novedad = { tipo: TipoCambio; titulo: string; icono: NombreIcono };
 
@@ -45,6 +54,9 @@ export function useAccionesCaso(animal: AnimalDetalle, resguardo: CambioEstadoDe
   const seguimiento = useSeguimiento(usuario?.id, animal.id);
   const denuncia = useDenuncia(usuario?.id, animal.id);
   const conversacion = useAbrirConversacion();
+  const terminos = useTerminos(usuario?.id);
+  // Lo que quiso hacer antes de aceptar los términos: se retoma al aceptarlos.
+  const [pendiente, setPendiente] = useState<(() => void) | null>(null);
 
   // El aviso de éxito se va solo.
   useEffect(() => {
@@ -59,12 +71,13 @@ export function useAccionesCaso(animal: AnimalDetalle, resguardo: CambioEstadoDe
   // Quien lo tiene resguardado ahora (solo existe si el caso está resguardado).
   const esQuienResguarda = !!usuario && resguardo?.usuario_id === usuario.id;
 
-  // Las mismas reglas que cambiar_estado_animal (migración 0010).
+  // Las mismas reglas que cambiar_estado_animal (migración 0011). Un caso
+  // anónimo (creado_por null) no tiene creador: nadie cumple esCreador.
   const puedeResguardar = animal.estado === 'avistado' && !(esPerdido && esCreador);
   const puedeReunir =
     abierto && (esCreador || (!esPerdido && animal.estado === 'resguardado' && esQuienResguarda));
   const puedeReabrir =
-    (animal.estado === 'resguardado' && (!esPerdido || esCreador)) ||
+    (animal.estado === 'resguardado' && (esCreador || (!esPerdido && esQuienResguarda))) ||
     (animal.estado === 'reunido' && esCreador);
 
   const novedades: Novedad[] = [];
@@ -99,8 +112,9 @@ export function useAccionesCaso(animal: AnimalDetalle, resguardo: CambioEstadoDe
     }
   }
 
-  // Quien publicó y, si es otra persona, quien lo resguarda. Nunca uno mismo.
-  const destinatarios: Destinatario[] = [
+  // Quien publicó y, si es otra persona, quien lo resguarda. Nunca uno mismo,
+  // ni alguien que borró su cuenta (queda sin usuario).
+  const candidatos: { usuarioId: string | null; titulo: string }[] = [
     {
       usuarioId: animal.creado_por,
       titulo: esPerdido ? t.mensajes.escribirAFamilia : t.mensajes.escribirAPublicador,
@@ -108,7 +122,10 @@ export function useAccionesCaso(animal: AnimalDetalle, resguardo: CambioEstadoDe
     ...(resguardo && resguardo.usuario_id !== animal.creado_por
       ? [{ usuarioId: resguardo.usuario_id, titulo: t.mensajes.escribirAResguardo }]
       : []),
-  ].filter((d) => d.usuarioId !== usuario?.id);
+  ];
+  const destinatarios = candidatos.filter(
+    (d): d is Destinatario => !!d.usuarioId && d.usuarioId !== usuario?.id,
+  );
 
   /** Sin cuenta, toda acción lleva a ingresar o crear una cuenta. */
   const pedirCuenta = (motivo: string = t.animal.requiereCuentaAcciones) => {
@@ -116,8 +133,19 @@ export function useAccionesCaso(animal: AnimalDetalle, resguardo: CambioEstadoDe
     setModal('cuenta');
   };
 
+  /**
+   * Publicar, avisar, cambiar el estado, escribir y denunciar piden los
+   * términos aceptados (la base también lo exige). Si faltan, se aceptan
+   * primero y después sigue lo que se había tocado. Mientras se consulta, sigue.
+   */
+  const conTerminos = (accion: () => void) => {
+    if (terminos.cargando || terminos.aceptados) return accion();
+    setPendiente(() => accion);
+    setModal('terminos');
+  };
+
   const pedir = (siguiente: Exclude<ModalCaso, null>) =>
-    usuario ? setModal(siguiente) : pedirCuenta();
+    usuario ? conTerminos(() => setModal(siguiente)) : pedirCuenta();
 
   const escribirA = (otroUsuarioId: string) => {
     setErrorEscribir(null);
@@ -135,8 +163,10 @@ export function useAccionesCaso(animal: AnimalDetalle, resguardo: CambioEstadoDe
 
   const escribir = () => {
     if (!usuario) return pedirCuenta(t.mensajes.requiereCuenta);
-    if (destinatarios.length > 1) return setModal('destinatario');
-    if (destinatarios[0]) escribirA(destinatarios[0].usuarioId);
+    conTerminos(() => {
+      if (destinatarios.length > 1) return setModal('destinatario');
+      if (destinatarios[0]) escribirA(destinatarios[0].usuarioId);
+    });
   };
 
   const seguir = () => {
@@ -170,10 +200,26 @@ export function useAccionesCaso(animal: AnimalDetalle, resguardo: CambioEstadoDe
               visible
               tipo={modal}
               animalId={animal.id}
+              tipoReporte={animal.tipo_reporte}
+              usuarioId={usuario.id}
               onCerrar={() => setModal(null)}
               onExito={() => cerrarConAviso(t.comunes.listo)}
             />
           ) : null}
+          <HojaTerminos
+            visible={modal === 'terminos'}
+            usuarioId={usuario.id}
+            onCerrar={() => {
+              setPendiente(null);
+              setModal(null);
+            }}
+            onAceptado={() => {
+              setModal(null);
+              const accion = pendiente;
+              setPendiente(null);
+              accion?.();
+            }}
+          />
           <ModalDenuncia
             visible={modal === 'denuncia'}
             animalId={animal.id}

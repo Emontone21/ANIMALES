@@ -145,7 +145,17 @@ export async function registrarAvistamiento(
   return data;
 }
 
-export async function cambiarEstado(cambio: CambioEstado): Promise<void> {
+/**
+ * Cambia el estado de un caso. Si trae foto (al resguardar; en un perdido es
+ * obligatoria), la sube como las demás y entra a la cola de reconocimiento.
+ */
+export async function cambiarEstado(cambio: CambioEstado, usuarioId: string): Promise<void> {
+  let fotoPath: string | null = null;
+  if (cambio.fotoUri) {
+    const comprimida = await comprimirFoto(cambio.fotoUri, cambio.fotoAncho);
+    fotoPath = await subirFoto(comprimida.uri, usuarioId);
+  }
+
   const { error } = await supabase.rpc('cambiar_estado_animal', {
     p_animal_id: cambio.animalId,
     p_estado_nuevo: cambio.estadoNuevo,
@@ -153,6 +163,7 @@ export async function cambiarEstado(cambio: CambioEstado): Promise<void> {
     p_nota: cambio.nota?.trim() || null,
     p_lat: cambio.ubicacion?.[1] ?? null,
     p_lng: cambio.ubicacion?.[0] ?? null,
+    p_foto_path: fotoPath,
   });
   if (error) throw error;
 }
@@ -238,10 +249,13 @@ export function useRegistrarAvistamiento(usuarioId: string | null) {
   });
 }
 
-export function useCambiarEstado() {
+export function useCambiarEstado(usuarioId: string | null) {
   const invalidar = useInvalidarAnimal();
   return useMutation({
-    mutationFn: cambiarEstado,
+    mutationFn: (cambio: CambioEstado) => {
+      if (!usuarioId) throw new Error('Sin sesión');
+      return cambiarEstado(cambio, usuarioId);
+    },
     onSuccess: (_void, cambio) => invalidar(cambio.animalId),
   });
 }

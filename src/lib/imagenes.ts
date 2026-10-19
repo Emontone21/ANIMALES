@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 
 const ANCHO_MAXIMO = 1280;
 const CALIDAD_JPEG = 0.75;
-const BUCKET = 'fotos';
+export const BUCKET_FOTOS = 'fotos';
 
 export type FotoComprimida = { uri: string; width: number; height: number };
 
@@ -42,7 +42,7 @@ export async function subirFoto(uriLocal: string, usuarioId: string): Promise<st
   const bytes = await leerBytes(uriLocal);
   const ruta = `${usuarioId}/${Crypto.randomUUID()}.jpg`;
 
-  const { error } = await supabase.storage.from(BUCKET).upload(ruta, bytes, {
+  const { error } = await supabase.storage.from(BUCKET_FOTOS).upload(ruta, bytes, {
     contentType: 'image/jpeg',
     upsert: false,
   });
@@ -53,5 +53,5 @@ export async function subirFoto(uriLocal: string, usuarioId: string): Promise<st
 /** URL pública de una foto. Acepta rutas del bucket o URLs https (datos de demo). */
 export function urlFoto(ruta: string): string {
   if (/^https?:\/\//.test(ruta)) return ruta;
-  return supabase.storage.from(BUCKET).getPublicUrl(ruta).data.publicUrl;
+  return supabase.storage.from(BUCKET_FOTOS).getPublicUrl(ruta).data.publicUrl;
 }

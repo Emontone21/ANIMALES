@@ -3,8 +3,10 @@ import Constants from 'expo-constants';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { EnlacesLegales } from '@/components/legal/EnlacesLegales';
+import { Avatar } from '@/components/ui/Avatar';
 import { Boton } from '@/components/ui/Boton';
 import { Cargando } from '@/components/ui/Cargando';
 import { Chips } from '@/components/ui/Chips';
@@ -13,10 +15,11 @@ import { estaActivo } from '@/components/ui/interaccion';
 import { Mensaje } from '@/components/ui/Mensaje';
 import { Pantalla } from '@/components/ui/Pantalla';
 import { Texto } from '@/components/ui/Texto';
-import { AnchoMaximo, Espacio, Fuentes, MAX_ESCALA_TEXTO, Radio } from '@/constants/tema';
+import { AnchoMaximo, Espacio, Fuentes, Radio } from '@/constants/tema';
 import { PREFERENCIAS_APARIENCIA } from '@/features/apariencia/preferencia';
 import { cerrarSesion } from '@/features/auth/acciones';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { useAlternarBloqueo, useBloqueados } from '@/features/bloqueos/api';
 import { usePerfil } from '@/features/perfil/api';
 import { useMisAnimales } from '@/features/reportes/api';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
@@ -36,6 +39,8 @@ export default function PantallaPerfil() {
   const { usuario } = useAuth();
   const { data: perfil } = usePerfil(usuario?.id);
   const misAnimales = useMisAnimales(usuario?.id);
+  const bloqueados = useBloqueados(usuario?.id);
+  const alternarBloqueo = useAlternarBloqueo(usuario?.id);
   const [saliendo, setSaliendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,15 +67,10 @@ export default function PantallaPerfil() {
 
       <View style={estilos.tarjeta}>
         <View style={estilos.persona}>
-          <View style={estilos.avatar}>
-            {usuario && perfil ? (
-              <Text style={estilos.inicial} maxFontSizeMultiplier={MAX_ESCALA_TEXTO}>
-                {perfil.nombre_publico.trim().charAt(0).toUpperCase()}
-              </Text>
-            ) : (
-              <Ionicons name="person-outline" size={26} color={c.textoPrimarioSuave} />
-            )}
-          </View>
+          <Avatar
+            nombre={usuario ? (perfil?.nombre_publico ?? null) : null}
+            fotoPath={usuario ? perfil?.avatar_path : null}
+          />
           <View style={estilos.datosPersona}>
             {usuario ? (
               <>
@@ -83,7 +83,16 @@ export default function PantallaPerfil() {
           </View>
         </View>
         {usuario ? (
-          <Texto variante="pequeno">{t.perfil.privacidad}</Texto>
+          <>
+            <Texto variante="pequeno">{t.perfil.privacidad}</Texto>
+            <Boton
+              titulo={t.perfil.editar}
+              icono="create-outline"
+              variante="secundario"
+              deshabilitado={!perfil}
+              onPress={() => router.push('/cuenta/editar')}
+            />
+          </>
         ) : (
           <View style={estilos.botones}>
             <Boton titulo={t.auth.ingresar} onPress={() => router.push('/auth/ingresar')} />
@@ -170,6 +179,63 @@ export default function PantallaPerfil() {
             )}
           </View>
 
+          <View style={estilos.seccion}>
+            <Texto variante="subtitulo" accessibilityRole="header">
+              {t.perfil.bloqueados}
+            </Texto>
+            <Texto variante="secundario">{t.perfil.bloqueadosAyuda}</Texto>
+            {bloqueados.isPending ? (
+              <Cargando />
+            ) : bloqueados.isError ? (
+              <Mensaje
+                texto={bloqueados.error.message}
+                tipo="error"
+                onReintentar={() => void bloqueados.refetch()}
+              />
+            ) : bloqueados.data.length === 0 ? (
+              <Texto variante="secundario">{t.perfil.sinBloqueados}</Texto>
+            ) : (
+              <View style={estilos.filas}>
+                {bloqueados.data.map((b) => (
+                  <View key={b.bloqueado_id} style={estilos.fila}>
+                    <Avatar
+                      nombre={b.bloqueado_nombre}
+                      fotoPath={b.bloqueado_avatar_path}
+                      tamanio={40}
+                    />
+                    <Texto numberOfLines={1} style={[estilos.tituloFila, estilos.cuerpo]}>
+                      {b.bloqueado_nombre}
+                    </Texto>
+                    <Boton
+                      titulo={t.perfil.desbloquear}
+                      variante="fantasma"
+                      accessibilityLabel={t.bloqueos.desbloquear(b.bloqueado_nombre)}
+                      cargando={
+                        alternarBloqueo.isPending &&
+                        alternarBloqueo.variables?.otroId === b.bloqueado_id
+                      }
+                      onPress={() =>
+                        alternarBloqueo.mutate({ otroId: b.bloqueado_id, bloqueado: true })
+                      }
+                      style={estilos.botonFila}
+                    />
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        </>
+      ) : null}
+
+      <View style={estilos.seccion}>
+        <Texto variante="subtitulo" accessibilityRole="header">
+          {t.perfil.legal}
+        </Texto>
+        <EnlacesLegales />
+      </View>
+
+      {usuario ? (
+        <View style={estilos.cuenta}>
           <Boton
             titulo={t.auth.salir}
             icono="log-out-outline"
@@ -177,7 +243,13 @@ export default function PantallaPerfil() {
             cargando={saliendo}
             onPress={() => void salir()}
           />
-        </>
+          <Boton
+            titulo={t.perfil.borrarCuenta}
+            icono="trash-outline"
+            variante="peligro"
+            onPress={() => router.push('/cuenta/borrar')}
+          />
+        </View>
       ) : null}
 
       <Texto variante="pequeno" style={estilos.centrado}>
@@ -197,15 +269,6 @@ const crear = crearEstilos((c) => ({
     backgroundColor: c.superficie,
   },
   persona: { flexDirection: 'row', alignItems: 'center', gap: Espacio.m },
-  avatar: {
-    width: 56,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radio.redondo,
-    backgroundColor: c.primarioSuave,
-  },
-  inicial: { ...Fuentes.titulo, fontSize: 26, lineHeight: 30, color: c.textoPrimarioSuave },
   datosPersona: { flex: 1, gap: 2, minWidth: 0 },
   botones: { gap: Espacio.s },
   seccion: { gap: Espacio.sm, marginTop: Espacio.s },
@@ -224,4 +287,6 @@ const crear = crearEstilos((c) => ({
   foto: { width: 56, height: 56, borderRadius: Radio.s, backgroundColor: c.superficieSuave },
   cuerpo: { flex: 1, gap: Espacio.xs, minWidth: 0 },
   tituloFila: { ...Fuentes.negrita, fontSize: 15, lineHeight: 20 },
+  botonFila: { minHeight: 44, paddingHorizontal: Espacio.sm },
+  cuenta: { gap: Espacio.xs, marginTop: Espacio.s },
 }));

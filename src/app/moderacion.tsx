@@ -70,11 +70,21 @@ export default function PantallaModeracion() {
                     {d.animal_oculto ? (
                       <Etiqueta texto={t.moderacion.oculta} fondo="peligroSuave" color="peligro" />
                     ) : null}
+                    {d.cuenta_nueva ? (
+                      <Etiqueta
+                        texto={t.moderacion.cuentaNueva}
+                        fondo="superficieSuave"
+                        color="textoSecundario"
+                      />
+                    ) : null}
                   </View>
                   <Texto style={estilos.titulo}>{t.motivoDenuncia[d.motivo]}</Texto>
                   <Texto variante="pequeno">
                     {d.denunciante_nombre} · {fechaHoraCorta(d.created_at)}
                   </Texto>
+                  {d.cuenta_nueva ? (
+                    <Texto variante="pequeno">{t.moderacion.cuentaNuevaAyuda}</Texto>
+                  ) : null}
                   {d.detalle ? <Texto variante="secundario">{d.detalle}</Texto> : null}
                 </View>
               </View>

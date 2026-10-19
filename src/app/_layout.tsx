@@ -4,7 +4,7 @@ import { Figtree_700Bold } from '@expo-google-fonts/figtree/700Bold';
 import { Fredoka_600SemiBold } from '@expo-google-fonts/fredoka/600SemiBold';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, usePathname, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo } from 'react';
@@ -17,6 +17,7 @@ import { RielNavegacion } from '@/components/ui/BarraNavegacion';
 import { FAMILIAS, Fuentes } from '@/constants/tema';
 import { useAparienciaHidratada } from '@/features/apariencia/preferencia';
 import { AuthProvider, useAuth } from '@/features/auth/AuthProvider';
+import { useRecuperacion } from '@/features/auth/recuperacion';
 import { usePush } from '@/features/notificaciones/push';
 import { useDisposicion } from '@/hooks/useDisposicion';
 import { useTema } from '@/hooks/useTema';
@@ -97,8 +98,19 @@ function TemaNavegacion({ children }: { children: React.ReactNode }) {
 function Navegacion() {
   const { usuario, cargando } = useAuth();
   const { c } = useTema();
+  const router = useRouter();
+  const ruta = usePathname();
   const amplio = useDisposicion() === 'amplio';
+  const recuperando = useRecuperacion((estado) => estado.activa);
   usePush(usuario?.id);
+
+  // Al volver de un link de recuperación (aunque Supabase lo haya mandado a la
+  // raíz), lo primero es elegir la contraseña nueva.
+  useEffect(() => {
+    if (recuperando && ruta !== '/auth/nueva-contrasena') router.replace('/auth/nueva-contrasena');
+    // Solo cuando empieza la recuperación: después se puede salir de esa pantalla.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recuperando]);
 
   useEffect(() => {
     if (!cargando) {
@@ -129,6 +141,14 @@ function Navegacion() {
           />
           <Stack.Screen name="conversacion/[id]" options={{ title: t.mensajes.titulo }} />
           <Stack.Screen name="moderacion" options={{ title: t.moderacion.titulo }} />
+          {/* Se leen sin cuenta. */}
+          <Stack.Screen name="legal/terminos" options={{ title: t.legal.terminos.titulo }} />
+          <Stack.Screen name="legal/privacidad" options={{ title: t.legal.privacidad.titulo }} />
+          {/* Con o sin sesión: el link de recuperación abre una. */}
+          <Stack.Screen
+            name="auth/nueva-contrasena"
+            options={{ title: t.auth.nuevaContrasena.titulo }}
+          />
 
           {/* Solo sin sesión. Al ingresar, el router cierra estas pantallas solo. */}
           <Stack.Protected guard={!usuario}>
@@ -140,6 +160,18 @@ function Navegacion() {
               name="auth/registrarse"
               options={{ title: t.auth.registrarse, presentation: 'modal' }}
             />
+            <Stack.Screen
+              name="auth/recuperar"
+              options={{ title: t.auth.recuperar.titulo, presentation: 'modal' }}
+            />
+          </Stack.Protected>
+
+          {/* Solo con sesión. Al cerrarla o borrar la cuenta, se cierran solas.
+              Mientras se restaura la sesión siguen disponibles: si no, abrir
+              /cuenta/editar directo en web llevaba al mapa. */}
+          <Stack.Protected guard={cargando || !!usuario}>
+            <Stack.Screen name="cuenta/editar" options={{ title: t.cuenta.editar.titulo }} />
+            <Stack.Screen name="cuenta/borrar" options={{ title: t.cuenta.borrar.titulo }} />
           </Stack.Protected>
         </Stack>
       </View>

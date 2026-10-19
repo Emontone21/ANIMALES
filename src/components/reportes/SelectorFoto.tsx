@@ -1,7 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
-import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Boton } from '@/components/ui/Boton';
@@ -9,59 +7,29 @@ import { estaActivo } from '@/components/ui/interaccion';
 import { Mensaje } from '@/components/ui/Mensaje';
 import { Texto } from '@/components/ui/Texto';
 import { Espacio, Radio } from '@/constants/tema';
+import { type FotoElegida, useElegirFoto } from '@/hooks/useElegirFoto';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 
-export type FotoElegida = { uri: string; width: number; height: number };
+export type { FotoElegida };
 
 type Props = {
   foto: FotoElegida | null;
   onCambio: (foto: FotoElegida) => void;
   error?: string | null;
-};
-
-const OPCIONES: ImagePicker.ImagePickerOptions = {
-  mediaTypes: ['images'],
-  quality: 0.9,
-  allowsEditing: false,
-  exif: false,
+  /** Por defecto, "Foto". */
+  etiqueta?: string;
 };
 
 /** Elegir la foto del animal con la cámara o desde la galería, con vista previa. */
-export function SelectorFoto({ foto, onCambio, error }: Props) {
+export function SelectorFoto({ foto, onCambio, error, etiqueta = t.publicar.foto }: Props) {
   const { c } = useTema();
   const estilos = useEstilos(crear);
-  const [aviso, setAviso] = useState<string | null>(null);
-
-  const procesar = (resultado: ImagePicker.ImagePickerResult) => {
-    if (resultado.canceled) return;
-    const activo = resultado.assets[0];
-    if (!activo) return;
-    setAviso(null);
-    onCambio({ uri: activo.uri, width: activo.width, height: activo.height });
-  };
-
-  const sacarFoto = async () => {
-    const permiso = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permiso.granted) {
-      setAviso(t.publicar.permisoCamara);
-      return;
-    }
-    procesar(await ImagePicker.launchCameraAsync(OPCIONES));
-  };
-
-  const elegirDeGaleria = async () => {
-    const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permiso.granted) {
-      setAviso(t.publicar.permisoGaleria);
-      return;
-    }
-    procesar(await ImagePicker.launchImageLibraryAsync(OPCIONES));
-  };
+  const { aviso, sacarFoto, elegirDeGaleria } = useElegirFoto(onCambio);
 
   return (
     <View style={estilos.contenedor}>
-      <Texto variante="etiquetaCampo">{t.publicar.foto}</Texto>
+      <Texto variante="etiquetaCampo">{etiqueta}</Texto>
       {foto ? (
         <Image
           source={{ uri: foto.uri }}

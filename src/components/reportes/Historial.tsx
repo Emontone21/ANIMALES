@@ -28,10 +28,11 @@ export function Historial({ eventos, estado, tipo }: Props) {
       return {
         id: `av-${av.id}`,
         // "Lo vio Carla"; el primer avistamiento de un perdido es "Se perdió acá".
+        // Sin nombre: quien lo hizo borró su cuenta y lo dejó publicado.
         titulo:
           av.tipo === 'perdido'
             ? t.tipoAvistamiento.perdido
-            : `${t.tipoAvistamiento[av.tipo]} ${av.usuario_nombre}`,
+            : `${t.tipoAvistamiento[av.tipo]} ${av.usuario_nombre ?? t.comunes.cuentaEliminada}`,
         nota: av.nota,
         fecha: fechaHoraCorta(evento.fecha),
         extra: av.foto_path ? (
@@ -47,7 +48,7 @@ export function Historial({ eventos, estado, tipo }: Props) {
     const cambio = evento.cambio;
     return {
       id: `ce-${cambio.id}`,
-      titulo: `${t.animal.cambioEstado.titulo(t.estado[cambio.estado_nuevo])} ${t.animal.cambioEstado.por(cambio.usuario_nombre)}`,
+      titulo: `${t.animal.cambioEstado.titulo(t.estado[cambio.estado_nuevo])} ${t.animal.cambioEstado.por(cambio.usuario_nombre ?? t.comunes.cuentaEliminada)}`,
       nota: cambio.nota,
       fecha: fechaHoraCorta(evento.fecha),
       detalle: cambio.contacto_compartido ? (
