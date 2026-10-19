@@ -1,51 +1,63 @@
-import { AttributionControl, Map as MapaGL, NavigationControl } from 'maplibre-gl';
+import type { Map as MapaGL } from 'maplibre-gl';
 import { useEffect, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
-import { configurarMapLibreWeb } from '@/components/mapa/maplibreWeb';
+import { AtribucionMapa } from '@/components/mapa/AtribucionMapa';
+import { aEstiloWeb, crearMapaWeb } from '@/components/mapa/capasWeb';
+import { useEstiloMapa } from '@/components/mapa/estiloBase';
 import type { MapaSelectorProps } from '@/components/mapa/tipos';
-import { t } from '@/i18n/es-UY';
-import { ENV } from '@/lib/env';
+import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 
 /** Mapa para elegir un punto en el navegador. El pin fijo lo dibuja quien lo usa. */
 export function MapaSelector({ centroInicial, zoomInicial, onCentroCambia }: MapaSelectorProps) {
+  const { esquema } = useTema();
+  const estilos = useEstilos(crear);
+  const estiloBase = useEstiloMapa();
   const contenedorRef = useRef<HTMLElement | null>(null);
+  const mapaRef = useRef<MapaGL | null>(null);
   const onCentroRef = useRef(onCentroCambia);
   useEffect(() => {
     onCentroRef.current = onCentroCambia;
   }, [onCentroCambia]);
 
+  // Se crea una vez, cuando el estilo está listo: el centro inicial no cambia con el modal abierto.
   useEffect(() => {
     const contenedor = contenedorRef.current;
-    if (!contenedor) return;
-    configurarMapLibreWeb();
-
-    const mapa = new MapaGL({
-      container: contenedor,
-      style: ENV.mapStyleUrl,
-      center: centroInicial,
-      zoom: zoomInicial,
-      attributionControl: false,
-    });
-    mapa.addControl(new NavigationControl({ showCompass: false }), 'top-right');
-    mapa.addControl(
-      new AttributionControl({ compact: true, customAttribution: t.mapa.atribucion }),
-      'bottom-left',
-    );
+    if (!contenedor || !estiloBase || mapaRef.current) return;
+    const mapa = crearMapaWeb(contenedor, estiloBase, { center: centroInicial, zoom: zoomInicial });
+    mapaRef.current = mapa;
     mapa.on('moveend', () => {
       const { lng, lat } = mapa.getCenter();
       onCentroRef.current([lng, lat]);
     });
-
-    return () => mapa.remove();
-    // Solo al montar: el centro inicial no cambia mientras el modal está abierto.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [estiloBase]);
 
-  // En react-native-web la ref de un View es el elemento del DOM.
-  return <View ref={contenedorRef as never} style={estilos.mapa} />;
+  useEffect(
+    () => () => {
+      mapaRef.current?.remove();
+      mapaRef.current = null;
+    },
+    [],
+  );
+
+  const esquemaRef = useRef(esquema);
+  useEffect(() => {
+    if (esquemaRef.current === esquema) return;
+    esquemaRef.current = esquema;
+    if (estiloBase) mapaRef.current?.setStyle(aEstiloWeb(estiloBase));
+  }, [esquema, estiloBase]);
+
+  return (
+    <View style={estilos.contenedor}>
+      {/* En react-native-web la ref de un View es el elemento del DOM. */}
+      <View ref={contenedorRef as never} style={estilos.mapa} />
+      <AtribucionMapa />
+    </View>
+  );
 }
 
-const estilos = StyleSheet.create({
-  mapa: { flex: 1, minHeight: 320 },
-});
+const crear = crearEstilos((c) => ({
+  contenedor: { flex: 1, minHeight: 320, backgroundColor: c.mapaTierra },
+  mapa: { flex: 1 },
+}));

@@ -1,183 +1,327 @@
 import type { Feature, Point } from 'geojson';
-import {
-  AttributionControl,
-  type GeoJSONSource,
-  Map as MapaGL,
-  type MapMouseEvent,
-  NavigationControl,
-} from 'maplibre-gl';
+import { type GeoJSONSource, type Map as MapaGL, type MapMouseEvent, Marker } from 'maplibre-gl';
 import { useEffect, useImperativeHandle, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
+import { AtribucionMapa } from '@/components/mapa/AtribucionMapa';
 import {
-  FILTRO_CLUSTER,
-  FILTRO_PUNTO,
+  aEstiloWeb,
+  agregarCapasAnimales,
+  agregarCapasRecorrido,
+  agregarMiUbicacion,
+  crearMapaWeb,
+  filtrarSeleccionado,
+} from '@/components/mapa/capasWeb';
+import { useEstiloMapa } from '@/components/mapa/estiloBase';
+import {
+  ID_CAPA_CENTRO,
   ID_CAPA_CLUSTER,
-  ID_CAPA_CLUSTER_NUMERO,
+  ID_CAPA_MI_UBICACION_HALO,
   ID_CAPA_PUNTO,
   ID_FUENTE_ANIMALES,
-  LAYOUT_CLUSTER_NUMERO,
-  OPCIONES_CLUSTER,
-  PAINT_CLUSTER,
-  PAINT_CLUSTER_NUMERO,
-  PAINT_PUNTO,
 } from '@/components/mapa/estilosCapa';
-import { agregarCapasRecorrido } from '@/components/mapa/capasWeb';
-import { configurarMapLibreWeb } from '@/components/mapa/maplibreWeb';
 import {
   animalesAGeoJSON,
   type MapaReportesProps,
+  puntoAGeoJSON,
   recorridoAGeoJSON,
 } from '@/components/mapa/tipos';
+import { coloresDeEstado, type Paleta } from '@/constants/tema';
+import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
-import { ENV } from '@/lib/env';
+import { urlFoto } from '@/lib/imagenes';
 import { MONTEVIDEO, ZOOM_CIUDAD } from '@/lib/ubicacion';
+import type { AnimalEnMapa } from '@/types/dominio';
+
+const SIN_MARGENES = { top: 0, right: 0, bottom: 0, left: 0 };
 
 /**
- * Mapa principal en el navegador (MapLibre GL JS). Mismo estilo de capas que
- * la versión nativa; la fuente GeoJSON se actualiza cuando cambian los animales.
+ * Mapa principal en el navegador (MapLibre GL JS). Mismas capas que la versión
+ * nativa; al cambiar de esquema cambia de estilo sin perder posición ni selección.
  */
 export function MapaReportes({
   animales,
   recorrido = [],
+  seleccionadoId = null,
+  resaltadoId = null,
+  miUbicacion = null,
+  margenes = SIN_MARGENES,
   onSeleccionar,
   onDeseleccionar,
+  onMovimiento,
   ref,
 }: MapaReportesProps) {
+  const { c, esquema } = useTema();
+  const estilos = useEstilos(crear);
+  const estiloBase = useEstiloMapa();
+
   const contenedorRef = useRef<HTMLElement | null>(null);
   const mapaRef = useRef<MapaGL | null>(null);
   const cargadoRef = useRef(false);
-  // Últimos datos recibidos, por si el mapa todavía no terminó de cargar.
-  const datosRef = useRef(animalesAGeoJSON(animales));
-  const recorridoRef = useRef(recorridoAGeoJSON(recorrido));
+  // Estilo y esquema con los que se cargó el mapa por última vez.
+  const aplicadoRef = useRef<{ estilo: typeof estiloBase; esquema: typeof esquema } | null>(null);
+  const marcadorRef = useRef<Marker | null>(null);
+  const resaltadoRef = useRef<string | null>(null);
 
-  // Callbacks siempre actuales sin re-crear el mapa.
-  const callbacksRef = useRef({ onSeleccionar, onDeseleccionar });
+  const seleccionado = animales.find((a) => a.id === seleccionadoId) ?? null;
+  const colorTipo = coloresDeEstado(c, seleccionado?.estado ?? 'avistado').anillo;
+
+  // Lo último recibido, para los eventos del mapa y por si el estilo todavía no cargó.
+  const actual = useRef({
+    animales: animalesAGeoJSON([]),
+    recorrido: recorridoAGeoJSON([]),
+    miUbicacion: puntoAGeoJSON(null),
+    seleccionadoId,
+    c,
+    esquema,
+    colorTipo,
+    margenes,
+    onSeleccionar,
+    onDeseleccionar,
+    onMovimiento,
+  });
   useEffect(() => {
-    callbacksRef.current = { onSeleccionar, onDeseleccionar };
-  }, [onSeleccionar, onDeseleccionar]);
+    Object.assign(actual.current, {
+      c,
+      esquema,
+      colorTipo,
+      margenes,
+      onSeleccionar,
+      onDeseleccionar,
+      onMovimiento,
+    });
+  });
 
   useImperativeHandle(ref, () => ({
-    irA: (centro, zoom) => mapaRef.current?.flyTo({ center: centro, zoom, duration: 600 }),
+    irA: (centro, zoom) =>
+      mapaRef.current?.flyTo({
+        center: centro,
+        zoom,
+        duration: 600,
+        padding: actual.current.margenes,
+      }),
   }));
 
+  // Crear el mapa una sola vez, cuando el estilo está listo.
   useEffect(() => {
     const contenedor = contenedorRef.current;
-    if (!contenedor) return;
-    configurarMapLibreWeb();
+    if (!contenedor || !estiloBase || mapaRef.current) return;
 
-    const mapa = new MapaGL({
-      container: contenedor,
-      style: ENV.mapStyleUrl,
-      center: MONTEVIDEO,
-      zoom: ZOOM_CIUDAD,
-      attributionControl: false,
-    });
+    const mapa = crearMapaWeb(contenedor, estiloBase, { center: MONTEVIDEO, zoom: ZOOM_CIUDAD });
+    // El centro inicial queda en la parte visible, fuera de la hoja o el panel.
+    mapa.setPadding(actual.current.margenes);
     mapaRef.current = mapa;
+    aplicadoRef.current = { estilo: estiloBase, esquema: actual.current.esquema };
 
-    mapa.addControl(new NavigationControl({ showCompass: true }), 'top-right');
-    mapa.addControl(
-      new AttributionControl({ compact: true, customAttribution: t.mapa.atribucion }),
-      'bottom-left',
-    );
-
-    mapa.on('load', () => {
-      mapa.addSource(ID_FUENTE_ANIMALES, {
-        type: 'geojson',
-        data: datosRef.current,
-        ...OPCIONES_CLUSTER,
-      });
-      mapa.addLayer({
-        id: ID_CAPA_CLUSTER,
-        type: 'circle',
-        source: ID_FUENTE_ANIMALES,
-        filter: FILTRO_CLUSTER,
-        paint: PAINT_CLUSTER,
-      });
-      mapa.addLayer({
-        id: ID_CAPA_CLUSTER_NUMERO,
-        type: 'symbol',
-        source: ID_FUENTE_ANIMALES,
-        filter: FILTRO_CLUSTER,
-        layout: LAYOUT_CLUSTER_NUMERO,
-        paint: PAINT_CLUSTER_NUMERO,
-      });
-      mapa.addLayer({
-        id: ID_CAPA_PUNTO,
-        type: 'circle',
-        source: ID_FUENTE_ANIMALES,
-        filter: FILTRO_PUNTO,
-        paint: PAINT_PUNTO,
-      });
-
-      mapa.on('click', ID_CAPA_PUNTO, (evento: MapMouseEvent) => {
-        const feature = mapa.queryRenderedFeatures(evento.point, { layers: [ID_CAPA_PUNTO] })[0];
-        const id = feature?.properties?.['id'];
-        if (typeof id === 'string') callbacksRef.current.onSeleccionar(id);
-      });
-
-      mapa.on('click', ID_CAPA_CLUSTER, async (evento: MapMouseEvent) => {
-        const feature = mapa.queryRenderedFeatures(evento.point, {
-          layers: [ID_CAPA_CLUSTER],
-        })[0] as Feature<Point> | undefined;
-        const clusterId = feature?.properties?.['cluster_id'];
-        if (!feature || typeof clusterId !== 'number') return;
-        const fuente = mapa.getSource(ID_FUENTE_ANIMALES) as GeoJSONSource;
-        const zoom = await fuente.getClusterExpansionZoom(clusterId);
-        const [lng, lat] = feature.geometry.coordinates;
-        mapa.easeTo({ center: [lng, lat], zoom: zoom + 0.5, duration: 500 });
-      });
-
-      mapa.on('click', (evento: MapMouseEvent) => {
-        const tocados = mapa.queryRenderedFeatures(evento.point, {
-          layers: [ID_CAPA_PUNTO, ID_CAPA_CLUSTER],
-        });
-        if (tocados.length === 0) callbacksRef.current.onDeseleccionar();
-      });
-
-      for (const capa of [ID_CAPA_PUNTO, ID_CAPA_CLUSTER]) {
-        mapa.on('mouseenter', capa, () => {
-          mapa.getCanvas().style.cursor = 'pointer';
-        });
-        mapa.on('mouseleave', capa, () => {
-          mapa.getCanvas().style.cursor = '';
-        });
-      }
-
-      // El recorrido va debajo de los marcadores: se agrega antes de la capa de puntos.
-      agregarCapasRecorrido(mapa, recorridoRef.current);
-      mapa.moveLayer(ID_CAPA_PUNTO);
-
+    // Cada carga de estilo (la primera y cada cambio de esquema) borra las capas propias.
+    mapa.on('style.load', () => {
+      const { c: paleta, esquema: esq } = actual.current;
+      agregarCapasAnimales(mapa, actual.current.animales, paleta, actual.current.seleccionadoId);
+      // El recorrido y mi ubicación van debajo de los marcadores.
+      agregarCapasRecorrido(
+        mapa,
+        actual.current.recorrido,
+        paleta,
+        actual.current.colorTipo,
+        ID_CAPA_PUNTO,
+      );
+      agregarMiUbicacion(mapa, actual.current.miUbicacion, paleta, esq);
+      if (mapa.getLayer(ID_CAPA_MI_UBICACION_HALO))
+        mapa.moveLayer(ID_CAPA_MI_UBICACION_HALO, ID_CAPA_CLUSTER);
       cargadoRef.current = true;
+      aplicarResaltado(mapa, resaltadoRef.current, resaltadoRef.current);
     });
 
-    return () => {
-      cargadoRef.current = false;
-      mapa.remove();
-      mapaRef.current = null;
+    const tocarPunto = (evento: MapMouseEvent) => {
+      const feature = mapa.queryRenderedFeatures(evento.point, {
+        layers: [ID_CAPA_PUNTO, ID_CAPA_CENTRO],
+      })[0];
+      const id = feature?.properties?.['id'];
+      if (typeof id === 'string') actual.current.onSeleccionar(id);
     };
-  }, []);
+    mapa.on('click', ID_CAPA_PUNTO, tocarPunto);
+
+    mapa.on('click', ID_CAPA_CLUSTER, async (evento: MapMouseEvent) => {
+      const feature = mapa.queryRenderedFeatures(evento.point, { layers: [ID_CAPA_CLUSTER] })[0] as
+        Feature<Point> | undefined;
+      const clusterId = feature?.properties?.['cluster_id'];
+      if (!feature || typeof clusterId !== 'number') return;
+      const fuente = mapa.getSource(ID_FUENTE_ANIMALES) as GeoJSONSource;
+      const zoom = await fuente.getClusterExpansionZoom(clusterId);
+      const [lng, lat] = feature.geometry.coordinates;
+      mapa.easeTo({
+        center: [lng, lat],
+        zoom: zoom + 0.5,
+        duration: 500,
+        padding: actual.current.margenes,
+      });
+    });
+
+    mapa.on('click', (evento: MapMouseEvent) => {
+      const tocados = mapa.queryRenderedFeatures(evento.point, {
+        layers: [ID_CAPA_PUNTO, ID_CAPA_CLUSTER].filter((capa) => mapa.getLayer(capa)),
+      });
+      if (tocados.length === 0) actual.current.onDeseleccionar();
+    });
+
+    for (const capa of [ID_CAPA_PUNTO, ID_CAPA_CLUSTER]) {
+      mapa.on('mouseenter', capa, () => {
+        mapa.getCanvas().style.cursor = 'pointer';
+      });
+      mapa.on('mouseleave', capa, () => {
+        mapa.getCanvas().style.cursor = '';
+      });
+    }
+
+    mapa.on('moveend', () => {
+      const { lng, lat } = mapa.getCenter();
+      actual.current.onMovimiento?.([lng, lat]);
+    });
+    // Centro inicial, para ordenar por distancia antes del primer movimiento.
+    mapa.once('load', () => {
+      const { lng, lat } = mapa.getCenter();
+      actual.current.onMovimiento?.([lng, lat]);
+    });
+  }, [estiloBase]);
+
+  // Al desmontar.
+  useEffect(
+    () => () => {
+      cargadoRef.current = false;
+      marcadorRef.current?.remove();
+      mapaRef.current?.remove();
+      mapaRef.current = null;
+    },
+    [],
+  );
+
+  // Cambio de esquema: se recarga el estilo y, con él, las capas con la paleta nueva.
+  // Si la descarga falló y se usa la URL tal cual, el estilo no cambia pero las capas sí.
+  useEffect(() => {
+    const mapa = mapaRef.current;
+    const aplicado = aplicadoRef.current;
+    if (!mapa || !estiloBase || !aplicado) return;
+    if (aplicado.estilo === estiloBase && aplicado.esquema === esquema) return;
+    aplicadoRef.current = { estilo: estiloBase, esquema };
+    cargadoRef.current = false;
+    mapa.setStyle(aEstiloWeb(estiloBase), { diff: false });
+  }, [estiloBase, esquema]);
 
   useEffect(() => {
-    datosRef.current = animalesAGeoJSON(animales);
+    actual.current.animales = animalesAGeoJSON(animales);
     const mapa = mapaRef.current;
     if (mapa && cargadoRef.current) {
-      (mapa.getSource(ID_FUENTE_ANIMALES) as GeoJSONSource | undefined)?.setData(datosRef.current);
+      (mapa.getSource(ID_FUENTE_ANIMALES) as GeoJSONSource | undefined)?.setData(
+        actual.current.animales,
+      );
     }
   }, [animales]);
 
   useEffect(() => {
-    recorridoRef.current = recorridoAGeoJSON(recorrido);
+    actual.current.recorrido = recorridoAGeoJSON(recorrido);
     const mapa = mapaRef.current;
     if (mapa && cargadoRef.current) {
-      agregarCapasRecorrido(mapa, recorridoRef.current);
+      agregarCapasRecorrido(mapa, actual.current.recorrido, c, colorTipo, ID_CAPA_PUNTO);
     }
-  }, [recorrido]);
+  }, [recorrido, c, colorTipo]);
 
-  // En react-native-web la ref de un View es el elemento del DOM.
-  return <View ref={contenedorRef as never} style={estilos.mapa} />;
+  useEffect(() => {
+    actual.current.miUbicacion = puntoAGeoJSON(miUbicacion);
+    const mapa = mapaRef.current;
+    if (mapa && cargadoRef.current)
+      agregarMiUbicacion(mapa, actual.current.miUbicacion, c, esquema);
+  }, [miUbicacion, c, esquema]);
+
+  useEffect(() => {
+    const mapa = mapaRef.current;
+    const anterior = resaltadoRef.current;
+    resaltadoRef.current = resaltadoId;
+    if (mapa && cargadoRef.current) aplicarResaltado(mapa, anterior, resaltadoId);
+  }, [resaltadoId]);
+
+  useEffect(() => {
+    actual.current.seleccionadoId = seleccionadoId;
+    const mapa = mapaRef.current;
+    if (mapa && cargadoRef.current) filtrarSeleccionado(mapa, seleccionadoId);
+  }, [seleccionadoId]);
+
+  // Marcador con foto del seleccionado.
+  useEffect(() => {
+    marcadorRef.current?.remove();
+    marcadorRef.current = null;
+    const mapa = mapaRef.current;
+    if (!mapa || !seleccionado) return;
+    marcadorRef.current = new Marker({
+      element: elementoFoto(seleccionado, c),
+      anchor: 'bottom',
+    })
+      .setLngLat([seleccionado.lng, seleccionado.lat])
+      .addTo(mapa);
+  }, [seleccionado, c, estiloBase]);
+
+  return (
+    <View style={estilos.raiz}>
+      {/* En react-native-web la ref de un View es el elemento del DOM. */}
+      <View ref={contenedorRef as never} style={estilos.mapa} accessibilityLabel={t.mapa.titulo} />
+      <AtribucionMapa abajo={margenes.bottom + 8} izquierda={margenes.left + 8} />
+    </View>
+  );
 }
 
-const estilos = StyleSheet.create({
-  mapa: { flex: 1, minHeight: 320 },
-});
+function aplicarResaltado(mapa: MapaGL, anterior: string | null, nuevo: string | null) {
+  if (!mapa.getSource(ID_FUENTE_ANIMALES)) return;
+  if (anterior)
+    mapa.setFeatureState({ source: ID_FUENTE_ANIMALES, id: anterior }, { resaltado: false });
+  if (nuevo) mapa.setFeatureState({ source: ID_FUENTE_ANIMALES, id: nuevo }, { resaltado: true });
+}
+
+/** Círculo de 58 con la foto, borde interno en superficie, anillo del tipo y colita (6.6). */
+function elementoFoto(animal: AnimalEnMapa, c: Paleta): HTMLElement {
+  const anillo = coloresDeEstado(c, animal.estado).anillo;
+  const raiz = document.createElement('div');
+  raiz.setAttribute('aria-hidden', 'true');
+  Object.assign(raiz.style, {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    pointerEvents: 'none',
+    filter: `drop-shadow(0px 6px 9px ${c.sombra})`,
+  });
+  const circulo = document.createElement('div');
+  Object.assign(circulo.style, {
+    width: '58px',
+    height: '58px',
+    boxSizing: 'border-box',
+    borderRadius: '50%',
+    border: `3px solid ${anillo}`,
+    background: c.superficie,
+    padding: '3px',
+  });
+  const foto = document.createElement('img');
+  foto.src = urlFoto(animal.foto_principal_path);
+  foto.alt = '';
+  Object.assign(foto.style, {
+    width: '100%',
+    height: '100%',
+    borderRadius: '50%',
+    objectFit: 'cover',
+    display: 'block',
+    background: c.superficieSuave,
+  });
+  circulo.appendChild(foto);
+  const colita = document.createElement('div');
+  Object.assign(colita.style, {
+    width: '12px',
+    height: '12px',
+    marginTop: '-8px',
+    transform: 'rotate(45deg)',
+    background: anillo,
+  });
+  raiz.append(circulo, colita);
+  return raiz;
+}
+
+const crear = crearEstilos((c) => ({
+  raiz: { flex: 1, backgroundColor: c.mapaTierra },
+  mapa: { flex: 1, minHeight: 240 },
+}));

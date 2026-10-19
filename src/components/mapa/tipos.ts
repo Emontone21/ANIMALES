@@ -1,12 +1,16 @@
 import type { Feature, FeatureCollection, LineString, Point } from 'geojson';
 import type { Ref } from 'react';
 
-import type { AnimalEnMapa, AvistamientoDetalle, LngLat } from '@/types/dominio';
+import type { TipoReporte } from '@/constants/tema';
+import type { AnimalEnMapa, AvistamientoDetalle, EstadoAnimal, LngLat } from '@/types/dominio';
 
 /** Contrato común de los mapas nativo (.tsx) y web (.web.tsx). */
 
+/** Píxeles tapados por la hoja, el panel o los controles, para centrar en lo visible. */
+export type MargenesMapa = { top: number; right: number; bottom: number; left: number };
+
 export type MapaReportesRef = {
-  /** Vuela la cámara a un punto. */
+  /** Vuela la cámara a un punto, centrándolo en la parte visible del mapa. */
   irA: (centro: LngLat, zoom: number) => void;
 };
 
@@ -14,13 +18,33 @@ export type MapaReportesProps = {
   animales: AnimalEnMapa[];
   /** Avistamientos del animal seleccionado, para dibujar su recorrido. */
   recorrido?: AvistamientoDetalle[];
+  /** Marcador seleccionado: muestra la foto del animal. */
+  seleccionadoId?: string | null;
+  /** Tarjeta con el mouse encima en el panel lateral: resalta su marcador (web). */
+  resaltadoId?: string | null;
+  /** Punto de "mi ubicación", si la persona la pidió. */
+  miUbicacion?: LngLat | null;
+  margenes?: MargenesMapa;
   onSeleccionar: (id: string) => void;
   onDeseleccionar: () => void;
+  /** Cada vez que el mapa deja de moverse, con su nuevo centro. */
+  onMovimiento?: (centro: LngLat) => void;
   ref?: Ref<MapaReportesRef>;
 };
 
+/** Lo que hace falta de un avistamiento para dibujarlo en un recorrido. */
+export type PuntoRecorrido = Pick<AvistamientoDetalle, 'id' | 'lng' | 'lat' | 'visto_en' | 'tipo'>;
+
+/** Un único punto (por ejemplo, la ubicación elegida al publicar) como recorrido. */
+export function puntoComoRecorrido([lng, lat]: LngLat): PuntoRecorrido[] {
+  return [{ id: 'punto', lng, lat, visto_en: new Date(0).toISOString(), tipo: 'visto' }];
+}
+
 export type MapaRecorridoProps = {
-  avistamientos: AvistamientoDetalle[];
+  avistamientos: PuntoRecorrido[];
+  /** Estado del caso: da el color del último punto. */
+  estado: EstadoAnimal;
+  tipo?: TipoReporte;
 };
 
 export type MapaSelectorProps = {
@@ -34,6 +58,7 @@ export type PropiedadesMarcador = {
   id: string;
   especie: AnimalEnMapa['especie'];
   estado: AnimalEnMapa['estado'];
+  tipo: TipoReporte;
 };
 
 export type ColeccionAnimales = FeatureCollection<Point, PropiedadesMarcador>;
@@ -45,20 +70,35 @@ export function animalesAGeoJSON(animales: AnimalEnMapa[]): ColeccionAnimales {
       type: 'Feature',
       id: a.id,
       geometry: { type: 'Point', coordinates: [a.lng, a.lat] },
-      properties: { id: a.id, especie: a.especie, estado: a.estado },
+      // Hasta la Fase 6 (tipo_reporte) todos los reportes son de animales encontrados.
+      properties: { id: a.id, especie: a.especie, estado: a.estado, tipo: 'encontrado' },
     })),
   };
 }
 
-export type PropiedadesRecorrido = { orden: number; tipo: AvistamientoDetalle['tipo'] };
+export function puntoAGeoJSON(punto: LngLat | null | undefined): FeatureCollection<Point> {
+  return {
+    type: 'FeatureCollection',
+    features: punto
+      ? [{ type: 'Feature', geometry: { type: 'Point', coordinates: punto }, properties: {} }]
+      : [],
+  };
+}
+
+export type PropiedadesRecorrido = {
+  orden: number;
+  tipo: AvistamientoDetalle['tipo'];
+  /** El avistamiento más reciente: va en el color del caso, con halo. */
+  ultimo: boolean;
+};
 
 export type ColeccionRecorrido = FeatureCollection<
   Point | LineString,
   PropiedadesRecorrido | Record<string, never>
 >;
 
-/** Línea del más viejo al más nuevo más un punto numerado por avistamiento. */
-export function recorridoAGeoJSON(avistamientos: AvistamientoDetalle[]): ColeccionRecorrido {
+/** Línea punteada del más viejo al más nuevo y un punto por avistamiento. */
+export function recorridoAGeoJSON(avistamientos: PuntoRecorrido[]): ColeccionRecorrido {
   const ordenados = [...avistamientos].sort(
     (a, b) => new Date(a.visto_en).getTime() - new Date(b.visto_en).getTime(),
   );
@@ -66,7 +106,7 @@ export function recorridoAGeoJSON(avistamientos: AvistamientoDetalle[]): Colecci
     type: 'Feature',
     id: av.id,
     geometry: { type: 'Point', coordinates: [av.lng, av.lat] },
-    properties: { orden: i + 1, tipo: av.tipo },
+    properties: { orden: i + 1, tipo: av.tipo, ultimo: i === ordenados.length - 1 },
   }));
   const features: ColeccionRecorrido['features'] = [...puntos];
   if (ordenados.length > 1) {

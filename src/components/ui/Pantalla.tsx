@@ -1,22 +1,32 @@
 import type { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
+import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { type Edge, SafeAreaView } from 'react-native-safe-area-context';
 
-import { Colores, Espacio } from '@/constants/tema';
+import { Espacio, Margen } from '@/constants/tema';
+import { crearEstilos, useEstilos } from '@/hooks/useTema';
 
 export type PantallaProps = {
   children: ReactNode;
-  /** Con scroll y padding (formularios, detalle). Sin scroll para el mapa. */
+  /** Con scroll y márgenes (formularios, listas). Sin scroll para el mapa. */
   scroll?: boolean;
   bordes?: Edge[];
+  /** Ancho máximo de la columna centrada (docs/DISENO.md, 8.3). */
+  ancho?: number;
+  /** Contenido fijo abajo, por ejemplo el botón de Publicar. */
+  pie?: ReactNode;
 };
 
-/** Contenedor base de cada pantalla: safe area, fondo y teclado. */
+/** Contenedor base de cada pantalla: área segura, fondo, teclado y columna centrada. */
 export function Pantalla({
   children,
   scroll = false,
   bordes = ['top', 'left', 'right'],
+  ancho,
+  pie,
 }: PantallaProps) {
+  const estilos = useEstilos(crear);
+  const columna = ancho ? { maxWidth: ancho } : null;
+
   if (!scroll) {
     return (
       <SafeAreaView edges={bordes} style={estilos.raiz}>
@@ -31,15 +41,33 @@ export function Pantalla({
         style={estilos.raiz}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={estilos.contenido} keyboardShouldPersistTaps="handled">
-          <View style={estilos.columna}>{children}</View>
+          <View style={[estilos.columna, columna]}>{children}</View>
         </ScrollView>
+        {pie ? (
+          <View style={estilos.pie}>
+            <View style={[estilos.columnaPie, columna]}>{pie}</View>
+          </View>
+        ) : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-const estilos = StyleSheet.create({
-  raiz: { flex: 1, backgroundColor: Colores.fondo },
-  contenido: { padding: Espacio.m, paddingBottom: Espacio.xl * 2 },
-  columna: { gap: Espacio.m },
-});
+const crear = crearEstilos((c) => ({
+  raiz: { flex: 1, backgroundColor: c.fondo },
+  contenido: {
+    flexGrow: 1,
+    paddingHorizontal: Margen.pantalla,
+    paddingTop: Espacio.l,
+    paddingBottom: Espacio.xxl,
+  },
+  columna: { width: '100%', alignSelf: 'center', gap: Espacio.m },
+  pie: {
+    paddingHorizontal: Margen.pantalla,
+    paddingVertical: Espacio.sm,
+    borderTopWidth: 1,
+    borderTopColor: c.borde,
+    backgroundColor: c.superficie,
+  },
+  columnaPie: { width: '100%', alignSelf: 'center' },
+}));

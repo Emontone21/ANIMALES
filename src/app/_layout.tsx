@@ -1,15 +1,25 @@
+import { Figtree_400Regular } from '@expo-google-fonts/figtree/400Regular';
+import { Figtree_600SemiBold } from '@expo-google-fonts/figtree/600SemiBold';
+import { Figtree_700Bold } from '@expo-google-fonts/figtree/700Bold';
+import { Fredoka_600SemiBold } from '@expo-google-fonts/fredoka/600SemiBold';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Stack } from 'expo-router';
+import { useFonts } from 'expo-font';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
+import { Platform, View } from 'react-native';
 
 // Solo aplica en web (Metro lo ignora en nativo): estilos del mapa MapLibre GL.
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-import { Colores } from '@/constants/tema';
+import { RielNavegacion } from '@/components/ui/BarraNavegacion';
+import { FAMILIAS, Fuentes } from '@/constants/tema';
+import { useAparienciaHidratada } from '@/features/apariencia/preferencia';
 import { AuthProvider, useAuth } from '@/features/auth/AuthProvider';
 import { usePush } from '@/features/notificaciones/push';
+import { useDisposicion } from '@/hooks/useDisposicion';
+import { useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 
 SplashScreen.preventAutoHideAsync();
@@ -21,18 +31,73 @@ const queryClient = new QueryClient({
 });
 
 export default function RootLayout() {
+  const [fuentesListas, errorFuentes] = useFonts({
+    [FAMILIAS.titulo]: Fredoka_600SemiBold,
+    [FAMILIAS.regular]: Figtree_400Regular,
+    [FAMILIAS.seminegrita]: Figtree_600SemiBold,
+    [FAMILIAS.negrita]: Figtree_700Bold,
+  });
+  const aparienciaLista = useAparienciaHidratada();
+
+  // Si las fuentes fallan se sigue con la del sistema.
+  if ((!fuentesListas && !errorFuentes) || !aparienciaLista) return null;
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <StatusBar style="dark" />
-        <Navegacion />
+        <TemaNavegacion>
+          <Navegacion />
+        </TemaNavegacion>
       </AuthProvider>
     </QueryClientProvider>
   );
 }
 
+/** Tema de navegación, barra de estado y fondo del documento web según el esquema. */
+function TemaNavegacion({ children }: { children: React.ReactNode }) {
+  const { c, esquema } = useTema();
+  const oscuro = esquema === 'oscuro';
+
+  const tema = useMemo(() => {
+    const base = oscuro ? DarkTheme : DefaultTheme;
+    return {
+      ...base,
+      dark: oscuro,
+      colors: {
+        ...base.colors,
+        primary: c.primario,
+        background: c.fondo,
+        card: c.superficie,
+        text: c.texto,
+        border: c.borde,
+        notification: c.primario,
+      },
+    };
+  }, [c, oscuro]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const raiz = document.documentElement;
+    raiz.style.colorScheme = oscuro ? 'dark' : 'light';
+    raiz.style.backgroundColor = c.fondo;
+    // public/index.html usa esta variable para el anillo de foco.
+    raiz.style.setProperty('--color-foco', c.primario);
+    document.body.style.backgroundColor = c.fondo;
+    document.title = t.app.tituloWeb;
+  }, [c, oscuro]);
+
+  return (
+    <ThemeProvider value={tema}>
+      <StatusBar style={oscuro ? 'light' : 'dark'} />
+      {children}
+    </ThemeProvider>
+  );
+}
+
 function Navegacion() {
   const { usuario, cargando } = useAuth();
+  const { c } = useTema();
+  const amplio = useDisposicion() === 'amplio';
   usePush(usuario?.id);
 
   useEffect(() => {
@@ -41,30 +106,43 @@ function Navegacion() {
     }
   }, [cargando]);
 
+  // En computadoras el riel de navegación queda a la izquierda en todas las
+  // pantallas, también en el detalle y en las que no son pestañas (8.1 a 8.3).
   return (
-    <Stack
-      screenOptions={{
-        headerTintColor: Colores.primario,
-        headerTitleStyle: { color: Colores.texto },
-        headerBackButtonDisplayMode: 'minimal',
-        contentStyle: { backgroundColor: Colores.fondo },
-      }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="animal/[id]" options={{ title: t.animal.titulo }} />
-      <Stack.Screen name="conversacion/[id]" options={{ title: t.mensajes.titulo }} />
-      <Stack.Screen name="moderacion" options={{ title: t.moderacion.titulo }} />
+    <View style={{ flex: 1, flexDirection: 'row', backgroundColor: c.fondo }}>
+      {amplio ? <RielNavegacion /> : null}
+      <View style={{ flex: 1 }}>
+        <Stack
+          screenOptions={{
+            headerTintColor: c.texto,
+            headerStyle: { backgroundColor: c.superficie },
+            headerTitleStyle: { ...Fuentes.titulo, fontSize: 20, color: c.texto },
+            headerShadowVisible: false,
+            headerBackButtonDisplayMode: 'minimal',
+            contentStyle: { backgroundColor: c.fondo },
+          }}>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          {/* El detalle dibuja sus propios botones flotantes sobre la foto. */}
+          <Stack.Screen
+            name="animal/[id]"
+            options={{ title: t.animal.titulo, headerShown: false }}
+          />
+          <Stack.Screen name="conversacion/[id]" options={{ title: t.mensajes.titulo }} />
+          <Stack.Screen name="moderacion" options={{ title: t.moderacion.titulo }} />
 
-      {/* Solo sin sesión. Al ingresar, el router cierra estas pantallas solo. */}
-      <Stack.Protected guard={!usuario}>
-        <Stack.Screen
-          name="auth/ingresar"
-          options={{ title: t.auth.ingresar, presentation: 'modal' }}
-        />
-        <Stack.Screen
-          name="auth/registrarse"
-          options={{ title: t.auth.registrarse, presentation: 'modal' }}
-        />
-      </Stack.Protected>
-    </Stack>
+          {/* Solo sin sesión. Al ingresar, el router cierra estas pantallas solo. */}
+          <Stack.Protected guard={!usuario}>
+            <Stack.Screen
+              name="auth/ingresar"
+              options={{ title: t.auth.ingresar, presentation: 'modal' }}
+            />
+            <Stack.Screen
+              name="auth/registrarse"
+              options={{ title: t.auth.registrarse, presentation: 'modal' }}
+            />
+          </Stack.Protected>
+        </Stack>
+      </View>
+    </View>
   );
 }

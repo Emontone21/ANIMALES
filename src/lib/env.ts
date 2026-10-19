@@ -20,5 +20,6 @@ export const ENV = {
     process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
   ),
   mapStyleUrl:
-    process.env.EXPO_PUBLIC_MAP_STYLE_URL?.trim() || 'https://tiles.openfreemap.org/styles/liberty',
+    process.env.EXPO_PUBLIC_MAP_STYLE_URL?.trim() ||
+    'https://tiles.openfreemap.org/styles/positron',
 } as const;

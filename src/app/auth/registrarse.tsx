@@ -1,13 +1,12 @@
-import { Link, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
 
+import { CambiarAcceso, MarcaAcceso } from '@/components/auth/Acceso';
 import { Boton } from '@/components/ui/Boton';
 import { CampoTexto } from '@/components/ui/CampoTexto';
 import { Mensaje } from '@/components/ui/Mensaje';
 import { Pantalla } from '@/components/ui/Pantalla';
-import { Texto } from '@/components/ui/Texto';
-import { Colores, Espacio } from '@/constants/tema';
+import { AnchoMaximo } from '@/constants/tema';
 import { registrarse } from '@/features/auth/acciones';
 import { t } from '@/i18n/es-UY';
 
@@ -39,8 +38,8 @@ export default function PantallaRegistrarse() {
   };
 
   return (
-    <Pantalla scroll bordes={['left', 'right', 'bottom']}>
-      <Texto variante="titulo">{t.auth.registrarse}</Texto>
+    <Pantalla scroll bordes={['left', 'right', 'bottom']} ancho={AnchoMaximo.acceso}>
+      <MarcaAcceso />
 
       <CampoTexto
         etiqueta={t.auth.nombre}
@@ -82,17 +81,11 @@ export default function PantallaRegistrarse() {
         onPress={() => void enviar()}
       />
 
-      <View style={estilos.pie}>
-        <Texto variante="secundario">{t.auth.conCuenta}</Texto>
-        <Link href="/auth/ingresar" replace style={estilos.enlace}>
-          {t.auth.ingresar}
-        </Link>
-      </View>
+      <CambiarAcceso
+        pregunta={t.auth.conCuenta}
+        accion={t.auth.ingresar}
+        destino={'/auth/ingresar'}
+      />
     </Pantalla>
   );
 }
-
-const estilos = StyleSheet.create({
-  pie: { flexDirection: 'row', justifyContent: 'center', gap: Espacio.s, marginTop: Espacio.m },
-  enlace: { color: Colores.primario, fontWeight: '600', fontSize: 14 },
-});

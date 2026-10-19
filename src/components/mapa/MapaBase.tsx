@@ -7,12 +7,13 @@ import {
   type MapProps,
 } from '@maplibre/maplibre-react-native';
 import type { ReactNode, Ref } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
-import { Texto } from '@/components/ui/Texto';
-import { Colores, Espacio } from '@/constants/tema';
+import { AtribucionMapa } from '@/components/mapa/AtribucionMapa';
+import { useEstiloMapa } from '@/components/mapa/estiloBase';
+import type { MargenesMapa } from '@/components/mapa/tipos';
+import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
-import { ENV } from '@/lib/env';
 import { MONTEVIDEO, ZOOM_CIUDAD } from '@/lib/ubicacion';
 import type { LngLat } from '@/types/dominio';
 
@@ -22,8 +23,14 @@ export type MapaBaseProps = {
   zoomInicial?: number;
   /** Si se pasa, la cámara arranca encuadrando estos límites [oeste, sur, este, norte]. */
   limitesIniciales?: LngLatBounds;
+  /** Lo que tapan la hoja o el panel al arrancar: el centro inicial queda en la parte visible. */
+  margenesIniciales?: MargenesMapa;
   interactivo?: boolean;
   cameraRef?: Ref<CameraRef>;
+  /** Distancia de la atribución al borde inferior (para no quedar bajo la hoja). */
+  atribucionAbajo?: number;
+  /** Distancia de la atribución al borde izquierdo (para no quedar bajo el panel). */
+  atribucionIzquierda?: number;
   onPress?: MapProps['onPress'];
   onRegionDidChange?: MapProps['onRegionDidChange'];
 };
@@ -31,62 +38,56 @@ export type MapaBaseProps = {
 const PADDING_LIMITES = { top: 48, bottom: 48, left: 48, right: 48 };
 
 /**
- * Mapa de MapLibre con el estilo de OpenFreeMap, centrado en Montevideo.
- * Lleva la atribución obligatoria de OSM/OpenMapTiles abajo a la izquierda.
+ * Mapa de MapLibre con el estilo base recoloreado (claro u oscuro), centrado en
+ * Montevideo. Siempre al norte: sin rotar ni inclinar. Lleva la atribución
+ * obligatoria de OSM/OpenMapTiles abajo a la izquierda.
  */
 export function MapaBase({
   children,
   centroInicial = MONTEVIDEO,
   zoomInicial = ZOOM_CIUDAD,
   limitesIniciales,
+  margenesIniciales,
   interactivo = true,
   cameraRef,
+  atribucionAbajo,
+  atribucionIzquierda,
   onPress,
   onRegionDidChange,
 }: MapaBaseProps) {
+  const estilos = useEstilos(crear);
+  const estilo = useEstiloMapa();
   const vistaInicial: InitialViewState = limitesIniciales
     ? { bounds: limitesIniciales, padding: PADDING_LIMITES }
-    : { center: centroInicial, zoom: zoomInicial };
+    : { center: centroInicial, zoom: zoomInicial, padding: margenesIniciales };
 
   return (
-    <View style={estilos.contenedor}>
-      <Map
-        style={estilos.mapa}
-        mapStyle={ENV.mapStyleUrl}
-        attribution={false}
-        logo={false}
-        compass={interactivo}
-        compassPosition={{ top: 8, right: 8 }}
-        touchPitch={false}
-        dragPan={interactivo}
-        touchZoom={interactivo}
-        doubleTapZoom={interactivo}
-        touchRotate={interactivo}
-        onPress={onPress}
-        onRegionDidChange={onRegionDidChange}>
-        <Camera ref={cameraRef} initialViewState={vistaInicial} />
-        {children}
-      </Map>
-      <View style={estilos.atribucion} pointerEvents="none">
-        <Texto variante="pequeno" style={estilos.atribucionTexto}>
-          {t.mapa.atribucion}
-        </Texto>
-      </View>
+    <View style={estilos.contenedor} accessibilityLabel={t.mapa.titulo}>
+      {estilo ? (
+        <Map
+          style={estilos.mapa}
+          mapStyle={estilo}
+          attribution={false}
+          logo={false}
+          compass={false}
+          touchPitch={false}
+          touchRotate={false}
+          dragPan={interactivo}
+          touchZoom={interactivo}
+          doubleTapZoom={interactivo}
+          onPress={onPress}
+          onRegionDidChange={onRegionDidChange}>
+          <Camera ref={cameraRef} initialViewState={vistaInicial} />
+          {children}
+        </Map>
+      ) : null}
+      <AtribucionMapa abajo={atribucionAbajo} izquierda={atribucionIzquierda} />
     </View>
   );
 }
 
-const estilos = StyleSheet.create({
-  contenedor: { flex: 1 },
+const crear = crearEstilos((c) => ({
+  // Mientras se descarga el estilo se ve el color de la tierra, no un blanco.
+  contenedor: { flex: 1, backgroundColor: c.mapaTierra },
   mapa: { flex: 1 },
-  atribucion: {
-    position: 'absolute',
-    left: Espacio.s,
-    bottom: Espacio.s,
-    paddingHorizontal: Espacio.s,
-    paddingVertical: 2,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255,255,255,0.8)',
-  },
-  atribucionTexto: { fontSize: 10, color: Colores.textoSecundario },
-});
+}));

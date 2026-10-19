@@ -1,43 +1,22 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router/js-tabs';
-import type { ComponentProps } from 'react';
 
-import { Colores } from '@/constants/tema';
+import { BarraNavegacion } from '@/components/ui/BarraNavegacion';
+import { useDisposicion } from '@/hooks/useDisposicion';
+import { useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 
-type NombreIcono = ComponentProps<typeof Ionicons>['name'];
-
-function icono(nombre: NombreIcono, extra = 0) {
-  return function IconoTab({ focused, size }: { focused: boolean; size: number }) {
-    return (
-      <Ionicons
-        name={nombre}
-        size={size + extra}
-        color={focused ? Colores.primario : Colores.textoSecundario}
-      />
-    );
-  };
-}
-
 export default function TabsLayout() {
+  const { c } = useTema();
+  // En computadoras la navegación es el riel del layout raíz (docs/DISENO.md, 8.1).
+  const amplio = useDisposicion() === 'amplio';
   return (
     <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: Colores.primario,
-        tabBarInactiveTintColor: Colores.textoSecundario,
-        tabBarStyle: { backgroundColor: Colores.fondo, borderTopColor: Colores.borde },
-      }}>
-      <Tabs.Screen name="index" options={{ title: t.tabs.mapa, tabBarIcon: icono('map') }} />
-      <Tabs.Screen
-        name="publicar"
-        options={{ title: t.tabs.publicar, tabBarIcon: icono('add-circle', 4) }}
-      />
-      <Tabs.Screen
-        name="actividad"
-        options={{ title: t.tabs.actividad, tabBarIcon: icono('notifications') }}
-      />
-      <Tabs.Screen name="perfil" options={{ title: t.tabs.perfil, tabBarIcon: icono('person') }} />
+      tabBar={(props) => (amplio ? null : <BarraNavegacion {...props} />)}
+      screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: c.fondo } }}>
+      <Tabs.Screen name="index" options={{ title: t.tabs.mapa }} />
+      <Tabs.Screen name="publicar" options={{ title: t.tabs.publicar }} />
+      <Tabs.Screen name="actividad" options={{ title: t.tabs.actividad }} />
+      <Tabs.Screen name="perfil" options={{ title: t.tabs.perfil }} />
     </Tabs>
   );
 }

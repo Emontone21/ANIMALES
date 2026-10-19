@@ -1,36 +1,58 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { FiltrosMapa } from '@/components/mapa/FiltrosMapa';
+import { FilaFiltros } from '@/components/mapa/FilaFiltros';
+import { ALTO_HOJA_VACIA, altoHojaCercaTuyo, HojaCercaTuyo } from '@/components/mapa/HojaCercaTuyo';
+import { HojaFiltros } from '@/components/mapa/HojaFiltros';
 import { MapaReportes } from '@/components/mapa/MapaReportes';
-import { TarjetaAnimal } from '@/components/mapa/TarjetaAnimal';
-import type { MapaReportesRef } from '@/components/mapa/tipos';
+import { ANCHO_PANEL, MARGEN_PANEL, PanelCasos } from '@/components/mapa/PanelCasos';
+import type { MapaReportesRef, MargenesMapa } from '@/components/mapa/tipos';
+import { BotonRedondo } from '@/components/ui/BotonRedondo';
 import { Mensaje } from '@/components/ui/Mensaje';
-import { Pantalla } from '@/components/ui/Pantalla';
-import { Texto } from '@/components/ui/Texto';
-import { Colores, Espacio, Radio } from '@/constants/tema';
+import { Espacio, Margen, Medida } from '@/constants/tema';
 import { useAnimalesMapa, useAvistamientos } from '@/features/reportes/api';
 import {
   aplicarFiltros,
   FILTROS_INICIALES,
-  type FiltrosMapa as Filtros,
+  type FiltrosMapa,
+  ordenarPorCercania,
 } from '@/features/reportes/filtros';
+import { useDisposicion } from '@/hooks/useDisposicion';
+import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
-import { obtenerPosicionActual, ZOOM_PUNTO } from '@/lib/ubicacion';
+import { MONTEVIDEO, obtenerPosicionActual, ZOOM_PUNTO } from '@/lib/ubicacion';
+import type { LngLat } from '@/types/dominio';
 
 export default function PantallaMapa() {
   const router = useRouter();
+  const estilos = useEstilos(crear);
+  const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
+  const disposicion = useDisposicion();
+  const compacto = disposicion === 'compacto';
+  const medio = disposicion === 'medio';
+  const amplio = disposicion === 'amplio';
+
   const mapaRef = useRef<MapaReportesRef>(null);
-  const [filtros, setFiltros] = useState<Filtros>(FILTROS_INICIALES);
+  const [filtros, setFiltros] = useState<FiltrosMapa>(FILTROS_INICIALES);
+  const [verFiltros, setVerFiltros] = useState(false);
   const [seleccionadoId, setSeleccionadoId] = useState<string | null>(null);
+  const [resaltadoId, setResaltadoId] = useState<string | null>(null);
+  // El mapa arranca centrado en Montevideo; se actualiza cada vez que deja de moverse.
+  const [centro, setCentro] = useState<LngLat>(MONTEVIDEO);
+  const [miUbicacion, setMiUbicacion] = useState<LngLat | null>(null);
   const [buscandoGps, setBuscandoGps] = useState(false);
 
-  const { data: animales = [], error, refetch, isError } = useAnimalesMapa();
+  const { data: animales = [], error, refetch, isError, isLoading } = useAnimalesMapa();
 
   const visibles = useMemo(() => aplicarFiltros(animales, filtros), [animales, filtros]);
   const seleccionado = visibles.find((a) => a.id === seleccionadoId) ?? null;
+  const casos = useMemo(
+    () => ordenarPorCercania(visibles, centro, seleccionado?.id ?? null),
+    [visibles, centro, seleccionado],
+  );
   // Recorrido del animal seleccionado (solo se dibuja si tiene más de un avistamiento).
   const avistamientos = useAvistamientos(seleccionado?.id);
   const recorrido = useMemo(
@@ -39,93 +61,153 @@ export default function PantallaMapa() {
     [seleccionado, avistamientos.data],
   );
 
+  const altoHoja = isLoading || casos.length > 0 ? altoHojaCercaTuyo(height) : ALTO_HOJA_VACIA;
+  const altoControles = insets.top + Espacio.s + Medida.chip + Espacio.s;
+  // Lo que tapan los controles, para que el mapa centre en la parte visible.
+  const margenes: MargenesMapa = compacto
+    ? { top: altoControles, right: 0, bottom: altoHoja, left: 0 }
+    : medio
+      ? { top: 0, right: 0, bottom: 0, left: ANCHO_PANEL.flotante + MARGEN_PANEL * 2 }
+      : { top: 0, right: 0, bottom: 0, left: 0 };
+
   const irAMiUbicacion = async () => {
     setBuscandoGps(true);
     const posicion = await obtenerPosicionActual();
     setBuscandoGps(false);
-    if (posicion) mapaRef.current?.irA(posicion, ZOOM_PUNTO);
+    if (!posicion) return;
+    setMiUbicacion(posicion);
+    mapaRef.current?.irA(posicion, ZOOM_PUNTO);
   };
 
-  return (
-    <Pantalla>
-      <View style={estilos.encabezado}>
-        <Texto variante="titulo">{t.app.nombre}</Texto>
-        <Texto variante="secundario">{t.app.lema}</Texto>
-      </View>
-      <FiltrosMapa filtros={filtros} onCambio={setFiltros} />
+  const seleccionar = (id: string) => {
+    setSeleccionadoId(id);
+    const animal = visibles.find((a) => a.id === id);
+    if (animal) mapaRef.current?.irA([animal.lng, animal.lat], Math.max(ZOOM_PUNTO - 1, 13));
+  };
 
+  const abrir = (id: string) => router.push(`/animal/${id}`);
+
+  const aviso = isError ? (
+    <Mensaje
+      texto={error?.message ?? t.comunes.errorGenerico}
+      tipo="error"
+      onReintentar={() => void refetch()}
+    />
+  ) : visibles.length === 0 && animales.length > 0 ? (
+    <Mensaje texto={t.mapa.sinReportes} />
+  ) : null;
+
+  const filaFiltros = (
+    <FilaFiltros
+      filtros={filtros}
+      onCambio={setFiltros}
+      onMasFiltros={() => setVerFiltros(true)}
+      flotante={compacto}
+      margen={compacto ? Margen.mapa : Espacio.m}
+    />
+  );
+
+  const panel = (forma: 'flotante' | 'fijo') => (
+    <PanelCasos
+      forma={forma}
+      casos={casos}
+      cargando={isLoading}
+      seleccionadoId={seleccionado?.id ?? null}
+      controles={filaFiltros}
+      aviso={aviso}
+      onAbrir={abrir}
+      onResaltar={setResaltadoId}
+    />
+  );
+
+  // El mapa queda siempre en la misma posición del árbol: al cambiar el ancho
+  // de la ventana no se vuelve a crear y no pierde la posición ni la selección.
+  return (
+    <View style={estilos.raiz}>
+      {amplio ? (
+        <View style={[estilos.franjaPanel, { paddingTop: insets.top }]}>{panel('fijo')}</View>
+      ) : null}
       <View style={estilos.mapa}>
+        {compacto ? (
+          <View style={[estilos.controles, { top: insets.top + Espacio.s }]}>
+            {filaFiltros}
+            {aviso ? <View style={estilos.avisoFlotante}>{aviso}</View> : null}
+          </View>
+        ) : null}
+        {medio ? (
+          <View style={[estilos.capaPanel, { top: insets.top }]}>{panel('flotante')}</View>
+        ) : null}
+
         <MapaReportes
           ref={mapaRef}
           animales={visibles}
           recorrido={recorrido}
-          onSeleccionar={(id) => {
-            setSeleccionadoId(id);
-            const animal = visibles.find((a) => a.id === id);
-            if (animal)
-              mapaRef.current?.irA([animal.lng, animal.lat], Math.max(ZOOM_PUNTO - 1, 13));
-          }}
+          seleccionadoId={seleccionado?.id ?? null}
+          resaltadoId={resaltadoId}
+          miUbicacion={miUbicacion}
+          margenes={margenes}
+          onSeleccionar={seleccionar}
           onDeseleccionar={() => setSeleccionadoId(null)}
+          onMovimiento={setCentro}
         />
 
-        <Pressable
-          accessibilityRole="button"
+        {/* En celular, justo encima de la hoja; en pantallas anchas, arriba a la derecha (lejos de la atribución). */}
+        <BotonRedondo
+          icono="locate-outline"
+          color="primario"
           accessibilityLabel={t.mapa.miUbicacion}
           onPress={() => void irAMiUbicacion()}
-          disabled={buscandoGps}
-          style={({ pressed }) => [estilos.botonGps, pressed && estilos.presionado]}>
-          <Ionicons
-            name={buscandoGps ? 'locate-outline' : 'locate'}
-            size={24}
-            color={Colores.primario}
-          />
-        </Pressable>
+          cargando={buscandoGps}
+          style={[
+            estilos.gps,
+            compacto
+              ? { bottom: altoHoja + Espacio.sm, right: Margen.mapa + insets.right }
+              : { top: insets.top + MARGEN_PANEL, right: MARGEN_PANEL + insets.right },
+          ]}
+        />
 
-        {isError ? (
-          <View style={estilos.aviso}>
-            <Mensaje
-              texto={error?.message ?? t.comunes.errorGenerico}
-              tipo="error"
-              onReintentar={() => void refetch()}
-            />
-          </View>
-        ) : visibles.length === 0 && animales.length > 0 ? (
-          <View style={estilos.aviso}>
-            <Mensaje texto={t.mapa.sinReportes} />
-          </View>
-        ) : null}
-
-        {seleccionado ? (
-          <TarjetaAnimal
-            animal={seleccionado}
-            onCerrar={() => setSeleccionadoId(null)}
-            onVerDetalle={() => router.push(`/animal/${seleccionado.id}`)}
+        {compacto ? (
+          <HojaCercaTuyo
+            casos={casos}
+            alto={altoHoja}
+            cargando={isLoading}
+            seleccionadoId={seleccionado?.id ?? null}
+            onAbrir={abrir}
           />
         ) : null}
       </View>
-    </Pantalla>
+
+      <HojaFiltros
+        visible={verFiltros}
+        filtros={filtros}
+        onCambio={setFiltros}
+        onCerrar={() => setVerFiltros(false)}
+      />
+    </View>
   );
 }
 
-const estilos = StyleSheet.create({
-  encabezado: { paddingHorizontal: Espacio.m, paddingTop: Espacio.s },
+const crear = crearEstilos((c) => ({
+  raiz: { flex: 1, flexDirection: 'row', backgroundColor: c.mapaTierra },
+  franjaPanel: { backgroundColor: c.superficie },
   mapa: { flex: 1 },
-  botonGps: {
+  // Los controles van antes del mapa en el árbol (orden de Tab en web) y por encima con zIndex.
+  controles: {
     position: 'absolute',
-    top: Espacio.m,
-    left: Espacio.m,
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radio.redondo,
-    backgroundColor: Colores.fondo,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
+    left: 0,
+    right: 0,
+    zIndex: 1,
+    gap: Espacio.s,
+    pointerEvents: 'box-none',
   },
-  presionado: { opacity: 0.7 },
-  aviso: { position: 'absolute', top: Espacio.m, left: Espacio.m + 52, right: Espacio.m },
-});
+  avisoFlotante: { marginHorizontal: Margen.mapa },
+  capaPanel: {
+    position: 'absolute',
+    left: 0,
+    bottom: 0,
+    width: ANCHO_PANEL.flotante + MARGEN_PANEL * 2,
+    zIndex: 1,
+    pointerEvents: 'box-none',
+  },
+  gps: { position: 'absolute' },
+}));

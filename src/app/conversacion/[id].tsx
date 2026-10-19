@@ -6,7 +6,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   TextInput,
   View,
 } from 'react-native';
@@ -17,7 +16,8 @@ import { Cargando } from '@/components/ui/Cargando';
 import { Mensaje } from '@/components/ui/Mensaje';
 import { Pantalla } from '@/components/ui/Pantalla';
 import { Texto } from '@/components/ui/Texto';
-import { Colores, Espacio, Radio } from '@/constants/tema';
+import { estaActivo } from '@/components/ui/interaccion';
+import { AnchoMaximo, Espacio, Fuentes, Medida, Radio } from '@/constants/tema';
 import { useAuth } from '@/features/auth/AuthProvider';
 import {
   clavesMensajes,
@@ -26,6 +26,7 @@ import {
   useEnviarMensaje,
   useMensajes,
 } from '@/features/mensajes/api';
+import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 import { fechaHoraCorta } from '@/lib/fechas';
 import { useQueryClient } from '@tanstack/react-query';
@@ -47,11 +48,14 @@ export default function PantallaConversacion() {
 
 function Chat({ conversacionId, miId }: { conversacionId: string; miId: string }) {
   const router = useRouter();
+  const { c } = useTema();
+  const estilos = useEstilos(crear);
   const queryClient = useQueryClient();
   const conversacion = useConversacion(conversacionId);
   const mensajes = useMensajes(conversacionId);
   const enviar = useEnviarMensaje(conversacionId, miId);
   const [texto, setTexto] = useState('');
+  const [enfocado, setEnfocado] = useState(false);
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
 
   // Al ver mensajes ajenos sin leer, marcarlos.
@@ -85,8 +89,8 @@ function Chat({ conversacionId, miId }: { conversacionId: string; miId: string }
                 accessibilityRole="button"
                 accessibilityLabel={t.mensajes.verReporte}
                 onPress={() => router.push(`/animal/${conversacion.data?.animal_id}`)}
-                hitSlop={8}>
-                <Ionicons name="paw" size={22} color={Colores.primario} />
+                style={estilos.verReporte}>
+                <Ionicons name="paw-outline" size={22} color={c.primario} />
               </Pressable>
             ) : null,
         }}
@@ -110,7 +114,9 @@ function Chat({ conversacionId, miId }: { conversacionId: string; miId: string }
             ref={scrollRef}
             contentContainerStyle={estilos.lista}
             onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}>
-            <Mensaje texto={t.mensajes.aviso} />
+            <Texto variante="secundario" style={estilos.aviso}>
+              {t.mensajes.aviso}
+            </Texto>
             {mensajes.data.length === 0 ? (
               <Texto variante="secundario" style={estilos.centrado}>
                 {t.mensajes.vacio}
@@ -120,8 +126,10 @@ function Chat({ conversacionId, miId }: { conversacionId: string; miId: string }
               const mio = m.emisor_id === miId;
               return (
                 <View key={m.id} style={[estilos.burbuja, mio ? estilos.mia : estilos.ajena]}>
-                  <Texto style={mio ? estilos.textoMio : undefined}>{m.cuerpo}</Texto>
-                  <Texto variante="pequeno" style={mio ? estilos.horaMia : undefined}>
+                  <Texto color={mio ? 'textoSobrePrimario' : 'texto'} selectable>
+                    {m.cuerpo}
+                  </Texto>
+                  <Texto variante="pequeno" color={mio ? 'textoSobrePrimario' : 'textoSecundario'}>
                     {fechaHoraCorta(m.created_at)}
                   </Texto>
                 </View>
@@ -136,81 +144,113 @@ function Chat({ conversacionId, miId }: { conversacionId: string; miId: string }
           </View>
         ) : null}
 
-        <View style={estilos.entrada}>
-          <TextInput
-            style={estilos.input}
-            placeholder={t.mensajes.placeholder}
-            placeholderTextColor={Colores.textoSecundario}
-            value={texto}
-            onChangeText={setTexto}
-            multiline
-            maxLength={2000}
-            onSubmitEditing={mandar}
-            blurOnSubmit
-          />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t.mensajes.enviar}
-            onPress={mandar}
-            disabled={enviar.isPending || texto.trim() === ''}
-            style={({ pressed }) => [
-              estilos.botonEnviar,
-              (pressed || enviar.isPending || texto.trim() === '') && estilos.botonEnviarInactivo,
-            ]}>
-            <Ionicons name="send" size={20} color={Colores.textoInvertido} />
-          </Pressable>
+        <View style={estilos.barraEntrada}>
+          <View style={estilos.entrada}>
+            <TextInput
+              style={[estilos.input, enfocado && estilos.inputFoco]}
+              placeholder={t.mensajes.placeholder}
+              placeholderTextColor={c.textoSecundario}
+              accessibilityLabel={t.mensajes.placeholder}
+              value={texto}
+              onChangeText={setTexto}
+              onFocus={() => setEnfocado(true)}
+              onBlur={() => setEnfocado(false)}
+              multiline
+              // En web un textarea arranca con dos filas: la cápsula es de una (52 de alto).
+              rows={Platform.OS === 'web' ? 1 : undefined}
+              maxLength={2000}
+              onSubmitEditing={mandar}
+              submitBehavior="blurAndSubmit"
+              cursorColor={c.primario}
+              selectionColor={c.primario}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t.mensajes.enviar}
+              onPress={mandar}
+              disabled={enviar.isPending || texto.trim() === ''}
+              style={(estado) => [
+                estilos.botonEnviar,
+                estaActivo(estado) && estilos.botonEnviarActivo,
+                (enviar.isPending || texto.trim() === '') && estilos.botonEnviarInactivo,
+              ]}>
+              <Ionicons name="send-outline" size={20} color={c.textoSobrePrimario} />
+            </Pressable>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-const estilos = StyleSheet.create({
-  raiz: { flex: 1, backgroundColor: Colores.fondo },
-  relleno: { padding: Espacio.m },
-  lista: { padding: Espacio.m, gap: Espacio.s },
+const crear = crearEstilos((c) => ({
+  raiz: { flex: 1, backgroundColor: c.fondo },
+  relleno: { padding: Espacio.m, width: '100%', maxWidth: AnchoMaximo.lista, alignSelf: 'center' },
+  lista: {
+    padding: Espacio.m,
+    gap: Espacio.s,
+    width: '100%',
+    maxWidth: AnchoMaximo.lista,
+    alignSelf: 'center',
+  },
   centrado: { textAlign: 'center' },
+  aviso: { textAlign: 'center', marginBottom: Espacio.s },
   burbuja: {
     maxWidth: '80%',
-    padding: Espacio.m,
-    borderRadius: Radio.l,
+    paddingHorizontal: Espacio.m,
+    paddingVertical: Espacio.sm - 2,
+    borderRadius: 20,
     gap: 2,
   },
-  mia: { alignSelf: 'flex-end', backgroundColor: Colores.primario, borderBottomRightRadius: 4 },
-  ajena: {
-    alignSelf: 'flex-start',
-    backgroundColor: Colores.fondoSuave,
-    borderBottomLeftRadius: 4,
+  mia: { alignSelf: 'flex-end', backgroundColor: c.primario, borderBottomRightRadius: 6 },
+  ajena: { alignSelf: 'flex-start', backgroundColor: c.superficieSuave, borderBottomLeftRadius: 6 },
+  barraEntrada: {
+    borderTopWidth: 1,
+    borderTopColor: c.borde,
+    backgroundColor: c.superficie,
   },
-  textoMio: { color: Colores.textoInvertido },
-  horaMia: { color: Colores.primarioSuave },
   entrada: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: Espacio.s,
-    padding: Espacio.m,
-    borderTopWidth: 1,
-    borderTopColor: Colores.borde,
+    padding: Espacio.sm,
+    width: '100%',
+    maxWidth: AnchoMaximo.lista,
+    alignSelf: 'center',
   },
   input: {
     flex: 1,
-    minHeight: 44,
+    minHeight: Medida.campo,
     maxHeight: 120,
-    paddingHorizontal: Espacio.m,
-    paddingVertical: Espacio.s,
+    paddingHorizontal: Espacio.ml,
+    paddingTop: 15,
+    paddingBottom: 15,
     borderWidth: 1,
-    borderColor: Colores.borde,
-    borderRadius: Radio.l,
+    borderColor: c.borde,
+    borderRadius: Medida.campo / 2,
+    backgroundColor: c.superficie,
+    ...Fuentes.regular,
     fontSize: 16,
-    color: Colores.texto,
+    lineHeight: 20,
+    color: c.texto,
   },
+  inputFoco: { borderWidth: 2, borderColor: c.primario, paddingHorizontal: Espacio.ml - 1 },
   botonEnviar: {
-    width: 44,
-    height: 44,
+    width: Medida.areaTactil,
+    height: Medida.areaTactil,
+    marginBottom: (Medida.campo - Medida.areaTactil) / 2,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radio.redondo,
-    backgroundColor: Colores.primario,
+    backgroundColor: c.primario,
   },
-  botonEnviarInactivo: { opacity: 0.5 },
-});
+  botonEnviarActivo: { backgroundColor: c.primarioPresionado },
+  botonEnviarInactivo: { opacity: 0.45 },
+  verReporte: {
+    width: Medida.areaTactil,
+    height: Medida.areaTactil,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: Radio.redondo,
+  },
+}));

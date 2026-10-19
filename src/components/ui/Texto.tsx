@@ -1,12 +1,21 @@
 import { Text, type TextProps } from 'react-native';
 
-import { Tipografia } from '@/constants/tema';
+import { ColorTexto, type Paleta, Tipografia, type VarianteTexto } from '@/constants/tema';
+import { useTema } from '@/hooks/useTema';
 
-type Variante = keyof typeof Tipografia;
+export type TextoProps = TextProps & {
+  variante?: VarianteTexto;
+  /** Color de la paleta; por defecto, el de la variante. */
+  color?: keyof Paleta;
+};
 
-export type TextoProps = TextProps & { variante?: Variante };
-
-/** Texto con las variantes tipográficas del tema. */
-export function Texto({ variante = 'cuerpo', style, ...props }: TextoProps) {
-  return <Text style={[Tipografia[variante], style]} {...props} />;
+/** Texto con la escala tipográfica del tema y el color del esquema activo. */
+export function Texto({ variante = 'cuerpo', color, style, ...props }: TextoProps) {
+  const { c } = useTema();
+  return (
+    <Text
+      style={[Tipografia[variante], { color: c[color ?? ColorTexto[variante]] }, style]}
+      {...props}
+    />
+  );
 }

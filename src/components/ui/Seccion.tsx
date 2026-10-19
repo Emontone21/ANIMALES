@@ -1,22 +1,21 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Texto } from '@/components/ui/Texto';
 import { Espacio } from '@/constants/tema';
+import { crearEstilos, useEstilos } from '@/hooks/useTema';
 
-/** Bloque de formulario con título chico arriba. */
+/** Bloque de formulario con su etiqueta arriba. */
 export function Seccion({ titulo, children }: { titulo: string; children: ReactNode }) {
+  const estilos = useEstilos(crear);
   return (
     <View style={estilos.seccion}>
-      <Texto variante="secundario" style={estilos.titulo}>
-        {titulo}
-      </Texto>
+      <Texto variante="etiquetaCampo">{titulo}</Texto>
       {children}
     </View>
   );
 }
 
-const estilos = StyleSheet.create({
+const crear = crearEstilos(() => ({
   seccion: { gap: Espacio.s },
-  titulo: { fontWeight: '600' },
-});
+}));

@@ -16,6 +16,8 @@ export const t = {
   app: {
     nombre: 'Encontrados',
     lema: 'Animales encontrados en Montevideo',
+    /** Título de la pestaña del navegador. */
+    tituloWeb: 'Encontrados · Animales encontrados en Montevideo',
   },
   comunes: {
     cargando: 'Cargando…',
@@ -24,6 +26,8 @@ export const t = {
     listo: 'Listo',
     guardar: 'Guardar',
     volver: 'Volver',
+    volverAlMapa: 'Volver al mapa',
+    cerrar: 'Cerrar',
     errorGenerico: 'Algo salió mal. Probá de nuevo.',
     sinConexion: 'No hay conexión. Fijate la red y probá de nuevo.',
   },
@@ -32,9 +36,20 @@ export const t = {
     publicar: 'Publicar',
     actividad: 'Actividad',
     perfil: 'Perfil',
+    /** Lectores de pantalla: pestaña con el punto de novedades sin leer. */
+    conNovedades: (titulo: string) => `${titulo}, con novedades sin leer`,
   },
   mapa: {
     titulo: 'Mapa',
+    cercaTuyo: 'Cerca tuyo',
+    masFiltros: 'Más filtros',
+    /** "A 600 m" / "A 1,2 km". */
+    distancia: (km: number) =>
+      km < 1
+        ? `A ${Math.max(10, Math.round((km * 1000) / 10) * 10)} m`
+        : `A ${km.toFixed(1).replace('.', ',')} km`,
+    /** "A 600 m, hace 40 minutos". */
+    distanciaYTiempo: (distancia: string, hace: string) => `${distancia}, ${hace}`,
     sinReportes: 'No hay reportes con estos filtros.',
     verDetalle: 'Ver detalle',
     miUbicacion: 'Ir a mi ubicación',
@@ -54,6 +69,12 @@ export const t = {
     perro: 'Perro',
     gato: 'Gato',
     otro: 'Otro',
+  } satisfies Record<Especie, string>,
+  /** Para oraciones: "Un perro encontrado…". */
+  especieConArticulo: {
+    perro: 'Un perro',
+    gato: 'Un gato',
+    otro: 'Un animal',
   } satisfies Record<Especie, string>,
   especiePlural: {
     perro: 'Perros',
@@ -78,20 +99,30 @@ export const t = {
   } satisfies Record<TipoAvistamiento, string>,
   animal: {
     titulo: 'Detalle del animal',
+    /** Título de tarjetas y del detalle: "Gato gris atigrado" o "Perro mediano". */
+    tituloCorto: (especie: Especie, color: string | null, tamanio: Tamanio | null): string =>
+      color
+        ? `${t.especie[especie]} ${color}`
+        : tamanio
+          ? `${t.especie[especie]} ${t.tamanio[tamanio].toLowerCase()}`
+          : t.especie[especie],
+    publicado: (hace: string) => `Publicado ${hace}`,
+    ultimaVez: 'Visto por última vez',
+    novedades: 'Novedades del caso',
+    masOpciones: 'Más opciones',
+    avisoEstafa:
+      'Nunca pagues para recuperar a un animal. Si alguien te pide plata o datos de tu tarjeta, denuncialo.',
     noEncontrado: 'No encontramos este reporte. Puede que lo hayan cerrado.',
     conCollar: 'Con collar',
     sinCollar: 'Sin collar',
-    publicadoPor: (nombre: string) => `Publicado por ${nombre}`,
     historial: 'Historial',
-    recorrido: 'Recorrido',
     avistamientos: (n: number) => (n === 1 ? '1 avistamiento' : `${n} avistamientos`),
-    sinDescripcion: 'Sin descripción.',
     vinculadoAviso: 'Este reporte se unió a otro del mismo animal. Te llevamos al caso principal.',
     casoCerrado: 'Este caso está cerrado: el animal volvió con su familia.',
     oculto: 'Esta publicación fue ocultada por moderación y no aparece en el mapa.',
     requiereCuentaAcciones: 'Para avisar que lo viste o cambiar el estado necesitás una cuenta.',
     acciones: {
-      loVi: 'Lo vi acá también',
+      loVi: 'Lo vi',
       resguardar: 'Me lo llevé / está resguardado',
       reunido: 'Se reunió con su familia',
       reabrir: 'Se volvió a escapar',
@@ -153,17 +184,25 @@ export const t = {
     vacio:
       'Todavía no hay coincidencias. Las fotos se comparan automáticamente; si aparece algo, lo vas a ver acá.',
     requiereCuenta: 'Para confirmar o rechazar una coincidencia necesitás una cuenta.',
-    similitud: (porcentaje: number) => `${porcentaje} % parecido`,
-    distancia: (km: number) => (km < 1 ? `a ${Math.round(km * 1000)} m` : `a ${km.toFixed(1)} km`),
     tiempo: (horas: number) =>
       horas < 1
         ? 'con menos de 1 h de diferencia'
         : horas < 48
           ? `con ${Math.round(horas)} h de diferencia`
           : `con ${Math.round(horas / 24)} días de diferencia`,
+    /** "Con 3 h de diferencia.", para cerrar el resumen de una coincidencia. */
+    tiempoOracion: (horas: number): string => {
+      const texto = t.coincidencias.tiempo(horas);
+      return `${texto.charAt(0).toUpperCase()}${texto.slice(1)}.`;
+    },
     esElMismo: 'Es el mismo animal',
     noEsElMismo: 'No es el mismo',
     verOtro: 'Ver el otro reporte',
+    /** "Un perro encontrado a 1,2 km se parece en un 86 %." */
+    resumen: (especie: Especie, km: number | null, porcentaje: number): string =>
+      km === null
+        ? `${t.especieConArticulo[especie]} encontrado se parece en un ${porcentaje} %.`
+        : `${t.especieConArticulo[especie]} encontrado ${t.mapa.distancia(km).toLowerCase()} se parece en un ${porcentaje} %.`,
     confirmada: 'Listo: los reportes quedaron unidos.',
     rechazada: 'Gracias. Lo anotamos para afinar el reconocimiento.',
     resueltas: (n: number) =>
@@ -183,6 +222,8 @@ export const t = {
   mensajes: {
     titulo: 'Mensajes',
     requiereCuenta: 'Para enviar mensajes necesitás una cuenta.',
+    escribir: 'Escribir',
+    elegirDestinatario: '¿A quién le querés escribir?',
     escribirAPublicador: 'Escribirle a quien publicó',
     escribirAResguardo: 'Escribirle a quien lo resguarda',
     aviso:
@@ -261,6 +302,7 @@ export const t = {
     ingresar: 'Ingresar',
     registrarse: 'Crear cuenta',
     salir: 'Cerrar sesión',
+    requiereCuentaTitulo: 'Necesitás una cuenta',
     email: 'Email',
     emailPlaceholder: 'vos@ejemplo.com',
     contrasena: 'Contraseña',
@@ -293,6 +335,13 @@ export const t = {
     misReportes: 'Mis reportes',
     sinReportes: 'Todavía no publicaste ningún animal.',
     verCasoPrincipal: 'tocá para ver el caso principal',
+    apariencia: 'Apariencia',
+    aparienciaOpciones: {
+      automatico: 'Automático',
+      claro: 'Claro',
+      oscuro: 'Oscuro',
+    },
+    aparienciaAyuda: 'Automático sigue la configuración de tu teléfono o computadora.',
   },
   fechas: {
     ahora: 'recién',
@@ -300,5 +349,8 @@ export const t = {
     haceHoras: (n: number) => (n === 1 ? 'hace 1 hora' : `hace ${n} horas`),
     haceDias: (n: number) => (n === 1 ? 'ayer' : `hace ${n} días`),
     haceSemanas: (n: number) => (n === 1 ? 'hace 1 semana' : `hace ${n} semanas`),
+    hoyALas: (hora: string) => `Hoy a las ${hora}`,
+    ayerALas: (hora: string) => `Ayer a las ${hora}`,
+    diaALas: (dia: string, hora: string) => `${dia} a las ${hora}`,
   },
 } as const;
