@@ -1,31 +1,69 @@
-import { Image } from 'expo-image';
 import { View } from 'react-native';
 
+import { MARCADOR } from '@/components/mapa/estilosCapa';
+import { FotoMiniatura } from '@/components/ui/FotoMiniatura';
 import { coloresDeEstado, sombraFlotante } from '@/constants/tema';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
-import { urlFoto } from '@/lib/imagenes';
 import type { AnimalEnMapa } from '@/types/dominio';
 
-const DIAMETRO = 58;
-
 /**
- * Solo nativo: marcador del animal seleccionado con su foto (docs/DISENO.md,
- * 6.6). Círculo con borde interno en superficie, anillo del color del tipo y
- * una colita en rombo. En web se arma como elemento del DOM (MapaReportes.web).
+ * Solo nativo: marcador de un animal con su miniatura (docs/DISENO.md, 6.6).
+ * Círculo de 48 (58 si está seleccionado) con borde interno en superficie,
+ * anillo del color del tipo, colita en rombo y, en los perdidos, halo. Los
+ * reunidos van al 45 %. No recibe toques: los recibe la zona táctil de abajo.
+ * En web se arma como elemento del DOM (MapaReportes.web).
  */
-export function MarcadorFoto({ animal }: { animal: AnimalEnMapa }) {
+export function MarcadorFoto({
+  animal,
+  seleccionado = false,
+}: {
+  animal: AnimalEnMapa;
+  seleccionado?: boolean;
+}) {
   const { c } = useTema();
   const estilos = useEstilos(crear);
-  const anillo = coloresDeEstado(c, animal.estado, animal.tipo_reporte).anillo;
+  const { anillo, opacidad } = coloresDeEstado(c, animal.estado, animal.tipo_reporte);
+  const diametro = seleccionado ? MARCADOR.diametroSeleccionado : MARCADOR.diametro;
+  const perdido = animal.tipo_reporte === 'perdido';
+  const lado = diametro + 2 * MARCADOR.halo;
 
   return (
-    <View style={estilos.raiz} pointerEvents="none" accessibilityElementsHidden>
-      <View style={[estilos.circulo, { borderColor: anillo }]}>
-        <Image
-          source={{ uri: urlFoto(animal.foto_principal_path) }}
-          style={estilos.foto}
-          contentFit="cover"
-        />
+    <View
+      // Lugar para el halo arriba y a los costados, para que el marcador no lo recorte.
+      style={[
+        estilos.raiz,
+        { opacity: opacidad },
+        perdido && { paddingTop: MARCADOR.halo, paddingHorizontal: MARCADOR.halo },
+      ]}
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants">
+      <View style={{ width: diametro, height: diametro }}>
+        {perdido ? (
+          <View
+            style={[
+              estilos.halo,
+              {
+                width: lado,
+                height: lado,
+                borderRadius: lado / 2,
+                top: -MARCADOR.halo,
+                left: -MARCADOR.halo,
+              },
+            ]}
+          />
+        ) : null}
+        <View
+          style={[
+            estilos.circulo,
+            { width: diametro, height: diametro, borderRadius: diametro / 2, borderColor: anillo },
+          ]}>
+          <FotoMiniatura
+            ruta={animal.foto_principal_path}
+            style={[estilos.foto, { borderRadius: diametro / 2 }]}
+            contentFit="cover"
+          />
+        </View>
       </View>
       <View style={[estilos.colita, { backgroundColor: anillo }]} />
     </View>
@@ -34,16 +72,19 @@ export function MarcadorFoto({ animal }: { animal: AnimalEnMapa }) {
 
 const crear = crearEstilos((c, esquema) => ({
   raiz: { alignItems: 'center' },
+  halo: { position: 'absolute', backgroundColor: c.perdido, opacity: MARCADOR.opacidadHalo },
   circulo: {
     // Primero la sombra: su borde de 1 px (en oscuro) lo reemplaza el anillo de 3.
     ...sombraFlotante(c, esquema),
-    width: DIAMETRO,
-    height: DIAMETRO,
-    padding: 3,
-    borderWidth: 3,
-    borderRadius: DIAMETRO / 2,
+    padding: MARCADOR.borde,
+    borderWidth: MARCADOR.anillo,
     backgroundColor: c.superficie,
   },
-  foto: { flex: 1, borderRadius: DIAMETRO / 2, backgroundColor: c.superficieSuave },
-  colita: { width: 12, height: 12, marginTop: -8, transform: [{ rotate: '45deg' }] },
+  foto: { flex: 1, backgroundColor: c.superficieSuave },
+  colita: {
+    width: MARCADOR.colita,
+    height: MARCADOR.colita,
+    marginTop: -MARCADOR.solapeColita,
+    transform: [{ rotate: '45deg' }],
+  },
 }));

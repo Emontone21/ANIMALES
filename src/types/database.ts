@@ -635,6 +635,27 @@ export type Database = {
         Args: { p_conservar_abiertos?: boolean };
         Returns: undefined;
       };
+      editar_reporte: {
+        Args: {
+          p_animal_id: string;
+          p_especie: Database['public']['Enums']['especie'];
+          p_tamanio?: Database['public']['Enums']['tamanio'] | null;
+          p_color?: string | null;
+          p_tiene_collar?: boolean;
+          p_descripcion?: string | null;
+          p_nombre?: string | null;
+          p_contacto_familia?: string | null;
+        };
+        Returns: undefined;
+      };
+      fotos_del_reporte: {
+        Args: { p_animal_id: string };
+        Returns: string[];
+      };
+      borrar_reporte: {
+        Args: { p_animal_id: string };
+        Returns: undefined;
+      };
       hay_bloqueo_con: {
         Args: { p_otro: string };
         Returns: boolean;

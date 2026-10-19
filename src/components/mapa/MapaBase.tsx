@@ -5,6 +5,7 @@ import {
   type LngLatBounds,
   Map,
   type MapProps,
+  type MapRef,
 } from '@maplibre/maplibre-react-native';
 import type { ReactNode, Ref } from 'react';
 import { View } from 'react-native';
@@ -27,12 +28,14 @@ export type MapaBaseProps = {
   margenesIniciales?: MargenesMapa;
   interactivo?: boolean;
   cameraRef?: Ref<CameraRef>;
+  mapRef?: Ref<MapRef>;
   /** Distancia de la atribución al borde inferior (para no quedar bajo la hoja). */
   atribucionAbajo?: number;
   /** Distancia de la atribución al borde izquierdo (para no quedar bajo el panel). */
   atribucionIzquierda?: number;
   onPress?: MapProps['onPress'];
   onRegionDidChange?: MapProps['onRegionDidChange'];
+  onDidFinishLoadingMap?: MapProps['onDidFinishLoadingMap'];
 };
 
 const PADDING_LIMITES = { top: 48, bottom: 48, left: 48, right: 48 };
@@ -50,10 +53,12 @@ export function MapaBase({
   margenesIniciales,
   interactivo = true,
   cameraRef,
+  mapRef,
   atribucionAbajo,
   atribucionIzquierda,
   onPress,
   onRegionDidChange,
+  onDidFinishLoadingMap,
 }: MapaBaseProps) {
   const estilos = useEstilos(crear);
   const estilo = useEstiloMapa();
@@ -65,6 +70,7 @@ export function MapaBase({
     <View style={estilos.contenedor} accessibilityLabel={t.mapa.titulo}>
       {estilo ? (
         <Map
+          ref={mapRef}
           style={estilos.mapa}
           mapStyle={estilo}
           attribution={false}
@@ -76,7 +82,8 @@ export function MapaBase({
           touchZoom={interactivo}
           doubleTapZoom={interactivo}
           onPress={onPress}
-          onRegionDidChange={onRegionDidChange}>
+          onRegionDidChange={onRegionDidChange}
+          onDidFinishLoadingMap={onDidFinishLoadingMap}>
           <Camera ref={cameraRef} initialViewState={vistaInicial} />
           {children}
         </Map>

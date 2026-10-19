@@ -3,22 +3,20 @@ import {
   GeoJSONSource,
   type GeoJSONSourceRef,
   Layer,
+  type MapRef,
   Marker,
   type PressEventWithFeatures,
 } from '@maplibre/maplibre-react-native';
 import type { Feature, Point } from 'geojson';
-import { useImperativeHandle, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import type { NativeSyntheticEvent } from 'react-native';
 
 import { CapaRecorrido } from '@/components/mapa/CapaRecorrido';
 import {
   FILTRO_CLUSTER,
-  filtroPerdido,
   filtroPunto,
-  ID_CAPA_CENTRO,
   ID_CAPA_CLUSTER,
   ID_CAPA_CLUSTER_NUMERO,
-  ID_CAPA_HALO,
   ID_CAPA_MI_UBICACION,
   ID_CAPA_MI_UBICACION_HALO,
   ID_CAPA_PUNTO,
@@ -26,10 +24,8 @@ import {
   ID_FUENTE_MI_UBICACION,
   LAYOUT_CLUSTER_NUMERO,
   OPCIONES_CLUSTER,
-  paintCentro,
   paintCluster,
   paintClusterNumero,
-  paintHalo,
   paintMiUbicacion,
   paintMiUbicacionHalo,
   paintPunto,
@@ -41,10 +37,13 @@ import { coloresDeEstado } from '@/constants/tema';
 import { useTema } from '@/hooks/useTema';
 
 const SIN_MARGENES = { top: 0, right: 0, bottom: 0, left: 0 };
+/** Tiempo para que el mapa vuelva a agrupar los puntos después de un cambio de datos. */
+const ESPERA_DATOS_MS = 300;
 
 /**
- * Mapa principal en Android/iOS (MapLibre React Native): marcadores como capas
- * de círculos con clustering nativo; el seleccionado muestra la foto.
+ * Mapa principal en Android/iOS (MapLibre React Native): clusters como
+ * círculos con clustering nativo y un marcador con foto en cada punto suelto
+ * que se ve (el seleccionado, más grande).
  */
 export function MapaReportes({
   animales,
@@ -59,7 +58,10 @@ export function MapaReportes({
 }: MapaReportesProps) {
   const { c, esquema } = useTema();
   const cameraRef = useRef<CameraRef>(null);
+  const mapaRef = useRef<MapRef>(null);
   const fuenteRef = useRef<GeoJSONSourceRef>(null);
+  // Puntos sueltos que se ven: los que dibuja la zona táctil.
+  const [visibles, setVisibles] = useState<string[]>([]);
 
   useImperativeHandle(ref, () => ({
     irA: (centro, zoom) =>
@@ -67,6 +69,28 @@ export function MapaReportes({
   }));
 
   const coleccion = useMemo(() => animalesAGeoJSON(animales), [animales]);
+
+  const buscarVisibles = useCallback(async () => {
+    const features = await mapaRef.current?.queryRenderedFeatures({ layers: [ID_CAPA_PUNTO] });
+    const ids = new Set<string>();
+    for (const feature of features ?? []) {
+      const id = feature.properties?.['id'];
+      if (typeof id === 'string') ids.add(id);
+    }
+    setVisibles([...ids]);
+  }, []);
+
+  // Con datos nuevos (filtros, casos nuevos), cuando el mapa ya los agrupó.
+  useEffect(() => {
+    const reloj = setTimeout(() => void buscarVisibles(), ESPERA_DATOS_MS);
+    return () => clearTimeout(reloj);
+  }, [coleccion, seleccionadoId, buscarVisibles]);
+
+  const conMarcador = useMemo(() => {
+    const ids = new Set(visibles);
+    if (seleccionadoId) ids.add(seleccionadoId);
+    return animales.filter((a) => ids.has(a.id));
+  }, [animales, visibles, seleccionadoId]);
   const ubicacion = useMemo(() => puntoAGeoJSON(miUbicacion), [miUbicacion]);
   const seleccionado = animales.find((a) => a.id === seleccionadoId) ?? null;
   const colorTipo = coloresDeEstado(
@@ -99,11 +123,16 @@ export function MapaReportes({
   return (
     <MapaBase
       cameraRef={cameraRef}
+      mapRef={mapaRef}
       margenesIniciales={margenes}
       atribucionAbajo={margenes.bottom + 8}
       atribucionIzquierda={margenes.left + 8}
       onPress={onDeseleccionar}
-      onRegionDidChange={(evento) => onMovimiento?.(evento.nativeEvent.center)}>
+      onDidFinishLoadingMap={() => void buscarVisibles()}
+      onRegionDidChange={(evento) => {
+        onMovimiento?.(evento.nativeEvent.center);
+        void buscarVisibles();
+      }}>
       {/* El recorrido y mi ubicación van debajo de los marcadores. */}
       {recorrido.length > 1 ? (
         <CapaRecorrido avistamientos={recorrido} colorTipo={colorTipo} />
@@ -144,13 +173,7 @@ export function MapaReportes({
           layout={LAYOUT_CLUSTER_NUMERO}
           paint={paintClusterNumero(c)}
         />
-        <Layer
-          id={ID_CAPA_HALO}
-          type="circle"
-          source={ID_FUENTE_ANIMALES}
-          filter={filtroPerdido(seleccionado?.id ?? null)}
-          paint={paintHalo(c)}
-        />
+        {/* Zona táctil invisible bajo cada foto: recibe el toque del marcador. */}
         <Layer
           id={ID_CAPA_PUNTO}
           type="circle"
@@ -158,19 +181,16 @@ export function MapaReportes({
           filter={filtroPunto(seleccionado?.id ?? null)}
           paint={paintPunto(c)}
         />
-        <Layer
-          id={ID_CAPA_CENTRO}
-          type="circle"
-          source={ID_FUENTE_ANIMALES}
-          filter={filtroPunto(seleccionado?.id ?? null)}
-          paint={paintCentro(c)}
-        />
       </GeoJSONSource>
-      {seleccionado ? (
-        <Marker id="seleccionado" lngLat={[seleccionado.lng, seleccionado.lat]} anchor="bottom">
-          <MarcadorFoto animal={seleccionado} />
+      {conMarcador.map((animal) => (
+        <Marker
+          key={animal.id}
+          id={`marcador-${animal.id}`}
+          lngLat={[animal.lng, animal.lat]}
+          anchor="bottom">
+          <MarcadorFoto animal={animal} seleccionado={animal.id === seleccionado?.id} />
         </Marker>
-      ) : null}
+      ))}
     </MapaBase>
   );
 }

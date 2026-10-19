@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import type { ComponentProps } from 'react';
 import { useState } from 'react';
@@ -9,6 +8,7 @@ import { RequiereCuenta } from '@/components/auth/RequiereCuenta';
 import { Boton } from '@/components/ui/Boton';
 import { Cargando } from '@/components/ui/Cargando';
 import { Chips } from '@/components/ui/Chips';
+import { FotoMiniatura } from '@/components/ui/FotoMiniatura';
 import { Mensaje } from '@/components/ui/Mensaje';
 import { Pantalla } from '@/components/ui/Pantalla';
 import { estaActivo } from '@/components/ui/interaccion';
@@ -25,7 +25,6 @@ import { destinoDe } from '@/features/notificaciones/push';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 import { haceCuanto } from '@/lib/fechas';
-import { urlFoto } from '@/lib/imagenes';
 import type {
   ConversacionDetalle,
   DatosNotificacion,
@@ -163,8 +162,8 @@ function Conversaciones() {
           accessibilityRole="button"
           onPress={() => router.push({ pathname: '/conversacion/[id]', params: { id: c.id } })}
           style={(estado) => [estilos.fila, estaActivo(estado) && estilos.filaActiva]}>
-          <Image
-            source={{ uri: urlFoto(c.animal_foto_path) }}
+          <FotoMiniatura
+            ruta={c.animal_foto_path}
             style={estilos.foto}
             contentFit="cover"
             accessibilityIgnoresInvertColors

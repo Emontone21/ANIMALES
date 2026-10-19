@@ -1,57 +1,54 @@
-import * as Crypto from 'expo-crypto';
-import { File } from 'expo-file-system';
-import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
-import { Platform } from 'react-native';
+import { ENV } from './env';
 
-import { supabase } from '@/lib/supabase';
+/**
+ * Rutas y URLs de las fotos del bucket "fotos". Es el único lugar con la
+ * convención del nombre de las miniaturas: lo usan la app y la función de la
+ * vista previa del link (api/), así que no importa nada de React ni de Expo.
+ * Comprimir y subir está en subirFotos.ts.
+ */
 
-const ANCHO_MAXIMO = 1280;
-const CALIDAD_JPEG = 0.75;
 export const BUCKET_FOTOS = 'fotos';
 
-export type FotoComprimida = { uri: string; width: number; height: number };
+/** Lado de la miniatura cuadrada que se sube junto a cada foto. */
+export const LADO_MINIATURA = 320;
 
 /**
- * Redimensiona a un ancho máximo y recomprime a JPEG antes de subir.
- * Una foto de celular de 4-6 MB queda en ~150-300 KB.
+ * La miniatura va junto a la original, en la misma carpeta:
+ * <uid>/<uuid>.jpg → <uid>/<uuid>.miniatura.jpg. La base solo sabe que una
+ * foto y sus variantes comparten la ruta hasta el primer punto (raiz_foto,
+ * migración 0012), para no borrar la miniatura de lo que queda publicado.
  */
-export async function comprimirFoto(uri: string, anchoOriginal?: number): Promise<FotoComprimida> {
-  const contexto = ImageManipulator.manipulate(uri, { maxWidth: ANCHO_MAXIMO * 2 });
-  if (!anchoOriginal || anchoOriginal > ANCHO_MAXIMO) {
-    contexto.resize({ width: ANCHO_MAXIMO });
-  }
-  const render = await contexto.renderAsync();
-  const resultado = await render.saveAsync({ format: SaveFormat.JPEG, compress: CALIDAD_JPEG });
-  return { uri: resultado.uri, width: resultado.width, height: resultado.height };
+const SUFIJO_MINIATURA = '.miniatura.jpg';
+
+/** Datos de demo cargados por SQL: una URL https en vez de una ruta del bucket. */
+export function esUrlExterna(ruta: string): boolean {
+  return /^https?:\/\//.test(ruta);
 }
 
-/** Lee la foto local como bytes. En web la URI es blob: o data:, así que se usa fetch. */
-async function leerBytes(uriLocal: string): Promise<ArrayBuffer | Blob> {
-  if (Platform.OS === 'web') {
-    const respuesta = await fetch(uriLocal);
-    return respuesta.blob();
-  }
-  return new File(uriLocal).arrayBuffer();
+/** Ruta de la miniatura de una foto del bucket, o null si es una URL externa. */
+export function rutaMiniatura(ruta: string): string | null {
+  if (esUrlExterna(ruta)) return null;
+  const punto = ruta.indexOf('.', ruta.lastIndexOf('/') + 1);
+  return (punto === -1 ? ruta : ruta.slice(0, punto)) + SUFIJO_MINIATURA;
 }
 
-/**
- * Sube una foto ya comprimida al bucket público "fotos", dentro de la carpeta
- * del usuario (lo exige la política de Storage). Devuelve la ruta guardada.
- */
-export async function subirFoto(uriLocal: string, usuarioId: string): Promise<string> {
-  const bytes = await leerBytes(uriLocal);
-  const ruta = `${usuarioId}/${Crypto.randomUUID()}.jpg`;
-
-  const { error } = await supabase.storage.from(BUCKET_FOTOS).upload(ruta, bytes, {
-    contentType: 'image/jpeg',
-    upsert: false,
-  });
-  if (error) throw error;
-  return ruta;
+/** URL pública de una ruta del bucket, igual a la que arma supabase-js. */
+function urlPublica(ruta: string): string {
+  const base = ENV.supabaseUrl.replace(/\/+$/, '');
+  return encodeURI(`${base}/storage/v1/object/public/${BUCKET_FOTOS}/${ruta.replace(/^\/+/, '')}`);
 }
 
 /** URL pública de una foto. Acepta rutas del bucket o URLs https (datos de demo). */
 export function urlFoto(ruta: string): string {
-  if (/^https?:\/\//.test(ruta)) return ruta;
-  return supabase.storage.from(BUCKET_FOTOS).getPublicUrl(ruta).data.publicUrl;
+  return esUrlExterna(ruta) ? ruta : urlPublica(ruta);
+}
+
+/**
+ * URL de la miniatura, o de la original si es una URL externa. Las fotos
+ * subidas antes de la Fase 8 no tienen miniatura: quien la muestra pasa a la
+ * original si no carga (FotoMiniatura).
+ */
+export function urlMiniatura(ruta: string): string {
+  const miniatura = rutaMiniatura(ruta);
+  return miniatura ? urlPublica(miniatura) : ruta;
 }

@@ -1,5 +1,7 @@
+import { create } from 'zustand';
+
 import { t } from '@/i18n/es-UY';
-import { distanciaMetros } from '@/lib/ubicacion';
+import { distanciaMetros, MONTEVIDEO } from '@/lib/ubicacion';
 import type { AnimalEnMapa, Especie, EstadoAnimal, LngLat, TipoReporte } from '@/types/dominio';
 
 /** Filtros del mapa. Se aplican en el cliente sobre la lista ya cargada. */
@@ -22,6 +24,26 @@ export const FILTROS_INICIALES: FiltrosMapa = {
   estado: 'activos',
   antiguedad: '30d',
 };
+
+type EstadoFiltros = {
+  filtros: FiltrosMapa;
+  /** Centro del mapa la última vez que dejó de moverse: de ahí se miden las distancias. */
+  centro: LngLat;
+  setFiltros: (filtros: FiltrosMapa) => void;
+  setCentro: (centro: LngLat) => void;
+};
+
+/**
+ * Filtros y centro del mapa, compartidos con la lista de casos ("Ver lista"):
+ * la lista muestra lo mismo que el mapa y, si se cambia un filtro ahí, el mapa
+ * también cambia. Viven en memoria: al recargar, vuelven a los iniciales.
+ */
+export const useFiltrosMapa = create<EstadoFiltros>()((set) => ({
+  filtros: FILTROS_INICIALES,
+  centro: MONTEVIDEO,
+  setFiltros: (filtros) => set({ filtros }),
+  setCentro: (centro) => set({ centro }),
+}));
 
 export const OPCIONES_ESPECIE: { valor: FiltroEspecie; etiqueta: string }[] = [
   { valor: 'todas', etiqueta: t.mapa.filtros.todos },

@@ -2,10 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { Text, View } from 'react-native';
 
+import { FotoMiniatura } from '@/components/ui/FotoMiniatura';
 import { Fuentes, MAX_ESCALA_TEXTO, Radio } from '@/constants/tema';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
-import { urlFoto } from '@/lib/imagenes';
 
 type Props = {
   nombre: string | null;
@@ -22,22 +22,19 @@ type Props = {
 export function Avatar({ nombre, fotoPath, fotoUri, tamanio = 56 }: Props) {
   const { c } = useTema();
   const estilos = useEstilos(crear);
-  const fuente = fotoUri ?? (fotoPath ? urlFoto(fotoPath) : null);
   const inicial = nombre?.trim().charAt(0).toUpperCase() ?? '';
   const medida = { width: tamanio, height: tamanio };
+  const comunes = {
+    style: [estilos.circulo, medida],
+    contentFit: 'cover' as const,
+    accessible: true,
+    accessibilityLabel: nombre ? t.perfil.fotoDe(nombre) : undefined,
+    accessibilityIgnoresInvertColors: true,
+  };
 
-  if (fuente) {
-    return (
-      <Image
-        source={{ uri: fuente }}
-        style={[estilos.circulo, medida]}
-        contentFit="cover"
-        accessible
-        accessibilityLabel={nombre ? t.perfil.fotoDe(nombre) : undefined}
-        accessibilityIgnoresInvertColors
-      />
-    );
-  }
+  // La foto recién elegida (local) se ve tal cual; la guardada, en miniatura.
+  if (fotoUri) return <Image source={{ uri: fotoUri }} {...comunes} />;
+  if (fotoPath) return <FotoMiniatura ruta={fotoPath} {...comunes} />;
   return (
     <View style={[estilos.circulo, medida]}>
       {inicial ? (

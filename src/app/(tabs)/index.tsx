@@ -13,16 +13,11 @@ import { BotonRedondo } from '@/components/ui/BotonRedondo';
 import { Mensaje } from '@/components/ui/Mensaje';
 import { Espacio, Margen, Medida } from '@/constants/tema';
 import { useAnimalesMapa, useAvistamientos } from '@/features/reportes/api';
-import {
-  aplicarFiltros,
-  FILTROS_INICIALES,
-  type FiltrosMapa,
-  ordenarPorCercania,
-} from '@/features/reportes/filtros';
+import { aplicarFiltros, ordenarPorCercania, useFiltrosMapa } from '@/features/reportes/filtros';
 import { useDisposicion } from '@/hooks/useDisposicion';
 import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
-import { MONTEVIDEO, obtenerPosicionActual, ZOOM_PUNTO } from '@/lib/ubicacion';
+import { obtenerPosicionActual, ZOOM_PUNTO } from '@/lib/ubicacion';
 import type { LngLat } from '@/types/dominio';
 
 export default function PantallaMapa() {
@@ -36,12 +31,11 @@ export default function PantallaMapa() {
   const amplio = disposicion === 'amplio';
 
   const mapaRef = useRef<MapaReportesRef>(null);
-  const [filtros, setFiltros] = useState<FiltrosMapa>(FILTROS_INICIALES);
+  // Compartidos con la lista de casos ("Ver lista").
+  const { filtros, setFiltros, centro, setCentro } = useFiltrosMapa();
   const [verFiltros, setVerFiltros] = useState(false);
   const [seleccionadoId, setSeleccionadoId] = useState<string | null>(null);
   const [resaltadoId, setResaltadoId] = useState<string | null>(null);
-  // El mapa arranca centrado en Montevideo; se actualiza cada vez que deja de moverse.
-  const [centro, setCentro] = useState<LngLat>(MONTEVIDEO);
   const [miUbicacion, setMiUbicacion] = useState<LngLat | null>(null);
   const [buscandoGps, setBuscandoGps] = useState(false);
 
@@ -173,6 +167,7 @@ export default function PantallaMapa() {
             cargando={isLoading}
             seleccionadoId={seleccionado?.id ?? null}
             onAbrir={abrir}
+            onVerLista={() => router.push('/casos')}
           />
         ) : null}
       </View>

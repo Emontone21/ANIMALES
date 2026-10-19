@@ -4,6 +4,7 @@
  */
 
 import type {
+  DatosCompartir,
   Especie,
   EstadoAnimal,
   EstadoDenuncia,
@@ -70,11 +71,23 @@ export const t = {
       ultimos7d: '7 días',
       ultimos30d: '30 días',
     },
+    verLista: 'Ver lista',
+    lista: {
+      titulo: 'Casos cerca',
+      /** "12 casos, del más cercano al más lejano". */
+      resumen: (n: number) => (n === 1 ? '1 caso.' : `${n} casos, del más cercano al más lejano.`),
+    },
   },
   especie: {
     perro: 'Perro',
     gato: 'Gato',
     otro: 'Otro',
+  } satisfies Record<Especie, string>,
+  /** Título de la vista previa de un encontrado: "Perro encontrado". */
+  especieEncontrada: {
+    perro: 'Perro',
+    gato: 'Gato',
+    otro: 'Animal',
   } satisfies Record<Especie, string>,
   /** Para oraciones: "Un perro encontrado…". */
   especieConArticulo: {
@@ -156,6 +169,8 @@ export const t = {
       siguiendo: 'Siguiendo',
       denunciar: 'Denunciar',
       denunciado: 'Denuncia enviada',
+      editar: 'Editar el reporte',
+      borrar: 'Borrar el reporte',
     },
     contacto: 'Contacto para recuperarlo',
     /** Perdido resguardado visto por alguien que no es su familia. */
@@ -269,6 +284,102 @@ export const t = {
     sinMensajes: 'No tenés conversaciones. Desde un reporte podés escribirle a quien lo publicó.',
     sinMensajesAun: 'Sin mensajes todavía',
     marcarTodasLeidas: 'Marcar todas como leídas',
+  },
+  editarReporte: {
+    titulo: 'Editar reporte',
+    intro:
+      'Corregí los datos del animal. La foto, la ubicación y si es perdido o encontrado no se cambian.',
+    guardar: 'Guardar cambios',
+    guardando: 'Guardando…',
+    soloQuienPublico: 'Solo quien publicó el reporte lo puede editar.',
+    unido: 'Este reporte se unió a otro caso: ya no se edita por separado.',
+  },
+  borrarReporte: {
+    titulo: '¿Borrar este reporte?',
+    /** Qué se pierde, con los avisos de otras personas que lo vieron. */
+    detalle: (avisosDeOtros: number) =>
+      [
+        'Se borra para siempre, con su historial, sus fotos, las coincidencias, las conversaciones sobre el caso y los reportes de otras personas que se unieron a este.',
+        avisosDeOtros === 1
+          ? 'También se borra el aviso de otra persona que lo vio.'
+          : avisosDeOtros > 1
+            ? `También se borran los ${avisosDeOtros} avisos de otras personas que lo vieron.`
+            : null,
+        'No se puede deshacer.',
+      ]
+        .filter(Boolean)
+        .join(' '),
+    boton: 'Borrar para siempre',
+    errorFotos:
+      'No pudimos borrar algunas fotos. El reporte sigue publicado: probá de nuevo en un rato.',
+  },
+  compartir: {
+    boton: 'Compartir',
+    titulo: 'Compartir el caso',
+    intro: 'Mandalo por WhatsApp o copiá el link para pegarlo donde quieras.',
+    whatsapp: 'Mandar por WhatsApp',
+    copiar: 'Copiar el link',
+    copiado: 'Listo, copiamos el link.',
+    errorCopiar: 'No pudimos copiar el link. Seleccionalo arriba y copialo.',
+    /** El texto que acompaña al link: "Se perdió Toby, perro marrón. Si lo viste, avisá acá:". */
+    texto: (caso: DatosCompartir): string => {
+      const unAnimal = `un ${animalEnFrase(caso)}`;
+      if (caso.estado === 'reunido') {
+        return `${caso.nombre ?? mayuscula(unAnimal)} ya volvió con su familia. Mirá el caso:`;
+      }
+      if (caso.tipo === 'perdido') {
+        return caso.nombre
+          ? `Se perdió ${caso.nombre}, ${animalEnFrase(caso)}. Si lo viste, avisá acá:`
+          : `Se perdió ${unAnimal}. Si lo viste, avisá acá:`;
+      }
+      if (caso.estado === 'resguardado') {
+        return `${mayuscula(unAnimal)} está a salvo y busca a su familia. Si sabés de quién es, avisá acá:`;
+      }
+      return `Encontraron ${unAnimal}. Si sabés de quién es, avisá acá:`;
+    },
+    /**
+     * Vista previa del link en WhatsApp, Facebook o Telegram (api/vista-previa.ts).
+     * Sin datos personales: ni el contacto, ni quién publicó, ni dónde.
+     */
+    vistaPrevia: {
+      titulo: (caso: DatosCompartir): string => {
+        const especie = t.especieEncontrada[caso.especie];
+        if (caso.estado === 'reunido') {
+          return caso.nombre
+            ? `${caso.nombre} volvió con su familia`
+            : `${especie}, de vuelta en casa`;
+        }
+        if (caso.tipo === 'perdido') {
+          return `Se perdió ${caso.nombre ?? `un ${animalEnFrase(caso)}`}`;
+        }
+        return caso.estado === 'resguardado'
+          ? `${especie} encontrado, a salvo`
+          : `${especie} encontrado`;
+      },
+      descripcion: (caso: DatosCompartir): string => {
+        const datos = [
+          mayuscula(
+            caso.color
+              ? `${nombreEspecie[caso.especie]} ${caso.color.toLowerCase()}`
+              : nombreEspecie[caso.especie],
+          ),
+          caso.tamanio ? t.tamanio[caso.tamanio].toLowerCase() : null,
+          caso.tieneCollar ? 'con collar' : null,
+        ]
+          .filter(Boolean)
+          .join(', ');
+        const pedido =
+          caso.estado === 'reunido'
+            ? 'Gracias a todos los que ayudaron a buscarlo.'
+            : caso.tipo === 'perdido'
+              ? 'Si lo viste, avisá en Encontrados.'
+              : 'Si sabés de quién es, avisá en Encontrados.';
+        return `${datos}. ${pedido}`;
+      },
+      tituloGenerico: 'Encontrados',
+      descripcionGenerica:
+        'Animales perdidos y encontrados en Montevideo. Si viste uno, avisá: así vuelve a casa.',
+    },
   },
   mensajes: {
     titulo: 'Mensajes',
@@ -706,3 +817,18 @@ export const t = {
     fechaLarga: (numero: string, mes: string, anio: string) => `${numero} de ${mes} de ${anio}`,
   },
 } as const;
+
+/** "perro", "gato", "animal": la especie dentro de una oración. */
+const nombreEspecie: Record<Especie, string> = { perro: 'perro', gato: 'gato', otro: 'animal' };
+
+/** "perro marrón", "gato mediano", "animal": el animal dentro de una oración. */
+function animalEnFrase(caso: Pick<DatosCompartir, 'especie' | 'color' | 'tamanio'>): string {
+  const especie = nombreEspecie[caso.especie];
+  if (caso.color) return `${especie} ${caso.color.toLowerCase()}`;
+  if (caso.tamanio) return `${especie} ${t.tamanio[caso.tamanio].toLowerCase()}`;
+  return especie;
+}
+
+function mayuscula(texto: string): string {
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}

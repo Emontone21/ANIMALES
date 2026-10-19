@@ -6,15 +6,15 @@ import type {
   SymbolLayerSpecification,
 } from '@maplibre/maplibre-gl-style-spec';
 
-import { coloresDeEstado, type Esquema, OPACIDAD_REUNIDO, type Paleta } from '@/constants/tema';
-import type { EstadoAnimal } from '@/types/dominio';
+import type { Esquema, Paleta } from '@/constants/tema';
 
 /**
  * Capas de marcadores, compartidas entre el mapa nativo (MapLibre React
  * Native) y el web (MapLibre GL JS). Son JSON del style spec y reciben la
  * paleta del esquema activo, así sirven igual en los dos y en claro u oscuro.
- * Marcadores según docs/DISENO.md, 6.6 (etapa 1: círculos; la foto solo en el
- * seleccionado hasta que haya miniaturas).
+ * Marcadores según docs/DISENO.md, 6.6: los clusters son círculos; cada punto
+ * suelto lleva un marcador con la foto (MarcadorFoto en nativo, un elemento del
+ * DOM en web) sobre una zona táctil invisible.
  */
 
 // --- Animales ----------------------------------------------------------------
@@ -22,72 +22,46 @@ import type { EstadoAnimal } from '@/types/dominio';
 export const ID_FUENTE_ANIMALES = 'animales';
 export const ID_CAPA_CLUSTER = 'animales-cluster';
 export const ID_CAPA_CLUSTER_NUMERO = 'animales-cluster-numero';
-export const ID_CAPA_HALO = 'animales-halo';
+/** Puntos sueltos: zona táctil invisible bajo la foto, y la lista de los que se ven. */
 export const ID_CAPA_PUNTO = 'animales-punto';
-export const ID_CAPA_CENTRO = 'animales-centro';
 
 export const OPCIONES_CLUSTER = { cluster: true, clusterRadius: 44, clusterMaxZoom: 15 } as const;
 
-export const FILTRO_CLUSTER: FilterSpecification = ['has', 'point_count'];
-const PUNTO_SUELTO: ExpressionSpecification = ['!', ['has', 'point_count']];
-const ES_PERDIDO: ExpressionSpecification = ['==', ['get', 'tipo'], 'perdido'];
+/** Medidas del marcador con foto (6.6), iguales en web y en nativo. */
+export const MARCADOR = {
+  diametro: 48,
+  diametroSeleccionado: 58,
+  /** Borde interno en superficie y anillo exterior del color del tipo. */
+  borde: 3,
+  anillo: 3,
+  /** Colita: rombo del color del tipo, que asoma debajo del círculo. */
+  colita: 12,
+  solapeColita: 8,
+  /** Halo de los perdidos, al 22 %: se distinguen también sin color. */
+  halo: 9.5,
+  opacidadHalo: 0.22,
+} as const;
 
 /**
- * Sin el seleccionado: ese caso se dibuja con su foto (marcador aparte) y el
- * círculo quedaría asomando debajo.
+ * El marcador va anclado abajo (la colita en el punto): su círculo queda unas
+ * decenas de píxeles por encima. La zona táctil se corre hasta ahí.
  */
-function sinSeleccionado(
-  condiciones: ExpressionSpecification[],
-  id: string | null,
-): FilterSpecification {
-  if (!id) return ['all', ...condiciones];
-  const distinto: ExpressionSpecification = ['!=', ['get', 'id'], id];
-  return ['all', ...condiciones, distinto];
-}
+const CENTRO_SOBRE_PUNTO = MARCADOR.diametro / 2 + MARCADOR.colita / 2;
 
-/** Puntos sueltos (no clusters). */
-export const filtroPunto = (seleccionadoId: string | null) =>
-  sinSeleccionado([PUNTO_SUELTO], seleccionadoId);
-/** Puntos sueltos de animales perdidos: llevan halo. */
-export const filtroPerdido = (seleccionadoId: string | null) =>
-  sinSeleccionado([PUNTO_SUELTO, ES_PERDIDO], seleccionadoId);
+export const FILTRO_CLUSTER: FilterSpecification = ['has', 'point_count'];
+const PUNTO_SUELTO: ExpressionSpecification = ['!', ['has', 'point_count']];
+
+/**
+ * Puntos sueltos, sin el seleccionado: ese se dibuja aparte, más grande, y
+ * aunque el cluster lo tape.
+ */
+export function filtroPunto(seleccionadoId: string | null): FilterSpecification {
+  if (!seleccionadoId) return PUNTO_SUELTO;
+  return ['all', PUNTO_SUELTO, ['!=', ['get', 'id'], seleccionadoId]];
+}
 
 // Fuente disponible en los estilos de OpenFreeMap (Positron, Liberty, Bright).
 const FUENTE_NUMEROS = ['Noto Sans Bold'];
-
-/** Color del anillo según estado y tipo, igual que coloresDeEstado. */
-function anilloPorEstado(c: Paleta): ExpressionSpecification {
-  const anillo = (estado: EstadoAnimal) => coloresDeEstado(c, estado).anillo;
-  return [
-    'case',
-    ['all', ['==', ['get', 'tipo'], 'perdido'], ['==', ['get', 'estado'], 'avistado']],
-    c.perdido,
-    [
-      'match',
-      ['get', 'estado'],
-      'resguardado',
-      anillo('resguardado'),
-      'reunido',
-      anillo('reunido'),
-      'vinculado',
-      anillo('vinculado'),
-      anillo('avistado'),
-    ],
-  ];
-}
-
-const OPACIDAD: ExpressionSpecification = [
-  'match',
-  ['get', 'estado'],
-  'reunido',
-  OPACIDAD_REUNIDO,
-  1,
-];
-
-/** Radio según si su tarjeta tiene el mouse encima (solo web, con feature-state). */
-function radioResaltable(normal: number, resaltado: number): ExpressionSpecification {
-  return ['case', ['boolean', ['feature-state', 'resaltado'], false], resaltado, normal];
-}
 
 export function paintCluster(c: Paleta): CircleLayerSpecification['paint'] {
   return {
@@ -109,32 +83,18 @@ export function paintClusterNumero(c: Paleta): SymbolLayerSpecification['paint']
   return { 'text-color': c.textoInverso };
 }
 
-/** Halo de 9 a 10 px alrededor de los perdidos: se distinguen también sin color. */
-export function paintHalo(c: Paleta): CircleLayerSpecification['paint'] {
-  return {
-    'circle-radius': 21,
-    'circle-color': c.perdido,
-    'circle-opacity': 0.22,
-  };
-}
-
+/**
+ * Zona táctil del marcador: un círculo casi transparente del tamaño de la
+ * foto, corrido hasta donde está la foto. No es 0: con opacidad 0 el mapa
+ * nativo puede no dibujarlo, y entonces no responde al toque ni aparece al
+ * consultar qué puntos se ven.
+ */
 export function paintPunto(c: Paleta): CircleLayerSpecification['paint'] {
   return {
-    'circle-radius': radioResaltable(11, 14),
+    'circle-radius': MARCADOR.diametro / 2,
     'circle-color': c.superficie,
-    'circle-stroke-width': 3,
-    'circle-stroke-color': anilloPorEstado(c),
-    'circle-opacity': OPACIDAD,
-    'circle-stroke-opacity': OPACIDAD,
-  };
-}
-
-/** Centro del marcador en el color del tipo, hasta que haya foto en cada uno. */
-export function paintCentro(c: Paleta): CircleLayerSpecification['paint'] {
-  return {
-    'circle-radius': radioResaltable(4.5, 6),
-    'circle-color': anilloPorEstado(c),
-    'circle-opacity': OPACIDAD,
+    'circle-opacity': 0.01,
+    'circle-translate': [0, -CENTRO_SOBRE_PUNTO],
   };
 }
 

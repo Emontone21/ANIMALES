@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Modal, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -18,6 +19,8 @@ type Props = {
   visible: boolean;
   titulo: string;
   descripcion?: string;
+  /** Algo más entre la descripción y las opciones (por ejemplo, un link para copiar). */
+  contenido?: ReactNode;
   opciones: OpcionMenu[];
   error?: string | null;
   onCerrar: () => void;
@@ -27,7 +30,15 @@ type Props = {
  * Lista corta de acciones. En celular sube desde abajo; en pantallas anchas es
  * una tarjeta centrada. Siempre termina con Cancelar.
  */
-export function MenuOpciones({ visible, titulo, descripcion, opciones, error, onCerrar }: Props) {
+export function MenuOpciones({
+  visible,
+  titulo,
+  descripcion,
+  contenido,
+  opciones,
+  error,
+  onCerrar,
+}: Props) {
   const estilos = useEstilos(crear);
   const insets = useSafeAreaInsets();
   const compacto = useDisposicion() === 'compacto';
@@ -53,6 +64,7 @@ export function MenuOpciones({ visible, titulo, descripcion, opciones, error, on
             {titulo}
           </Texto>
           {descripcion ? <Texto variante="secundario">{descripcion}</Texto> : null}
+          {contenido}
           {error ? <Mensaje texto={error} tipo="error" /> : null}
           <View style={estilos.opciones}>
             {opciones.map((opcion) => (

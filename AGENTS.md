@@ -19,9 +19,13 @@ App Expo + React Native + TypeScript con backend Supabase en la nube para reunir
 - **Términos:** publicar, avisar que lo viste, cambiar el estado, escribir y denunciar exigen la versión vigente aceptada (`config_app.terminos_version`), en la base y en la app. Si cambiás los textos de `t.legal`, subí `VERSION_TERMINOS` (`src/features/legal/terminos.ts`) y `terminos_version` con una migración.
 - **Cuentas borradas:** `animales.creado_por`, `avistamientos.usuario_id` y `cambios_estado.usuario_id` pueden ser null (contenido que quedó publicado sin autor; nunca un perdido, que se borra con la cuenta). Compará usuarios con `is distinct from`, nunca con `<>` ni `not in`: con null, la validación se saltea. Toda tabla nueva que apunte a `perfiles` decide qué pasa al borrar la cuenta y, si guarda contenido publicado, se suma a `limpiar_cuenta`. Nunca se borran filas de `storage.objects` por SQL: las fotos se borran con la API de Storage.
 - **Bloqueos:** quien está bloqueado no abre conversaciones ni manda mensajes, y quien bloquea no recibe sus avisos (`notificar` recibe el actor). No le avisamos a quien bloquean.
+- **Fotos y miniaturas:** toda foto se sube con `comprimirYSubir` (`src/lib/fotos.ts`), que sube también su miniatura de 320. El nombre de la miniatura se arma solo en `src/lib/imagenes.ts`. Lo que se muestra chico (tarjetas, listas, avatares, marcadores) usa `FotoMiniatura`, que cae a la original si no hay miniatura. Para borrar fotos, la base devuelve la lista (con las variantes, que comparten la ruta hasta el primer punto) y la app las borra con `borrarFotos`.
+- **Gestionar casos:** editar y borrar un reporte es solo de quien lo publicó (`reporte_propio`), nunca de un reporte unido a otro. Borrar un caso pasa siempre por `borrar_casos`, la misma función de `limpiar_cuenta`: no escribas otra lógica de borrado.
+- **Servidor propio:** la única pieza es `api/vista-previa.ts`, una función de Vercel sin dependencias que solo lee con la clave anon y solo recibe bots de vista previa (`vercel.json`). Nunca pone datos personales (contacto, quién publicó, ubicación, descripción libre). Lo que importa de `src/` (textos, `imagenes.ts`, `compartir.ts`, `env.ts`) usa rutas relativas y no puede importar nada de React ni de Expo. `.vercelignore` deja afuera `services/`: el preset de Vercel es Other.
 - **Licencias:** solo modelos y librerías con licencias permisivas (Apache 2.0, MIT, BSD). Nada de AGPL (por ejemplo YOLOv8). Excepción aprobada por el dueño: fuentes tipográficas bajo SIL OFL 1.1 (hoy Fredoka y Figtree, ver `docs/DECISIONES.md`).
 - **Dependencias:** instalar con `npx expo install <paquete>` para respetar la versión del SDK. Módulos nativos nuevos exigen rebuild (`npx expo run:android`).
 - **Nada local:** el backend es Supabase en la nube y la app se prueba en el navegador (`npx expo start --web`) o en Vercel. No propongas Docker ni builds nativos salvo que lo pidan.
+- **Compartir:** los links son `<sitio>/animal/<id>` con `linkDelCaso` (`EXPO_PUBLIC_SITE_URL`). La hoja del sistema está en `src/lib/hojaCompartir.ts` y su `.web.ts`: lo que toque compartir o el portapapeles tiene versión web.
 - **Web y nativo:** todo componente que use mapas tiene versión `.web.tsx` (maplibre-gl) y `.tsx` (MapLibre React Native) con el mismo contrato en `src/components/mapa/tipos.ts`. Lo que toque cámara, archivos o auth debe funcionar en web (`Platform.OS === 'web'`).
 - **Antes de dar algo por terminado:** `npm run typecheck`, `npm run lint` y `npx expo export -p web` sin errores. Si tocás la base, las pruebas de `supabase/tests/` tienen que seguir pasando; las reglas nuevas suman pruebas ahí.
 
@@ -44,10 +48,11 @@ npx supabase db push        # subir migraciones al proyecto en la nube (tras sup
 - `src/app/`: rutas de Expo Router. Solo pantallas y layouts; la lógica va afuera.
 - `src/components/ui/`: componentes genéricos reutilizables. `mapa/`, `reportes/`, `auth/`: componentes por área.
 - `src/features/<área>/`: acceso a datos (`api.ts`), hooks y acciones. Único lugar que llama a Supabase.
-- `src/lib/`: utilidades sin React (supabase, imágenes, ubicación, fechas, env).
+- `src/lib/`: utilidades sin React (supabase, imágenes y miniaturas, fotos, compartir, ubicación, fechas, env).
 - `src/constants/tema.ts`: paletas claro y oscuro, espacios, radios, fuentes y escala tipográfica. `src/hooks/`: `useTema`, `useEstilos` y `useDisposicion` (compacto, medio, amplio).
-- `supabase/`: configuración, migraciones (0001–0011), pruebas SQL por fase (`tests/`), seed. `services/vision/`: microservicio Python de reconocimiento.
-- `public/`: archivos estáticos de la web. `vercel.json`: despliegue.
+- `supabase/`: configuración, migraciones (0001–0012), pruebas SQL por fase (`tests/`), seed. `services/vision/`: microservicio Python de reconocimiento.
+- `api/`: función de Vercel de la vista previa del link (Open Graph).
+- `public/`: archivos estáticos de la web. `vercel.json`: despliegue y qué pedidos van a `api/`. `.vercelignore`: lo que Vercel no recibe.
 
 ## Fases
 
@@ -57,5 +62,6 @@ npx supabase db push        # subir migraciones al proyecto en la nube (tras sup
 4. Notificaciones, mensajería, moderación. **(hecha)**
 6. Reportes de perdidos: la familia publica a su animal (`animales.tipo_reporte`, `nombre`, `contacto_familia`), chips Todos · Perdidos · Encontrados, reglas de quién cierra un caso y quién confirma coincidencias, perdido siempre como principal. **(hecha)**
 7. Cuenta y protección de usuarios: recuperar la contraseña, editar el perfil, términos y privacidad (borrador), borrar la cuenta con anonimato, bloqueos, denuncias de cuentas nuevas y resguardo de perdidos con foto y contacto privado. **(hecha)**
+8. Gestión de casos y compartir: miniaturas (foto en todos los marcadores), editar y borrar un reporte propio, compartir con la hoja del sistema o WhatsApp, vista previa del link para bots (función de Vercel) y lista de casos ("Ver lista"). **(hecha)**
 
 Pendiente de configuración externa (lo hace el dueño del proyecto): proyecto Supabase con migraciones aplicadas, proyecto Vercel con variables, Space de Hugging Face para el servicio de visión. Ver README.

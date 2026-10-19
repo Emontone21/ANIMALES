@@ -4,6 +4,7 @@ import { View } from 'react-native';
 
 import { RequiereCuenta } from '@/components/auth/RequiereCuenta';
 import { RequiereTerminos } from '@/components/legal/RequiereTerminos';
+import { CampoContactoFamilia, CamposAnimal } from '@/components/reportes/CamposAnimal';
 import { CampoUbicacion } from '@/components/reportes/CampoUbicacion';
 import { ElegirTipoReporte } from '@/components/reportes/ElegirTipoReporte';
 import {
@@ -16,9 +17,7 @@ import {
 } from '@/components/reportes/SelectorCuando';
 import { type FotoElegida, SelectorFoto } from '@/components/reportes/SelectorFoto';
 import { Boton } from '@/components/ui/Boton';
-import { CampoTexto } from '@/components/ui/CampoTexto';
 import { Chips } from '@/components/ui/Chips';
-import { Interruptor } from '@/components/ui/Interruptor';
 import { Mensaje } from '@/components/ui/Mensaje';
 import { Pantalla } from '@/components/ui/Pantalla';
 import { Seccion } from '@/components/ui/Seccion';
@@ -27,18 +26,17 @@ import { AnchoMaximo, Espacio } from '@/constants/tema';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { usePublicarAnimal } from '@/features/reportes/api';
 import { t } from '@/i18n/es-UY';
-import {
-  ESPECIES,
-  type Especie,
-  type LngLat,
-  TAMANIOS,
-  type Tamanio,
-  type TipoReporte,
-} from '@/types/dominio';
+import type { CambiosReporte, LngLat, TipoReporte } from '@/types/dominio';
 
-const OPCIONES_ESPECIE = ESPECIES.map((valor) => ({ valor, etiqueta: t.especie[valor] }));
-
-const OPCIONES_TAMANIO = TAMANIOS.map((valor) => ({ valor, etiqueta: t.tamanio[valor] }));
+const DATOS_INICIALES: CambiosReporte = {
+  especie: 'perro',
+  nombre: '',
+  contactoFamilia: '',
+  tamanio: null,
+  color: '',
+  tieneCollar: false,
+  descripcion: '',
+};
 
 const OPCIONES_TIPO: { valor: TipoReporte; etiqueta: string; punto: TipoReporte }[] = [
   { valor: 'perdido', etiqueta: t.publicar.tipos.perdido.titulo, punto: 'perdido' },
@@ -70,17 +68,14 @@ function FormularioPublicar({ usuarioId }: { usuarioId: string }) {
   // Primero se elige qué pasó; hasta entonces no hay formulario.
   const [tipo, setTipo] = useState<TipoReporte | null>(null);
   const [foto, setFoto] = useState<FotoElegida | null>(null);
-  const [especie, setEspecie] = useState<Especie>('perro');
-  const [nombre, setNombre] = useState('');
-  const [tamanio, setTamanio] = useState<Tamanio | null>(null);
-  const [color, setColor] = useState('');
-  const [tieneCollar, setTieneCollar] = useState(false);
-  const [descripcion, setDescripcion] = useState('');
+  // Los datos del animal (especie, nombre, tamaño, color, collar, descripción y contacto).
+  const [datos, setDatos] = useState<CambiosReporte>(DATOS_INICIALES);
   const [cuando, setCuando] = useState<Cuando>('ahora');
   const [cuandoPerdido, setCuandoPerdido] = useState<CuandoPerdido>('hoy');
   const [ubicacion, setUbicacion] = useState<LngLat | null>(null);
-  const [contactoFamilia, setContactoFamilia] = useState('');
   const [intentado, setIntentado] = useState(false);
+  const cambiarDatos = (cambios: Partial<CambiosReporte>) =>
+    setDatos((anteriores) => ({ ...anteriores, ...cambios }));
 
   const errorFoto = intentado && !foto ? t.publicar.fotoObligatoria : null;
   const errorUbicacion = intentado && !ubicacion ? t.publicar.ubicacionFaltante : null;
@@ -105,13 +100,7 @@ function FormularioPublicar({ usuarioId }: { usuarioId: string }) {
     publicar.mutate(
       {
         tipo,
-        especie,
-        nombre,
-        contactoFamilia,
-        tamanio,
-        color,
-        tieneCollar,
-        descripcion,
+        ...datos,
         fotoUri: foto.uri,
         fotoAncho: foto.width,
         ubicacion,
@@ -155,42 +144,7 @@ function FormularioPublicar({ usuarioId }: { usuarioId: string }) {
 
       <SelectorFoto foto={foto} onCambio={setFoto} error={errorFoto} />
 
-      <Seccion titulo={t.publicar.especie}>
-        <Chips opciones={OPCIONES_ESPECIE} valor={especie} onCambio={setEspecie} />
-      </Seccion>
-
-      {perdido ? (
-        <CampoTexto
-          etiqueta={t.publicar.nombre}
-          placeholder={t.publicar.nombrePlaceholder}
-          value={nombre}
-          onChangeText={setNombre}
-          maxLength={40}
-        />
-      ) : null}
-
-      <Seccion titulo={t.publicar.tamanio}>
-        <Chips opciones={OPCIONES_TAMANIO} valor={tamanio} onCambio={setTamanio} />
-      </Seccion>
-
-      <CampoTexto
-        etiqueta={t.publicar.color}
-        placeholder={t.publicar.colorPlaceholder}
-        value={color}
-        onChangeText={setColor}
-        maxLength={80}
-      />
-
-      <Interruptor etiqueta={t.publicar.collar} valor={tieneCollar} onCambio={setTieneCollar} />
-
-      <CampoTexto
-        etiqueta={perdido ? t.publicar.senas : t.publicar.descripcion}
-        placeholder={perdido ? t.publicar.senasPlaceholder : t.publicar.descripcionPlaceholder}
-        value={descripcion}
-        onChangeText={setDescripcion}
-        multiline
-        maxLength={1000}
-      />
+      <CamposAnimal tipo={tipo} valores={datos} onCambio={cambiarDatos} />
 
       {perdido ? (
         <Seccion titulo={t.publicar.cuandoPerdido}>
@@ -212,13 +166,9 @@ function FormularioPublicar({ usuarioId }: { usuarioId: string }) {
       </Seccion>
 
       {perdido ? (
-        <CampoTexto
-          etiqueta={t.publicar.contactoFamilia}
-          placeholder={t.publicar.contactoFamiliaPlaceholder}
-          ayuda={t.publicar.contactoFamiliaAyuda}
-          value={contactoFamilia}
-          onChangeText={setContactoFamilia}
-          maxLength={200}
+        <CampoContactoFamilia
+          valor={datos.contactoFamilia}
+          onCambio={(contactoFamilia) => cambiarDatos({ contactoFamilia })}
         />
       ) : null}
     </Pantalla>
