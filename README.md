@@ -125,7 +125,7 @@ Conviene tener tres cuentas: A y B con email, y C que entra con Google (o una cu
 4. **Bloquear:** con A, en una conversación con B, **Más opciones → Bloquear a B**. B ya no puede escribirle ni abrir conversaciones nuevas con A, y A deja de recibir avisos de B. En **Perfil → Personas bloqueadas**, **Desbloquear** lo deshace.
 5. **Resguardo de un perdido:** con B, en un perdido de A, **Me lo llevé / está resguardado** pide una foto actual. El contacto que deje B lo ven A y B; C ve "Alguien avisó que lo tiene" y no ve el contacto, tampoco por la API.
 6. **Denuncias de cuentas nuevas:** tres denuncias de cuentas creadas hace menos de 7 días no ocultan nada. En el panel de moderación esas denuncias llevan la etiqueta **Cuenta nueva**.
-7. **Borrar la cuenta:** con B, **Perfil → Borrar mi cuenta**. Elegí si sus casos abiertos y lo que aportó a casos de otros quedan publicados sin su nombre (por defecto) o se borran, marcá que entendés y confirmá. Volvés al mapa sin sesión. Los casos que quedaron dicen "una cuenta eliminada" en el historial, sin botón para escribir.
+7. **Borrar la cuenta:** con B, **Perfil → Borrar mi cuenta**. Si B tiene perdidos publicados, la pantalla avisa que se borran siempre. Elegí si sus encontrados abiertos y lo que aportó a casos de otros quedan publicados sin su nombre (por defecto) o se borran, marcá que entendés y confirmá. Volvés al mapa sin sesión. Los casos que quedaron dicen "una cuenta eliminada" en el historial, sin botón para escribir.
 
 Todas las reglas, probadas directo en la base: `supabase/tests/fase7_cuenta.sql`.
 

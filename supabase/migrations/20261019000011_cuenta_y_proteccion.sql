@@ -7,7 +7,8 @@
 --     ser una foto de la carpeta propia. Nadie ve los datos de términos ajenos.
 --   · Borrado de cuenta: las claves hacia perfiles se revisaron una por una.
 --     Lo que queda publicado puede quedar anónimo (usuario en null) y todo lo
---     demás se borra. Ver docs/DECISIONES.md.
+--     demás se borra. Los perdidos propios se borran siempre: sin su familia
+--     nadie los podría cerrar ni confirmar. Ver docs/DECISIONES.md.
 --   · Bloqueos: quien está bloqueado no abre conversaciones ni manda mensajes,
 --     y quien bloquea deja de recibir sus notificaciones.
 --   · Denuncias: para ocultar solo cuentan las de cuentas con 7 días o más.
@@ -1338,15 +1339,16 @@ join public.animales a on a.id = d.animal_id;
 -- ---------------------------------------------------------------------------
 -- 10. Borrar la cuenta
 -- Lo que se conserva, si la persona elige dejarlo publicado (por defecto):
---   · sus casos abiertos, sin autor;
+--   · sus encontrados abiertos, sin autor;
 --   · sus avistamientos y cambios de estado en casos abiertos de otros, sin autor.
 -- "Abierto" es que el caso principal (siguiendo vinculado_a) esté avistado o
 -- resguardado. Si elige borrarlo, se borra también eso.
--- Siempre se borran: sus casos cerrados (con lo que tienen adentro), sus
--- avistamientos y cambios de estado en casos cerrados, su contacto de
--- resguardo, el contacto_familia y, por cascada al borrar el perfil,
--- seguimientos, notificaciones (las suyas y las que causó), tokens, denuncias
--- hechas, bloqueos, conversaciones y mensajes.
+-- Siempre se borran: sus perdidos, aunque estén abiertos (sin la familia nadie
+-- los puede cerrar ni confirmar una coincidencia, y quedarían en el mapa para
+-- siempre); sus casos cerrados (con lo que tienen adentro); sus avistamientos
+-- y cambios de estado en casos cerrados; su contacto de resguardo y, por
+-- cascada al borrar el perfil, seguimientos, notificaciones (las suyas y las
+-- que causó), tokens, denuncias hechas, bloqueos, conversaciones y mensajes.
 -- Las fotos no se borran acá (no se tocan filas de storage.objects por SQL):
 -- la app pide la lista con fotos_para_borrar y las borra con la API de Storage.
 -- ---------------------------------------------------------------------------
@@ -1386,10 +1388,12 @@ begin
   update public.animales set contacto_familia = null
   where creado_por = p_uid and contacto_familia is not null;
 
-  -- Casos propios que se borran, con los reportes unidos a ellos.
+  -- Casos propios que se borran, con los reportes unidos a ellos: los
+  -- perdidos siempre; los encontrados, si están cerrados o si no se conservan.
   with recursive objetivo as (
     select a.id from public.animales a
-    where a.creado_por = p_uid and not (v_conservar and public.caso_abierto(a.id))
+    where a.creado_por = p_uid
+      and not (v_conservar and a.tipo_reporte = 'encontrado' and public.caso_abierto(a.id))
   ), arbol as (
     select id from objetivo
     union
@@ -1428,7 +1432,8 @@ $$;
 revoke all on function public.limpiar_cuenta from public, anon, authenticated;
 
 -- Si se borra un usuario desde el panel de Supabase (sin pasar por la app),
--- se aplica lo mismo con la opción por defecto: dejar publicado lo abierto.
+-- se aplica lo mismo con la opción por defecto: dejar publicado lo abierto
+-- (menos sus perdidos, que se borran siempre).
 create or replace function public.al_borrar_perfil()
 returns trigger
 language plpgsql
@@ -1446,7 +1451,8 @@ create trigger perfiles_al_borrar
   for each row execute function public.al_borrar_perfil();
 
 -- Las fotos de la carpeta del usuario que hay que borrar antes de borrar la
--- cuenta: todas menos las de lo que queda publicado sin autor.
+-- cuenta: todas menos las de lo que queda publicado sin autor. Las de sus
+-- perdidos se borran siempre, como los perdidos.
 create or replace function public.fotos_para_borrar(p_conservar_abiertos boolean default true)
 returns setof text
 language sql
@@ -1465,6 +1471,7 @@ as $$
         exists (
           select 1 from public.animales a
           where a.creado_por = (select auth.uid())
+            and a.tipo_reporte = 'encontrado'
             and a.foto_principal_path = o.name
             and public.caso_abierto(a.id)
         )
@@ -1473,6 +1480,13 @@ as $$
           where av.usuario_id = (select auth.uid())
             and av.foto_path = o.name
             and public.caso_abierto(av.animal_id)
+            -- Lo que vio de su propio perdido se borra con el perdido.
+            and not exists (
+              select 1 from public.animales p
+              where p.id = av.animal_id
+                and p.creado_por = (select auth.uid())
+                and p.tipo_reporte = 'perdido'
+            )
         )
       )
     )

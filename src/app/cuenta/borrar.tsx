@@ -38,9 +38,12 @@ export default function PantallaBorrarCuenta() {
   const [paso, setPaso] = useState<PasoBorrado | null>(null);
   const borrar = useBorrarCuenta(setPaso);
 
-  const abiertos =
-    misAnimales.data?.filter((a) => a.estado === 'avistado' || a.estado === 'resguardado').length ??
-    0;
+  // Los perdidos abiertos se borran siempre; la elección es para los encontrados.
+  const abiertos = (misAnimales.data ?? []).filter(
+    (a) => a.estado === 'avistado' || a.estado === 'resguardado',
+  );
+  const perdidos = abiertos.filter((a) => a.tipo_reporte === 'perdido').length;
+  const encontrados = abiertos.length - perdidos;
 
   const enviar = () => {
     setIntentado(true);
@@ -98,14 +101,17 @@ export default function PantallaBorrarCuenta() {
             </Texto>
           </View>
         ))}
+        {perdidos > 0 ? (
+          <Mensaje texto={t.cuenta.borrar.perdidosAviso(perdidos)} tipo="error" />
+        ) : null}
       </View>
 
       <View style={estilos.seccion}>
         <Texto variante="subtitulo" accessibilityRole="header">
           {t.cuenta.borrar.abiertos}
         </Texto>
-        {abiertos > 0 ? (
-          <Texto variante="secundario">{t.cuenta.borrar.abiertosCantidad(abiertos)}</Texto>
+        {encontrados > 0 ? (
+          <Texto variante="secundario">{t.cuenta.borrar.abiertosCantidad(encontrados)}</Texto>
         ) : null}
         <OpcionesTarjeta
           opciones={OPCIONES}

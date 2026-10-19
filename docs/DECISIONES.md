@@ -133,13 +133,14 @@ Antes, borrar un usuario borraba en cascada todos sus casos, incluso los abierto
 
 ## 2026-10-19 · Qué se borra y qué queda al borrar la cuenta
 
-Una sola elección para los casos abiertos y para lo aportado a casos abiertos de otros: quedan publicados sin autor (por defecto, para no perjudicar a una familia que busca) o se borran. "Abierto" es que el caso principal, siguiendo `vinculado_a`, esté avistado o resguardado: un reporte propio unido a un caso abierto de otro se trata como abierto. Todo lo demás se borra:
+Una sola elección para los encontrados abiertos y para lo aportado a casos abiertos de otros: quedan publicados sin autor (por defecto, para no perjudicar a una familia que busca) o se borran. "Abierto" es que el caso principal, siguiendo `vinculado_a`, esté avistado o resguardado: un reporte propio unido a un caso abierto de otro se trata como abierto. Todo lo demás se borra:
+- **Perdidos propios, aunque estén abiertos.** Un perdido sin familia no lo puede cerrar ni reabrir nadie, y nadie puede confirmar sus coincidencias, porque solo la familia reconoce a su animal: quedaría en el mapa para siempre. Ajuste pedido en la revisión de la Fase 7; la pantalla de borrar la cuenta lo avisa antes de confirmar.
 - **Casos cerrados propios, con todo lo que tienen**, aunque incluyan avistamientos de otras personas y los reportes de otros que se unieron a ellos (`vinculado_a` pasa a `on delete cascade`). También se borran las conversaciones sobre esos casos, como cualquier caso borrado.
 - **Avistamientos y cambios de estado propios en casos cerrados de otros.** Se recalcula `ultimo_avistamiento_en` del caso.
 - **Siempre:** el contacto de resguardo y el `contacto_familia`, aunque el caso quede publicado.
 - **Por cascada al borrar el perfil:** seguimientos, notificaciones (las propias y las que causó), tokens, denuncias hechas, bloqueos, conversaciones y mensajes. Las conversaciones se borran enteras: sin la otra persona no hay con quién hablar.
 
-La lógica vive en `limpiar_cuenta`, que usan `borrar_mi_cuenta` (con la elección) y un trigger `before delete` en `perfiles` (con la opción por defecto), para que borrar desde el panel de Supabase deje la base igual de prolija. Un caso anónimo no tiene quien lo cierre: en un encontrado puede cerrarlo quien lo resguarda, y si no, un moderador lo puede ocultar. Una coincidencia con un perdido anónimo no la decide nadie, porque solo la familia puede reconocer a su animal.
+La lógica vive en `limpiar_cuenta`, que usan `borrar_mi_cuenta` (con la elección) y un trigger `before delete` en `perfiles` (con la opción por defecto), para que borrar desde el panel de Supabase deje la base igual de prolija. Así, lo único que puede quedar sin autor son encontrados y aportes a casos de otros. Un encontrado anónimo lo puede cerrar quien lo resguarda, y si no lo resguarda nadie, un moderador lo puede ocultar.
 
 ## 2026-10-19 · Fotos de una cuenta borrada: primero Storage, después la base
 

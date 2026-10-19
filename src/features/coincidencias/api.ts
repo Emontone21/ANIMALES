@@ -70,8 +70,9 @@ export function otroAnimal(c: CoincidenciaDetalle, animalId: string) {
 }
 
 /**
- * Si el par incluye un perdido (nunca hay dos), quién es su familia. familia
- * es null si la familia borró su cuenta: entonces no decide nadie.
+ * Si el par incluye un perdido (nunca hay dos), quién es su familia. Al borrar
+ * la cuenta los perdidos se borran, así que familia no debería ser null; si lo
+ * fuera, no decide nadie, como en la base.
  */
 export function perdidoDelPar(
   c: CoincidenciaDetalle,

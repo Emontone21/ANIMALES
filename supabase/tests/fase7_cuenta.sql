@@ -7,7 +7,7 @@
 --
 -- Personas: F (familia), H (encontró), R (resguarda), V (vecino), N (entró con
 -- Google, sin términos), W (aceptó una versión vieja), B (borra su cuenta y deja
--- lo abierto), K (borra todo), D (la borran desde el panel), M (moderador),
+-- lo abierto, menos su perdido, que se borra siempre), K (borra todo), D (la borran desde el panel), M (moderador),
 -- tres cuentas nuevas y tres de más de 7 días para las denuncias.
 -- =============================================================================
 begin;
@@ -68,7 +68,7 @@ declare
   d constant uuid := '00000000-0000-4000-8000-000000000709';
   p1 uuid; p2 uuid; e7 uuid; e8 uuid; hd uuid;
   ho uuid; hc uuid; he uuid; hr uuid; hx uuid;
-  b1 uuid; b2 uuid; b3 uuid; b4 uuid; k1 uuid; d1 uuid; d2 uuid;
+  b1 uuid; b2 uuid; b3 uuid; b4 uuid; k1 uuid; d1 uuid; d2 uuid; d3 uuid;
   conv uuid; coinc uuid;
 begin
   -- F: dos perros perdidos.
@@ -114,9 +114,10 @@ begin
   conv := public.abrir_conversacion(ho, h);
   insert into public.mensajes (conversacion_id, emisor_id, cuerpo) values (conv, v, 'Lo vi en la plaza');
 
-  -- R resguarda el perdido de B, con foto y contacto.
+  -- R resguarda el perdido de B, con foto y contacto, y el encontrado de B, con contacto.
   perform set_config('request.jwt.claims', json_build_object('sub', r, 'role', 'authenticated')::text, true);
   perform public.cambiar_estado_animal(b2, 'resguardado', 'Contacto de R', null, null, null, r || '/t7-1.jpg');
+  perform public.cambiar_estado_animal(b1, 'resguardado', 'Contacto de R en B1');
 
   -- B cierra B3 y le escribe a H; H cierra HC.
   perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
@@ -148,11 +149,13 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', v, 'role', 'authenticated')::text, true);
   perform public.registrar_avistamiento(k1, v || '/t7-3.jpg', -34.90, -56.15);
 
-  -- D: uno abierto y uno cerrado.
+  -- D: un encontrado abierto, uno cerrado y un perdido abierto.
   perform set_config('request.jwt.claims', json_build_object('sub', d, 'role', 'authenticated')::text, true);
   d1 := public.publicar_animal('perro', d || '/t7-1.jpg', -34.90, -56.15);
   d2 := public.publicar_animal('perro', d || '/t7-2.jpg', -34.90, -56.15);
   perform public.cambiar_estado_animal(d2, 'reunido');
+  d3 := public.publicar_animal('perro', d || '/t7-3.jpg', -34.90, -56.15, now() - interval '1 day',
+    null, null, false, null, 'perdido', 'Bobby');
 
   -- H recibió el aviso del mensaje de B (se tiene que borrar con su cuenta).
   if not exists (select 1 from public.notificaciones where usuario_id = h and actor_id = b and tipo = 'mensaje') then
@@ -176,6 +179,7 @@ begin
   perform set_config('prueba.k1', k1::text, true);
   perform set_config('prueba.d1', d1::text, true);
   perform set_config('prueba.d2', d2::text, true);
+  perform set_config('prueba.d3', d3::text, true);
 end $$;
 
 -- -----------------------------------------------------------------------------
@@ -557,11 +561,14 @@ declare
   k constant uuid := '00000000-0000-4000-8000-000000000708';
   v_fotos text[];
 begin
-  -- 20. Fotos a borrar si B deja lo abierto: las de su caso cerrado, la de su
-  -- avistamiento en un caso cerrado, su foto de perfil y la que quedó sin usar.
+  -- 20. Fotos a borrar si B deja lo abierto: la de su perdido (se borra igual),
+  -- la de su caso cerrado, la de su avistamiento en un caso cerrado, su foto de
+  -- perfil y la que quedó sin usar.
   perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
   select array_agg(x order by x) into v_fotos from public.fotos_para_borrar(true) as x;
-  if v_fotos is distinct from array[b || '/t7-3.jpg', b || '/t7-6.jpg', b || '/t7-7.jpg', b || '/t7-8.jpg'] then
+  if v_fotos is distinct from array[
+    b || '/t7-2.jpg', b || '/t7-3.jpg', b || '/t7-6.jpg', b || '/t7-7.jpg', b || '/t7-8.jpg'
+  ] then
     raise exception 'FALLA 20a: fotos_para_borrar(true) devolvió %', v_fotos;
   end if;
   -- Si borra todo, son todas las de su carpeta.
@@ -604,6 +611,7 @@ declare
   k1 uuid := current_setting('prueba.k1')::uuid;
   d1 uuid := current_setting('prueba.d1')::uuid;
   d2 uuid := current_setting('prueba.d2')::uuid;
+  d3 uuid := current_setting('prueba.d3')::uuid;
   v_quien uuid;
 begin
   -- 22. La cuenta y el perfil ya no existen.
@@ -630,19 +638,23 @@ begin
     end if;
   end loop;
 
-  -- 24. B dejó lo abierto: sus casos abiertos siguen, sin autor y sin contacto.
-  if (select count(*) from public.animales where id in (b1, b2) and creado_por is null) <> 2 then
-    raise exception 'FALLA 24a: los casos abiertos de B no quedaron publicados sin autor';
+  -- 24. B dejó lo abierto: su encontrado abierto sigue, sin autor.
+  if not exists (select 1 from public.animales where id = b1 and creado_por is null) then
+    raise exception 'FALLA 24a: el encontrado abierto de B no quedó publicado sin autor';
   end if;
-  if (select contacto_familia from public.animales where id = b2) is not null then
-    raise exception 'FALLA 24b: el contacto_familia no se borró';
+  -- Su perdido abierto se borró igual, con su contacto_familia y lo que tenía
+  -- adentro: sin familia nadie lo podría cerrar ni confirmar.
+  if exists (select 1 from public.animales where id = b2)
+     or exists (select 1 from public.avistamientos where animal_id = b2)
+     or exists (select 1 from public.contactos_resguardo where animal_id = b2) then
+    raise exception 'FALLA 24b: el perdido de B no se borró aunque eligió dejar lo abierto';
   end if;
   if not exists (select 1 from public.animales_detalle where id = b1 and creador_nombre is null)
      or not exists (select 1 from public.animales_mapa where id = b1) then
     raise exception 'FALLA 24c: el caso anónimo no se ve en el detalle o en el mapa';
   end if;
-  -- El contacto de R en el perdido de B es de R: sigue.
-  if not exists (select 1 from public.contactos_resguardo where animal_id = b2 and usuario_id = r) then
+  -- El contacto de R en el encontrado de B es de R: sigue.
+  if not exists (select 1 from public.contactos_resguardo where animal_id = b1 and usuario_id = r) then
     raise exception 'FALLA 24d: se borró el contacto de otra persona';
   end if;
   -- Su reporte unido a un caso abierto sigue, sin autor.
@@ -698,19 +710,21 @@ begin
     raise exception 'FALLA 27: se borraron filas de storage.objects por SQL';
   end if;
 
-  -- 28. Borrar desde el panel aplica la opción por defecto.
+  -- 28. Borrar desde el panel aplica la opción por defecto: deja el encontrado
+  -- abierto y borra el cerrado y el perdido.
   delete from auth.users where id = d;
   if not exists (select 1 from public.animales where id = d1 and creado_por is null)
-     or exists (select 1 from public.animales where id = d2) then
-    raise exception 'FALLA 28: borrar desde el panel no dejó lo abierto ni borró lo cerrado';
+     or exists (select 1 from public.animales where id in (d2, d3)) then
+    raise exception 'FALLA 28a: borrar desde el panel no dejó lo abierto o no borró lo cerrado y el perdido';
+  end if;
+  -- No queda ningún perdido sin familia.
+  if exists (select 1 from public.animales where tipo_reporte = 'perdido' and creado_por is null) then
+    raise exception 'FALLA 28b: quedó un perdido sin familia';
   end if;
 
-  -- Coincidencias con casos anónimos, para la parte E.
+  -- Coincidencia con un caso anónimo, para la parte E.
   insert into public.coincidencias (animal_origen, animal_candidato, similitud)
   values (least(b1, ho), greatest(b1, ho), 0.9);
-  insert into public.coincidencias (animal_origen, animal_candidato, similitud)
-  select least(b2, x.id), greatest(b2, x.id), 0.9
-  from public.animales x where x.id = current_setting('prueba.e7')::uuid;
 end $$;
 
 -- -----------------------------------------------------------------------------
@@ -722,16 +736,11 @@ do $$
 declare
   h constant uuid := '00000000-0000-4000-8000-000000000702';
   v constant uuid := '00000000-0000-4000-8000-000000000704';
-  m constant uuid := '00000000-0000-4000-8000-000000000710';
   ho uuid := current_setting('prueba.ho')::uuid;
-  e7 uuid := current_setting('prueba.e7')::uuid;
   b1 uuid := current_setting('prueba.b1')::uuid;
-  b2 uuid := current_setting('prueba.b2')::uuid;
   k_enc uuid;
-  k_per uuid;
 begin
   select id into k_enc from public.coincidencias where animal_origen = least(b1, ho) and animal_candidato = greatest(b1, ho);
-  select id into k_per from public.coincidencias where animal_origen = least(b2, e7) and animal_candidato = greatest(b2, e7);
 
   perform set_config('request.jwt.claims', json_build_object('sub', v, 'role', 'authenticated')::text, true);
   -- 29. Se puede avisar que lo vieron (sin autor no hay a quién avisar, y no falla).
@@ -739,35 +748,18 @@ begin
   -- 30. Un tercero no cierra un caso anónimo.
   begin
     perform public.cambiar_estado_animal(b1, 'reunido');
-    raise exception 'FALLA 30a: un tercero cerró un encontrado anónimo';
-  exception when insufficient_privilege then null;
-  end;
-  begin
-    perform public.cambiar_estado_animal(b2, 'reunido');
-    raise exception 'FALLA 30b: un tercero cerró un perdido anónimo';
+    raise exception 'FALLA 30: un tercero cerró un encontrado anónimo';
   exception when insufficient_privilege then null;
   end;
   -- 31. Ni confirma una coincidencia con un caso anónimo.
   begin
     perform public.resolver_coincidencia(k_enc, false);
-    raise exception 'FALLA 31a: un tercero resolvió una coincidencia con un encontrado anónimo';
+    raise exception 'FALLA 31: un tercero resolvió una coincidencia con un encontrado anónimo';
   exception when insufficient_privilege then null;
   end;
   -- Quien publicó el otro sí.
   perform set_config('request.jwt.claims', json_build_object('sub', h, 'role', 'authenticated')::text, true);
   perform public.resolver_coincidencia(k_enc, false);
-  -- Con un perdido anónimo no decide nadie: ni quien encontró ni un moderador.
-  begin
-    perform public.resolver_coincidencia(k_per, true);
-    raise exception 'FALLA 31b: quien encontró resolvió una coincidencia con un perdido anónimo';
-  exception when insufficient_privilege then null;
-  end;
-  perform set_config('request.jwt.claims', json_build_object('sub', m, 'role', 'authenticated')::text, true);
-  begin
-    perform public.resolver_coincidencia(k_per, true);
-    raise exception 'FALLA 31c: un moderador resolvió una coincidencia con un perdido anónimo';
-  exception when insufficient_privilege then null;
-  end;
 end $$;
 
 rollback;

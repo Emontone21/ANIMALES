@@ -500,14 +500,22 @@ export const t = {
       seBorra: 'Se borra siempre',
       seBorraLista: [
         'Tu perfil: tu nombre público y tu foto.',
+        'Tus animales perdidos, aunque sigan abiertos: sin vos nadie podría cerrarlos ni confirmar si alguien los encontró, y quedarían en el mapa para siempre.',
         'Tus casos cerrados y lo que aportaste a casos cerrados.',
         'Lo que seguís, tus notificaciones y tus mensajes.',
         'Las denuncias que hiciste y las personas que bloqueaste.',
         'Cualquier contacto que hayas compartido en un caso.',
       ],
-      abiertos: '¿Qué hacemos con tus casos abiertos y lo que aportaste a casos de otros?',
+      /** Si tiene perdidos abiertos, se lo decimos antes de que confirme. */
+      perdidosAviso: (n: number) =>
+        n === 1
+          ? 'Tenés 1 animal perdido publicado: se va a borrar aunque elijas dejar publicado lo demás.'
+          : `Tenés ${n} animales perdidos publicados: se van a borrar aunque elijas dejar publicado lo demás.`,
+      abiertos: '¿Qué hacemos con tus encontrados abiertos y lo que aportaste a casos de otros?',
       abiertosCantidad: (n: number) =>
-        n === 1 ? 'Tenés 1 caso abierto.' : `Tenés ${n} casos abiertos.`,
+        n === 1
+          ? 'Tenés 1 animal encontrado abierto.'
+          : `Tenés ${n} animales encontrados abiertos.`,
       opciones: {
         conservar: {
           titulo: 'Dejarlo publicado sin mi nombre',
@@ -517,7 +525,7 @@ export const t = {
         borrar: {
           titulo: 'Borrarlo',
           detalle:
-            'Se borran tus casos abiertos, con todo lo que tienen, y tus avisos y fotos en casos de otros.',
+            'Se borran tus encontrados abiertos, con todo lo que tienen, y tus avisos y fotos en casos de otros.',
         },
       },
       confirmo: 'Entiendo que no se puede deshacer.',
@@ -656,8 +664,8 @@ export const t = {
         {
           titulo: 'Cómo borrar tu cuenta',
           parrafos: [
-            'En Perfil, tocá «Borrar mi cuenta». Se borran tu perfil, tus casos cerrados, lo que seguís, tus notificaciones, tus mensajes, tus denuncias, tus bloqueos y cualquier contacto que hayas compartido.',
-            'Con tus casos abiertos y lo que aportaste a casos de otros elegís: dejarlos publicados sin tu nombre, para no perjudicar a una familia que busca, o borrarlos. Las fotos de lo que se borra se borran también.',
+            'En Perfil, tocá «Borrar mi cuenta». Se borran tu perfil, tus animales perdidos (aunque sigan abiertos), tus casos cerrados, lo que seguís, tus notificaciones, tus mensajes, tus denuncias, tus bloqueos y cualquier contacto que hayas compartido.',
+            'Con tus encontrados abiertos y lo que aportaste a casos de otros elegís: dejarlos publicados sin tu nombre, para no perjudicar a una familia que busca, o borrarlos. Las fotos de lo que se borra se borran también.',
             'Mientras tengas la cuenta, guardamos tus datos para que la app funcione.',
           ],
         },
