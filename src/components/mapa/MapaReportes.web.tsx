@@ -14,11 +14,11 @@ import {
 } from '@/components/mapa/capasWeb';
 import { useEstiloMapa } from '@/components/mapa/estiloBase';
 import {
-  ID_CAPA_CENTRO,
   ID_CAPA_CLUSTER,
   ID_CAPA_MI_UBICACION_HALO,
   ID_CAPA_PUNTO,
   ID_FUENTE_ANIMALES,
+  MARCADOR,
 } from '@/components/mapa/estilosCapa';
 import {
   animalesAGeoJSON,
@@ -29,11 +29,20 @@ import {
 import { coloresDeEstado, type Paleta } from '@/constants/tema';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
-import { urlFoto } from '@/lib/imagenes';
+import { urlFoto, urlMiniatura } from '@/lib/imagenes';
 import { MONTEVIDEO, ZOOM_CIUDAD } from '@/lib/ubicacion';
 import type { AnimalEnMapa } from '@/types/dominio';
 
 const SIN_MARGENES = { top: 0, right: 0, bottom: 0, left: 0 };
+
+/** Un marcador con foto ya dibujado, con lo que hace falta para saber si cambió. */
+type MarcadorWeb = {
+  marcador: Marker;
+  circulo: HTMLElement;
+  animal: AnimalEnMapa;
+  seleccionado: boolean;
+  c: Paleta;
+};
 
 /**
  * Mapa principal en el navegador (MapLibre GL JS). Mismas capas que la versión
@@ -60,8 +69,8 @@ export function MapaReportes({
   const cargadoRef = useRef(false);
   // Estilo y esquema con los que se cargó el mapa por última vez.
   const aplicadoRef = useRef<{ estilo: typeof estiloBase; esquema: typeof esquema } | null>(null);
-  const marcadorRef = useRef<Marker | null>(null);
-  const resaltadoRef = useRef<string | null>(null);
+  // Marcadores con foto, por id del animal.
+  const marcadoresRef = useRef(new Map<string, MarcadorWeb>());
 
   const seleccionado = animales.find((a) => a.id === seleccionadoId) ?? null;
   const colorTipo = coloresDeEstado(
@@ -73,6 +82,8 @@ export function MapaReportes({
   // Lo último recibido, para los eventos del mapa y por si el estilo todavía no cargó.
   const actual = useRef({
     animales: animalesAGeoJSON([]),
+    porId: new Map<string, AnimalEnMapa>(),
+    resaltadoId,
     recorrido: recorridoAGeoJSON([]),
     miUbicacion: puntoAGeoJSON(null),
     seleccionadoId,
@@ -88,6 +99,7 @@ export function MapaReportes({
     Object.assign(actual.current, {
       c,
       esquema,
+      resaltadoId,
       colorTipo,
       margenes,
       onSeleccionar,
@@ -133,13 +145,15 @@ export function MapaReportes({
       if (mapa.getLayer(ID_CAPA_MI_UBICACION_HALO))
         mapa.moveLayer(ID_CAPA_MI_UBICACION_HALO, ID_CAPA_CLUSTER);
       cargadoRef.current = true;
-      aplicarResaltado(mapa, resaltadoRef.current, resaltadoRef.current);
     });
 
+    // Cuando el mapa termina de dibujar (al cargar, al moverse, con datos
+    // nuevos), cada punto suelto que se ve tiene su marcador con foto.
+    mapa.on('idle', () => actualizarMarcadores(mapa, marcadoresRef.current, actual.current));
+
+    // El marcador no recibe el toque: llega a la zona táctil que tiene debajo.
     const tocarPunto = (evento: MapMouseEvent) => {
-      const feature = mapa.queryRenderedFeatures(evento.point, {
-        layers: [ID_CAPA_PUNTO, ID_CAPA_CENTRO],
-      })[0];
+      const feature = mapa.queryRenderedFeatures(evento.point, { layers: [ID_CAPA_PUNTO] })[0];
       const id = feature?.properties?.['id'];
       if (typeof id === 'string') actual.current.onSeleccionar(id);
     };
@@ -189,15 +203,16 @@ export function MapaReportes({
   }, [estiloBase]);
 
   // Al desmontar.
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    const marcadores = marcadoresRef.current;
+    return () => {
       cargadoRef.current = false;
-      marcadorRef.current?.remove();
+      for (const { marcador } of marcadores.values()) marcador.remove();
+      marcadores.clear();
       mapaRef.current?.remove();
       mapaRef.current = null;
-    },
-    [],
-  );
+    };
+  }, []);
 
   // Cambio de esquema: se recarga el estilo y, con él, las capas con la paleta nueva.
   // Si la descarga falló y se usa la URL tal cual, el estilo no cambia pero las capas sí.
@@ -213,6 +228,7 @@ export function MapaReportes({
 
   useEffect(() => {
     actual.current.animales = animalesAGeoJSON(animales);
+    actual.current.porId = new Map(animales.map((a) => [a.id, a]));
     const mapa = mapaRef.current;
     if (mapa && cargadoRef.current) {
       (mapa.getSource(ID_FUENTE_ANIMALES) as GeoJSONSource | undefined)?.setData(
@@ -237,31 +253,19 @@ export function MapaReportes({
   }, [miUbicacion, c, esquema]);
 
   useEffect(() => {
-    const mapa = mapaRef.current;
-    const anterior = resaltadoRef.current;
-    resaltadoRef.current = resaltadoId;
-    if (mapa && cargadoRef.current) aplicarResaltado(mapa, anterior, resaltadoId);
-  }, [resaltadoId]);
-
-  useEffect(() => {
     actual.current.seleccionadoId = seleccionadoId;
     const mapa = mapaRef.current;
     if (mapa && cargadoRef.current) filtrarSeleccionado(mapa, seleccionadoId);
   }, [seleccionadoId]);
 
-  // Marcador con foto del seleccionado.
+  // Selección, datos, paleta o tarjeta con el mouse encima: se rehacen los
+  // marcadores que cambiaron (el resto, en el próximo "idle").
   useEffect(() => {
-    marcadorRef.current?.remove();
-    marcadorRef.current = null;
+    actual.current.resaltadoId = resaltadoId;
     const mapa = mapaRef.current;
-    if (!mapa || !seleccionado) return;
-    marcadorRef.current = new Marker({
-      element: elementoFoto(seleccionado, c),
-      anchor: 'bottom',
-    })
-      .setLngLat([seleccionado.lng, seleccionado.lat])
-      .addTo(mapa);
-  }, [seleccionado, c, estiloBase]);
+    if (mapa && cargadoRef.current)
+      actualizarMarcadores(mapa, marcadoresRef.current, actual.current);
+  }, [animales, seleccionadoId, resaltadoId, c]);
 
   return (
     <View style={estilos.raiz}>
@@ -272,16 +276,70 @@ export function MapaReportes({
   );
 }
 
-function aplicarResaltado(mapa: MapaGL, anterior: string | null, nuevo: string | null) {
-  if (!mapa.getSource(ID_FUENTE_ANIMALES)) return;
-  if (anterior)
-    mapa.setFeatureState({ source: ID_FUENTE_ANIMALES, id: anterior }, { resaltado: false });
-  if (nuevo) mapa.setFeatureState({ source: ID_FUENTE_ANIMALES, id: nuevo }, { resaltado: true });
+type EstadoMarcadores = {
+  porId: Map<string, AnimalEnMapa>;
+  seleccionadoId: string | null;
+  resaltadoId: string | null;
+  c: Paleta;
+};
+
+/**
+ * Deja un marcador con foto en cada punto suelto que se ve (los que dibuja la
+ * zona táctil) y en el seleccionado, aunque un cluster lo tape. Reutiliza los
+ * que no cambiaron y saca los que ya no se ven o quedaron dentro de un cluster.
+ */
+function actualizarMarcadores(
+  mapa: MapaGL,
+  marcadores: Map<string, MarcadorWeb>,
+  { porId, seleccionadoId, resaltadoId, c }: EstadoMarcadores,
+) {
+  const ids = new Set<string>();
+  if (mapa.getLayer(ID_CAPA_PUNTO)) {
+    for (const feature of mapa.queryRenderedFeatures({ layers: [ID_CAPA_PUNTO] })) {
+      const id = feature.properties?.['id'];
+      if (typeof id === 'string') ids.add(id);
+    }
+  }
+  if (seleccionadoId) ids.add(seleccionadoId);
+
+  for (const [id, { marcador }] of marcadores) {
+    if (!ids.has(id) || !porId.has(id)) {
+      marcador.remove();
+      marcadores.delete(id);
+    }
+  }
+  for (const id of ids) {
+    const animal = porId.get(id);
+    if (!animal) continue;
+    const seleccionado = id === seleccionadoId;
+    const actual = marcadores.get(id);
+    if (actual?.animal === animal && actual.seleccionado === seleccionado && actual.c === c)
+      continue;
+    actual?.marcador.remove();
+    const { raiz, circulo } = elementoFoto(animal, c, seleccionado);
+    const marcador = new Marker({ element: raiz, anchor: 'bottom' })
+      .setLngLat([animal.lng, animal.lat])
+      .addTo(mapa);
+    marcadores.set(id, { marcador, circulo, animal, seleccionado, c });
+  }
+  // La tarjeta con el mouse encima en el panel agranda su marcador.
+  for (const [id, { circulo }] of marcadores) {
+    circulo.style.transform = id === resaltadoId ? 'scale(1.12)' : '';
+  }
 }
 
-/** Círculo de 58 con la foto, borde interno en superficie, anillo del tipo y colita (6.6). */
-function elementoFoto(animal: AnimalEnMapa, c: Paleta): HTMLElement {
-  const anillo = coloresDeEstado(c, animal.estado, animal.tipo_reporte).anillo;
+/**
+ * Marcador del mapa (6.6): círculo de 48 (58 si está seleccionado) con la
+ * miniatura, borde interno en superficie, anillo del tipo, colita y, en los
+ * perdidos, halo. Los reunidos van al 45 %.
+ */
+function elementoFoto(
+  animal: AnimalEnMapa,
+  c: Paleta,
+  seleccionado: boolean,
+): { raiz: HTMLElement; circulo: HTMLElement } {
+  const { anillo, opacidad } = coloresDeEstado(c, animal.estado, animal.tipo_reporte);
+  const diametro = seleccionado ? MARCADOR.diametroSeleccionado : MARCADOR.diametro;
   const raiz = document.createElement('div');
   raiz.setAttribute('aria-hidden', 'true');
   Object.assign(raiz.style, {
@@ -289,20 +347,41 @@ function elementoFoto(animal: AnimalEnMapa, c: Paleta): HTMLElement {
     flexDirection: 'column',
     alignItems: 'center',
     pointerEvents: 'none',
+    opacity: String(opacidad),
+    // El seleccionado queda por encima de los demás.
+    zIndex: seleccionado ? '2' : '1',
     filter: `drop-shadow(0px 6px 9px ${c.sombra})`,
   });
   const circulo = document.createElement('div');
   Object.assign(circulo.style, {
-    width: '58px',
-    height: '58px',
+    position: 'relative',
+    width: `${diametro}px`,
+    height: `${diametro}px`,
     boxSizing: 'border-box',
     borderRadius: '50%',
-    border: `3px solid ${anillo}`,
+    border: `${MARCADOR.anillo}px solid ${anillo}`,
     background: c.superficie,
-    padding: '3px',
+    padding: `${MARCADOR.borde}px`,
   });
+  if (animal.tipo_reporte === 'perdido') {
+    const halo = document.createElement('div');
+    Object.assign(halo.style, {
+      position: 'absolute',
+      inset: `${-(MARCADOR.halo + MARCADOR.anillo)}px`,
+      borderRadius: '50%',
+      background: c.perdido,
+      opacity: String(MARCADOR.opacidadHalo),
+      zIndex: '-1',
+    });
+    circulo.appendChild(halo);
+  }
   const foto = document.createElement('img');
-  foto.src = urlFoto(animal.foto_principal_path);
+  // La miniatura; si no existe (fotos de antes de la Fase 8), la original.
+  foto.src = urlMiniatura(animal.foto_principal_path);
+  foto.onerror = () => {
+    foto.onerror = null;
+    foto.src = urlFoto(animal.foto_principal_path);
+  };
   foto.alt = '';
   Object.assign(foto.style, {
     width: '100%',
@@ -315,14 +394,14 @@ function elementoFoto(animal: AnimalEnMapa, c: Paleta): HTMLElement {
   circulo.appendChild(foto);
   const colita = document.createElement('div');
   Object.assign(colita.style, {
-    width: '12px',
-    height: '12px',
-    marginTop: '-8px',
+    width: `${MARCADOR.colita}px`,
+    height: `${MARCADOR.colita}px`,
+    marginTop: `${-MARCADOR.solapeColita}px`,
     transform: 'rotate(45deg)',
     background: anillo,
   });
   raiz.append(circulo, colita);
-  return raiz;
+  return { raiz, circulo };
 }
 
 const crear = crearEstilos((c) => ({

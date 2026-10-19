@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
@@ -11,6 +10,7 @@ import { Boton } from '@/components/ui/Boton';
 import { Cargando } from '@/components/ui/Cargando';
 import { Chips } from '@/components/ui/Chips';
 import { EtiquetaEstado } from '@/components/ui/Etiqueta';
+import { FotoMiniatura } from '@/components/ui/FotoMiniatura';
 import { estaActivo } from '@/components/ui/interaccion';
 import { Mensaje } from '@/components/ui/Mensaje';
 import { Pantalla } from '@/components/ui/Pantalla';
@@ -25,7 +25,6 @@ import { useMisAnimales } from '@/features/reportes/api';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 import { haceCuanto } from '@/lib/fechas';
-import { urlFoto } from '@/lib/imagenes';
 
 const OPCIONES_APARIENCIA = PREFERENCIAS_APARIENCIA.map((valor) => ({
   valor,
@@ -153,8 +152,8 @@ export default function PantallaPerfil() {
                     accessibilityRole="button"
                     onPress={() => router.push(`/animal/${a.vinculado_a ?? a.id}`)}
                     style={(estado) => [estilos.fila, estaActivo(estado) && estilos.filaActiva]}>
-                    <Image
-                      source={{ uri: urlFoto(a.foto_principal_path) }}
+                    <FotoMiniatura
+                      ruta={a.foto_principal_path}
                       style={estilos.foto}
                       contentFit="cover"
                       accessibilityIgnoresInvertColors

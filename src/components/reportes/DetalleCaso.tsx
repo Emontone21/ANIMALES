@@ -68,7 +68,7 @@ export function DetalleCaso({ animal: a, avistamientos, cambios, historial, onVo
       ? (cambios.find((cambio) => cambio.estado_nuevo === 'resguardado') ?? null)
       : null;
   const contacto = resguardo?.contacto_compartido ?? null;
-  const acciones = useAccionesCaso(a, resguardo);
+  const acciones = useAccionesCaso(a, resguardo, avistamientos);
   const abierto = a.estado === 'avistado' || a.estado === 'resguardado';
   const hayBotones = acciones.puedeEscribir || acciones.puedeVerlo;
   const amplio = disposicion === 'amplio';
@@ -128,6 +128,13 @@ export function DetalleCaso({ animal: a, avistamientos, cambios, historial, onVo
     <View style={estilos.flotantes}>
       <BotonRedondo icono="chevron-back" accessibilityLabel={t.comunes.volver} onPress={onVolver} />
       <View style={estilos.flotantesDerecha}>
+        {acciones.puedeCompartir ? (
+          <BotonRedondo
+            icono="share-social-outline"
+            accessibilityLabel={t.compartir.boton}
+            onPress={acciones.compartir}
+          />
+        ) : null}
         <BotonRedondo
           icono={acciones.siguiendo ? 'notifications' : 'notifications-outline'}
           color={acciones.siguiendo ? 'primario' : 'texto'}

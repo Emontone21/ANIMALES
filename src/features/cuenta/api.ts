@@ -1,14 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 
-import { BUCKET_FOTOS } from '@/lib/imagenes';
+import { borrarFotos } from '@/lib/fotos';
 import { supabase } from '@/lib/supabase';
 import type { AlBorrarCuenta } from '@/types/dominio';
 
-/** La API de Storage borra de a tandas. */
-const TANDA = 100;
-
-export class ErrorFotos extends Error {}
+export { ErrorFotos } from '@/lib/fotos';
 
 export type PasoBorrado = 'fotos' | 'cuenta';
 
@@ -33,12 +30,8 @@ export async function borrarCuenta(
     p_conservar_abiertos: conservar,
   });
   if (errorLista) throw errorLista;
-  for (let i = 0; i < fotos.length; i += TANDA) {
-    const tanda = fotos.slice(i, i + TANDA);
-    const { data, error } = await supabase.storage.from(BUCKET_FOTOS).remove(tanda);
-    // Storage no da error si no pudo borrar alguna: se comparan las cantidades.
-    if (error || data.length !== tanda.length) throw new ErrorFotos(error?.message ?? '');
-  }
+  // Las miniaturas vienen en la lista: están en la carpeta del usuario.
+  await borrarFotos(fotos);
 
   onPaso?.('cuenta');
   const { error } = await supabase.rpc('borrar_mi_cuenta', { p_conservar_abiertos: conservar });

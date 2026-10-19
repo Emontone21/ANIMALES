@@ -59,6 +59,26 @@ export type NuevoReporte = {
   vistoEn: Date;
 };
 
+/**
+ * Lo que quien publicó puede corregir de su reporte (Fase 8). El tipo, la
+ * ubicación y las fotos no se editan. Nombre y contacto, solo en perdidos.
+ */
+export type CambiosReporte = Pick<
+  NuevoReporte,
+  'especie' | 'nombre' | 'contactoFamilia' | 'tamanio' | 'color' | 'tieneCollar' | 'descripcion'
+>;
+
+/** Lo que hace falta de un caso para armar el texto y la vista previa al compartirlo. */
+export type DatosCompartir = {
+  tipo: TipoReporte;
+  estado: EstadoAnimal;
+  nombre: string | null;
+  especie: Especie;
+  color: string | null;
+  tamanio: Tamanio | null;
+  tieneCollar: boolean;
+};
+
 export const MOTIVOS_DENUNCIA: MotivoDenuncia[] = [
   'spam',
   'contenido_inapropiado',

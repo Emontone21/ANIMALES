@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { claveSeguimientos } from '@/features/seguimientos/api';
-import { comprimirFoto, subirFoto } from '@/lib/imagenes';
+import { borrarFotos, comprimirYSubir } from '@/lib/fotos';
 import { supabase } from '@/lib/supabase';
 import type {
   AnimalDetalle,
@@ -9,6 +9,7 @@ import type {
   AvistamientoDetalle,
   CambioEstado,
   CambioEstadoDetalle,
+  CambiosReporte,
   EventoHistorial,
   NuevoAvistamiento,
   NuevoReporte,
@@ -100,12 +101,11 @@ export function armarHistorial(
 // --- Escrituras -------------------------------------------------------------
 
 /**
- * Comprime la foto, la sube y crea animal + primer avistamiento (perdido o
+ * Comprime la foto, la sube (con su miniatura) y crea animal + primer avistamiento (perdido o
  * encontrado). En los perdidos la base redondea la ubicación. Devuelve el id.
  */
 export async function publicarAnimal(reporte: NuevoReporte, usuarioId: string): Promise<string> {
-  const comprimida = await comprimirFoto(reporte.fotoUri, reporte.fotoAncho);
-  const fotoPath = await subirFoto(comprimida.uri, usuarioId);
+  const fotoPath = await comprimirYSubir(reporte.fotoUri, reporte.fotoAncho, usuarioId);
 
   const { data, error } = await supabase.rpc('publicar_animal', {
     p_especie: reporte.especie,
@@ -130,8 +130,7 @@ export async function registrarAvistamiento(
   nuevo: NuevoAvistamiento,
   usuarioId: string,
 ): Promise<string> {
-  const comprimida = await comprimirFoto(nuevo.fotoUri, nuevo.fotoAncho);
-  const fotoPath = await subirFoto(comprimida.uri, usuarioId);
+  const fotoPath = await comprimirYSubir(nuevo.fotoUri, nuevo.fotoAncho, usuarioId);
 
   const { data, error } = await supabase.rpc('registrar_avistamiento', {
     p_animal_id: nuevo.animalId,
@@ -152,8 +151,7 @@ export async function registrarAvistamiento(
 export async function cambiarEstado(cambio: CambioEstado, usuarioId: string): Promise<void> {
   let fotoPath: string | null = null;
   if (cambio.fotoUri) {
-    const comprimida = await comprimirFoto(cambio.fotoUri, cambio.fotoAncho);
-    fotoPath = await subirFoto(comprimida.uri, usuarioId);
+    fotoPath = await comprimirYSubir(cambio.fotoUri, cambio.fotoAncho, usuarioId);
   }
 
   const { error } = await supabase.rpc('cambiar_estado_animal', {
@@ -165,6 +163,46 @@ export async function cambiarEstado(cambio: CambioEstado, usuarioId: string): Pr
     p_lng: cambio.ubicacion?.[0] ?? null,
     p_foto_path: fotoPath,
   });
+  if (error) throw error;
+}
+
+/**
+ * Corrige los datos de un reporte propio. En un encontrado no van nombre ni
+ * contacto de la familia (la base lo rechaza).
+ */
+export async function editarReporte(
+  animalId: string,
+  tipo: AnimalDetalle['tipo_reporte'],
+  cambios: CambiosReporte,
+): Promise<void> {
+  const perdido = tipo === 'perdido';
+  const { error } = await supabase.rpc('editar_reporte', {
+    p_animal_id: animalId,
+    p_especie: cambios.especie,
+    p_tamanio: cambios.tamanio,
+    p_color: cambios.color.trim() || null,
+    p_tiene_collar: cambios.tieneCollar,
+    p_descripcion: cambios.descripcion.trim() || null,
+    p_nombre: perdido ? cambios.nombre.trim() || null : null,
+    p_contacto_familia: perdido ? cambios.contactoFamilia.trim() || null : null,
+  });
+  if (error) throw error;
+}
+
+/**
+ * Borra un reporte propio, como al borrar la cuenta: primero las fotos propias
+ * del caso (con sus miniaturas) con la API de Storage, después el caso con
+ * todo lo que tiene. Si falla una foto, el caso queda entero para reintentar.
+ * Las fotos de otras personas quedan en Storage: no son de quien borra.
+ */
+export async function borrarReporte(animalId: string): Promise<void> {
+  const { data: fotos, error: errorFotos } = await supabase.rpc('fotos_del_reporte', {
+    p_animal_id: animalId,
+  });
+  if (errorFotos) throw errorFotos;
+  await borrarFotos(fotos);
+
+  const { error } = await supabase.rpc('borrar_reporte', { p_animal_id: animalId });
   if (error) throw error;
 }
 
@@ -186,9 +224,11 @@ export function useAnimal(id: string | undefined) {
   });
 }
 
+const claveMisAnimales = (usuarioId: string) => ['animales', 'mios', usuarioId] as const;
+
 export function useMisAnimales(usuarioId: string | null | undefined) {
   return useQuery({
-    queryKey: ['animales', 'mios', usuarioId ?? ''],
+    queryKey: claveMisAnimales(usuarioId ?? ''),
     queryFn: () => listarMisAnimales(usuarioId as string),
     enabled: Boolean(usuarioId),
   });
@@ -257,5 +297,34 @@ export function useCambiarEstado(usuarioId: string | null) {
       return cambiarEstado(cambio, usuarioId);
     },
     onSuccess: (_void, cambio) => invalidar(cambio.animalId),
+  });
+}
+
+export function useEditarReporte(animal: AnimalDetalle) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (cambios: CambiosReporte) => editarReporte(animal.id, animal.tipo_reporte, cambios),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: clavesReportes.mapa });
+      void queryClient.invalidateQueries({ queryKey: clavesReportes.animal(animal.id) });
+      if (animal.creado_por) {
+        void queryClient.invalidateQueries({ queryKey: claveMisAnimales(animal.creado_por) });
+      }
+    },
+  });
+}
+
+/** Al terminar, el caso deja de existir: se olvida y se refrescan el mapa y Mis reportes. */
+export function useBorrarReporte(animal: AnimalDetalle) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => borrarReporte(animal.id),
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey: clavesReportes.animal(animal.id) });
+      void queryClient.invalidateQueries({ queryKey: clavesReportes.mapa });
+      if (animal.creado_por) {
+        void queryClient.invalidateQueries({ queryKey: claveMisAnimales(animal.creado_por) });
+      }
+    },
   });
 }

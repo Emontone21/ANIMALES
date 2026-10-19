@@ -1,7 +1,7 @@
-import { Image } from 'expo-image';
 import { Pressable, View } from 'react-native';
 
 import { EtiquetaEstado } from '@/components/ui/Etiqueta';
+import { FotoMiniatura } from '@/components/ui/FotoMiniatura';
 import { estaActivo } from '@/components/ui/interaccion';
 import { Texto } from '@/components/ui/Texto';
 import { Espacio, Radio } from '@/constants/tema';
@@ -9,7 +9,6 @@ import type { CasoCercano } from '@/features/reportes/filtros';
 import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 import { haceCuanto } from '@/lib/fechas';
-import { urlFoto } from '@/lib/imagenes';
 
 export const ANCHO_TARJETA = 224;
 export const ALTO_FOTO_TARJETA = 124;
@@ -44,8 +43,8 @@ export function TarjetaCaso({
   const fila = forma === 'fila';
 
   const foto = (
-    <Image
-      source={{ uri: urlFoto(animal.foto_principal_path) }}
+    <FotoMiniatura
+      ruta={animal.foto_principal_path}
       style={fila ? estilos.fotoFila : [estilos.foto, { height: altoFoto }]}
       contentFit="cover"
       transition={150}

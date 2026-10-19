@@ -1,10 +1,10 @@
 # Encontrados · animales encontrados en Montevideo
 
-App para reunir perros y gatos perdidos con sus familias. La familia que perdió un animal lo publica en un mapa con una foto, y quien encuentra uno, también; otras personas avisan que lo vieron en otro lugar, que lo resguardaron o que ya volvió a su casa. La app compara las fotos y sugiere cuándo dos reportes podrían ser el mismo animal; una persona confirma, nunca se unen solos. Hay mensajería interna para hablar sin compartir datos personales, notificaciones y un panel de moderación. Cada persona maneja su cuenta (contraseña, perfil, borrado) y se protege de otros usuarios (bloqueos, términos, resguardo de perdidos con foto).
+App para reunir perros y gatos perdidos con sus familias. La familia que perdió un animal lo publica en un mapa con una foto, y quien encuentra uno, también; otras personas avisan que lo vieron en otro lugar, que lo resguardaron o que ya volvió a su casa. La app compara las fotos y sugiere cuándo dos reportes podrían ser el mismo animal; una persona confirma, nunca se unen solos. Hay mensajería interna para hablar sin compartir datos personales, notificaciones y un panel de moderación. Cada persona maneja su cuenta (contraseña, perfil, borrado) y se protege de otros usuarios (bloqueos, términos, resguardo de perdidos con foto). Quien publica puede corregir o borrar su reporte, y cualquiera lo puede compartir con una vista previa que muestra la foto del animal.
 
 Interfaz en español rioplatense. Stack: Expo + React Native + TypeScript (corre en el navegador y, con el mismo código, como app nativa), Supabase en la nube (Auth, Postgres con PostGIS y pgvector, Storage), mapas MapLibre con teselas gratuitas de OpenFreeMap, reconocimiento de imágenes con modelos open source en un Space gratuito de Hugging Face. Se despliega en Vercel.
 
-Estado: las fases 1 a 4 del brief, la Fase 6 (reportes de perdidos) y la Fase 7 (cuenta y protección de usuarios) están implementadas. Ver [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) y [docs/DECISIONES.md](docs/DECISIONES.md).
+Estado: las fases 1 a 4 del brief, la Fase 6 (reportes de perdidos), la Fase 7 (cuenta y protección de usuarios) y la Fase 8 (gestión de casos y compartir) están implementadas. Ver [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) y [docs/DECISIONES.md](docs/DECISIONES.md).
 
 Todo corre en la nube: no hace falta Docker ni Android Studio. Solo Node 20+ para desarrollar.
 
@@ -14,7 +14,7 @@ Todo corre en la nube: no hace falta Docker ni Android Studio. Solo Node 20+ par
 
 1. Creá un proyecto en [supabase.com](https://supabase.com) (plan gratuito). Guardá la contraseña de la base.
 2. En **Project Settings → API** copiá la **Project URL**, la clave **anon / publishable** y la **service_role** (esta última es secreta: solo va al servicio de visión).
-3. Aplicá las migraciones de `supabase/migrations/` **en orden** (0001 a 0011). Dos formas:
+3. Aplicá las migraciones de `supabase/migrations/` **en orden** (0001 a 0012). Dos formas:
 
    **a) CLI** (sin instalar nada):
 
@@ -41,7 +41,7 @@ Todo corre en la nube: no hace falta Docker ni Android Studio. Solo Node 20+ par
 cp .env.example .env
 ```
 
-Completá `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_ANON_KEY`. En Vercel van en **Settings → Environment Variables**.
+Completá `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_ANON_KEY`. En Vercel van en **Settings → Environment Variables**. `EXPO_PUBLIC_SITE_URL` es opcional: es la base de los links que se comparten (`<sitio>/animal/<id>`) y, si falta, se usa `https://animales-blue.vercel.app`.
 
 ### 3. Correr la web
 
@@ -55,8 +55,10 @@ Abre `http://localhost:8081`. En PowerShell, si `npx` está bloqueado por la pol
 ### 4. Vercel
 
 1. En [vercel.com](https://vercel.com) → **Add New Project** → importá `Emontone21/ANIMALES`. En **Framework Preset** elegí **Other**: Vercel suele detectar **FastAPI** por el servicio de visión en `services/vision/` y el build falla en `uv pip install`. `vercel.json` ya trae build (`npx expo export -p web`) y salida (`dist`). Si el proyecto ya existe, se cambia en **Settings → Build and Deployment → Framework Preset**.
-2. Cargá `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_ANON_KEY` (y opcionalmente `EXPO_PUBLIC_MAP_STYLE_URL`).
+2. Cargá `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_ANON_KEY` (y opcionalmente `EXPO_PUBLIC_MAP_STYLE_URL` y `EXPO_PUBLIC_SITE_URL`) para Production y Preview.
 3. Deploy. Cada push a `main` redeploya. Volvé a Supabase y poné la URL de Vercel como Site URL.
+
+Además de la web estática, Vercel publica una función: `api/vista-previa.ts`. `vercel.json` le manda solo a los bots de vista previa (WhatsApp, Facebook, Telegram…) los pedidos de `/animal/<id>`, y la función devuelve el `index.html` con la foto y el título del caso. Usa las mismas variables `EXPO_PUBLIC_*`, no necesita otras. `.vercelignore` deja afuera `services/`, para que Vercel no vuelva a detectar Python.
 
 ### 5. Servicio de visión (reconocimiento)
 
@@ -129,6 +131,18 @@ Conviene tener tres cuentas: A y B con email, y C que entra con Google (o una cu
 
 Todas las reglas, probadas directo en la base: `supabase/tests/fase7_cuenta.sql`.
 
+**Fase 8 · gestión de casos y compartir**
+
+Conviene tener dos cuentas: la que publica y otra.
+1. **Miniaturas:** publicá un caso. En Supabase, **Storage → fotos → <tu uid>**, quedan dos archivos: `<uuid>.jpg` y `<uuid>.miniatura.jpg` (320 × 320). En el mapa cada marcador lleva su foto: los perdidos con anillo naranja y halo, los encontrados con anillo oliva y los cerrados más claros; el seleccionado es más grande. Las tarjetas, **Cerca tuyo**, **Mis reportes** y los avatares cargan la miniatura (en la pestaña Red del navegador se ve `.miniatura.jpg`). Las fotos de antes de esta fase y los datos de demo muestran la original.
+2. **Editar:** en tu reporte, **Más opciones → Editar el reporte**. Cambiá el color, el tamaño o la descripción (en un perdido, también el nombre y el contacto) y tocá **Guardar cambios**: volvés al detalle con los datos nuevos. La foto, la ubicación y el tipo no se editan. Con la otra cuenta, **Más opciones** no muestra Editar ni Borrar. Si cambiás la especie, las coincidencias pendientes desaparecen y las fotos vuelven a la cola de reconocimiento.
+3. **Borrar:** **Más opciones → Borrar el reporte**. La confirmación dice qué se pierde, con la cantidad de avisos de otras personas. Al confirmar volvés al mapa y el caso ya no está; en Storage desaparecieron tus fotos del caso con sus miniaturas (las de otras personas quedan).
+4. **Compartir:** en el celular, el botón de compartir del detalle abre la hoja del sistema con un texto como "Se perdió Toby, perro marrón. Si lo viste, avisá acá: <link>". En una computadora sin hoja de compartir aparecen **Mandar por WhatsApp** y **Copiar el link**.
+5. **Vista previa del link:** pegá el link de un caso en WhatsApp o Telegram, o en el [depurador de Facebook](https://developers.facebook.com/tools/debug/): aparecen el título ("Se perdió Toby", "Perro encontrado"), una descripción corta y la miniatura. Un caso oculto o inexistente muestra la vista previa genérica. Desde una terminal: `curl -s -A "facebookexternalhit/1.1" https://animales-blue.vercel.app/animal/<id> | grep 'og:'`. Abierto en el navegador, el link muestra la app de siempre.
+6. **Ver lista:** en el celular, en la hoja **Cerca tuyo**, **Ver lista** abre todos los casos con los filtros del mapa, del más cercano al más lejano, con miniatura, etiqueta y distancia. Si cambiás un filtro ahí, el mapa también cambia.
+
+Editar y borrar, probados directo en la base: `supabase/tests/fase8_casos.sql`.
+
 **Fase 4 · notificaciones, mensajes, moderación**
 1. Con la demo seguí un animal; con tu cuenta registrá un avistamiento sobre ese animal. En la demo, la pestaña **Actividad → Novedades** muestra "Lo vieron de nuevo".
 2. Desde el detalle, **Escribirle a quien publicó** abre un chat. Respondé desde la otra cuenta: los mensajes llegan en pocos segundos y la otra persona recibe la novedad.
@@ -141,17 +155,18 @@ El mismo código compila para Android e iOS (MapLibre React Native, push con Exp
 ## Estructura
 
 ```
-src/app/            rutas (Expo Router): (tabs)/ mapa·publicar·actividad·perfil, animal/[id], conversacion/[id], moderacion, auth/, cuenta/, legal/
+src/app/            rutas (Expo Router): (tabs)/ mapa·publicar·actividad·perfil, animal/[id] (detalle y editar), casos (lista), conversacion/[id], moderacion, auth/, cuenta/, legal/
 src/components/     ui/ (botones, inputs, chips, casillas, avatar, modales), mapa/ (nativo .tsx y web .web.tsx), reportes/, auth/, legal/
 src/features/       auth, reportes, seguimientos, denuncias, coincidencias, notificaciones, mensajes, moderacion, perfil, bloqueos, cuenta, legal
-src/lib/            supabase, imágenes, ubicación, fechas, env
+src/lib/            supabase, imágenes (convención de miniaturas), fotos (comprimir, subir, borrar), compartir, ubicación, fechas, env
 src/i18n/es-UY.ts   todos los textos
 src/types/          database.ts (esquema), dominio.ts
-supabase/           migrations/ (0001–0011), tests/ (pruebas SQL por fase), seed.sql, config.toml
+supabase/           migrations/ (0001–0012), tests/ (pruebas SQL por fase), seed.sql, config.toml
+api/                función de Vercel: vista previa del link de un caso (Open Graph)
 services/vision/    microservicio Python de reconocimiento (Hugging Face Spaces)
 public/             estáticos de la web (worker de MapLibre, generado en postinstall)
 docs/               arquitectura y decisiones
-vercel.json         despliegue
+vercel.json         despliegue (y qué pedidos van a la función de api/)
 ```
 
 ## Atribución de mapas

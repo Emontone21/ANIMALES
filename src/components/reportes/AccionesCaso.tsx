@@ -16,10 +16,14 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { useDenuncia } from '@/features/denuncias/api';
 import { useTerminos } from '@/features/legal/terminos';
 import { useAbrirConversacion } from '@/features/mensajes/api';
+import { useBorrarReporte } from '@/features/reportes/api';
 import { useSeguimiento } from '@/features/seguimientos/api';
 import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
-import type { AnimalDetalle, CambioEstadoDetalle } from '@/types/dominio';
+import { datosParaCompartir, mensajeParaCompartir } from '@/lib/compartir';
+import { ErrorFotos } from '@/lib/fotos';
+import { abrirHojaCompartir, abrirWhatsApp, copiarLink } from '@/lib/hojaCompartir';
+import type { AnimalDetalle, AvistamientoDetalle, CambioEstadoDetalle } from '@/types/dominio';
 
 type NombreIcono = ComponentProps<typeof Ionicons>['name'];
 
@@ -28,6 +32,8 @@ type ModalCaso =
   | 'denuncia'
   | TipoCambio
   | 'opciones'
+  | 'compartir'
+  | 'borrar'
   | 'destinatario'
   | 'cuenta'
   | 'terminos'
@@ -41,9 +47,14 @@ const DURACION_AVISO = 6000;
 
 /**
  * Estado y reglas de las acciones del detalle de un caso: lo vi, novedades del
- * caso, seguir, denunciar y escribir. Quién ve cada acción sigue las reglas de siempre.
+ * caso, seguir, compartir, editar, borrar, denunciar y escribir. Quién ve cada
+ * acción sigue las reglas de siempre.
  */
-export function useAccionesCaso(animal: AnimalDetalle, resguardo: CambioEstadoDetalle | null) {
+export function useAccionesCaso(
+  animal: AnimalDetalle,
+  resguardo: CambioEstadoDetalle | null,
+  avistamientos: AvistamientoDetalle[],
+) {
   const router = useRouter();
   const { usuario } = useAuth();
   const [modal, setModal] = useState<ModalCaso>(null);
@@ -55,6 +66,9 @@ export function useAccionesCaso(animal: AnimalDetalle, resguardo: CambioEstadoDe
   const denuncia = useDenuncia(usuario?.id, animal.id);
   const conversacion = useAbrirConversacion();
   const terminos = useTerminos(usuario?.id);
+  const borrar = useBorrarReporte(animal);
+  // Resultado de copiar el link en la hoja de compartir (cuando no hay hoja del sistema).
+  const [avisoCopia, setAvisoCopia] = useState<{ texto: string; ok: boolean } | null>(null);
   // Lo que quiso hacer antes de aceptar los términos: se retoma al aceptarlos.
   const [pendiente, setPendiente] = useState<(() => void) | null>(null);
 
@@ -68,6 +82,11 @@ export function useAccionesCaso(animal: AnimalDetalle, resguardo: CambioEstadoDe
   const abierto = animal.estado === 'avistado' || animal.estado === 'resguardado';
   const esCreador = !!usuario && animal.creado_por === usuario.id;
   const esPerdido = animal.tipo_reporte === 'perdido';
+  // Editar y borrar: solo quien lo publicó, y no un reporte que ya se unió a otro caso.
+  const puedeGestionar = esCreador && animal.estado !== 'vinculado';
+  // Lo que se pierde al borrarlo: los avisos de otras personas que lo vieron.
+  const avisosDeOtros = avistamientos.filter((av) => av.usuario_id !== animal.creado_por).length;
+  const mensajeCompartir = mensajeParaCompartir(animal.id, datosParaCompartir(animal));
   // Quien lo tiene resguardado ahora (solo existe si el caso está resguardado).
   const esQuienResguarda = !!usuario && resguardo?.usuario_id === usuario.id;
 
@@ -174,6 +193,44 @@ export function useAccionesCaso(animal: AnimalDetalle, resguardo: CambioEstadoDe
     seguimiento.alternar.mutate();
   };
 
+  /** La hoja del sistema; si no hay (computadora), WhatsApp y copiar el link. */
+  const compartir = async () => {
+    const resultado = await abrirHojaCompartir(mensajeCompartir);
+    if (resultado === 'sinHoja') {
+      setAvisoCopia(null);
+      setModal('compartir');
+    }
+  };
+
+  const copiar = async () => {
+    const ok = await copiarLink(mensajeCompartir.url);
+    setAvisoCopia({ ok, texto: ok ? t.compartir.copiado : t.compartir.errorCopiar });
+  };
+
+  const editarReporte = () => {
+    setModal(null);
+    router.push({ pathname: '/animal/[id]/editar', params: { id: animal.id } });
+  };
+
+  const confirmarBorrado = () => {
+    borrar.reset();
+    setModal('borrar');
+  };
+
+  const borrarReporte = () =>
+    borrar.mutate(undefined, {
+      onSuccess: () => {
+        setModal(null);
+        router.replace('/');
+      },
+    });
+
+  const errorBorrar = borrar.isError
+    ? borrar.error instanceof ErrorFotos
+      ? t.borrarReporte.errorFotos
+      : borrar.error.message || t.comunes.errorGenerico
+    : null;
+
   const cerrarConAviso = (texto: string) => {
     setModal(null);
     setAviso(texto);
@@ -234,6 +291,21 @@ export function useAccionesCaso(animal: AnimalDetalle, resguardo: CambioEstadoDe
         titulo={t.animal.masOpciones}
         onCerrar={() => setModal(null)}
         opciones={[
+          ...(puedeGestionar
+            ? [
+                {
+                  titulo: t.animal.acciones.editar,
+                  icono: 'create-outline' as const,
+                  onPress: editarReporte,
+                },
+                {
+                  titulo: t.animal.acciones.borrar,
+                  icono: 'trash-outline' as const,
+                  variante: 'peligro' as const,
+                  onPress: confirmarBorrado,
+                },
+              ]
+            : []),
           {
             titulo: denuncia.yaDenuncio
               ? t.animal.acciones.denunciado
@@ -243,6 +315,47 @@ export function useAccionesCaso(animal: AnimalDetalle, resguardo: CambioEstadoDe
             deshabilitado: denuncia.yaDenuncio,
             onPress: () => pedir('denuncia'),
           },
+        ]}
+      />
+      <MenuOpciones
+        visible={modal === 'borrar'}
+        titulo={t.borrarReporte.titulo}
+        descripcion={t.borrarReporte.detalle(avisosDeOtros)}
+        error={errorBorrar}
+        onCerrar={() => setModal(null)}
+        opciones={[
+          {
+            titulo: t.borrarReporte.boton,
+            icono: 'trash-outline',
+            variante: 'peligro',
+            cargando: borrar.isPending,
+            onPress: borrarReporte,
+          },
+        ]}
+      />
+      <MenuOpciones
+        visible={modal === 'compartir'}
+        titulo={t.compartir.titulo}
+        descripcion={t.compartir.intro}
+        contenido={
+          <View style={estilosLink.contenido}>
+            <Texto variante="cuerpoFuerte" selectable>
+              {mensajeCompartir.url}
+            </Texto>
+            {avisoCopia ? (
+              <Mensaje texto={avisoCopia.texto} tipo={avisoCopia.ok ? 'exito' : 'error'} />
+            ) : null}
+          </View>
+        }
+        onCerrar={() => setModal(null)}
+        opciones={[
+          {
+            titulo: t.compartir.whatsapp,
+            icono: 'logo-whatsapp',
+            variante: 'primario',
+            onPress: () => abrirWhatsApp(mensajeCompartir),
+          },
+          { titulo: t.compartir.copiar, icono: 'copy-outline', onPress: () => void copiar() },
         ]}
       />
       <MenuOpciones
@@ -287,6 +400,9 @@ export function useAccionesCaso(animal: AnimalDetalle, resguardo: CambioEstadoDe
     loVi: () => pedir('avistamiento'),
     cambiarEstado: (tipo: TipoCambio) => pedir(tipo),
     abrirOpciones: () => setModal('opciones'),
+    /** Un caso oculto por moderación no se difunde. */
+    puedeCompartir: !animal.oculto,
+    compartir: () => void compartir(),
     escribir,
     seguir,
     modales,
@@ -351,6 +467,8 @@ export function NovedadesCaso({ acciones }: { acciones: AccionesCaso }) {
     </View>
   );
 }
+
+const estilosLink = { contenido: { gap: Espacio.s } } as const;
 
 const crear = crearEstilos(() => ({
   botonesCaso: { gap: Espacio.s },

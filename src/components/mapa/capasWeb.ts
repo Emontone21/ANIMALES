@@ -7,12 +7,9 @@ import {
   FILTRO_LINEA,
   FILTRO_PUNTO_RECORRIDO,
   FILTRO_ULTIMO,
-  filtroPerdido,
   filtroPunto,
-  ID_CAPA_CENTRO,
   ID_CAPA_CLUSTER,
   ID_CAPA_CLUSTER_NUMERO,
-  ID_CAPA_HALO,
   ID_CAPA_MI_UBICACION,
   ID_CAPA_MI_UBICACION_HALO,
   ID_CAPA_PUNTO,
@@ -25,10 +22,8 @@ import {
   LAYOUT_CLUSTER_NUMERO,
   LAYOUT_RECORRIDO_LINEA,
   OPCIONES_CLUSTER,
-  paintCentro,
   paintCluster,
   paintClusterNumero,
-  paintHalo,
   paintMiUbicacion,
   paintMiUbicacionHalo,
   paintPunto,
@@ -112,34 +107,18 @@ export function agregarCapasAnimales(
     paint: paintClusterNumero(c),
   });
   mapa.addLayer({
-    id: ID_CAPA_HALO,
-    type: 'circle',
-    source: fuente,
-    filter: filtroPerdido(seleccionadoId),
-    paint: paintHalo(c),
-  });
-  mapa.addLayer({
     id: ID_CAPA_PUNTO,
     type: 'circle',
     source: fuente,
     filter: filtroPunto(seleccionadoId),
     paint: paintPunto(c),
   });
-  mapa.addLayer({
-    id: ID_CAPA_CENTRO,
-    type: 'circle',
-    source: fuente,
-    filter: filtroPunto(seleccionadoId),
-    paint: paintCentro(c),
-  });
 }
 
-/** Saca de los círculos al seleccionado, que se muestra con su foto. */
+/** Saca de los puntos sueltos al seleccionado, que se dibuja aparte y más grande. */
 export function filtrarSeleccionado(mapa: MapaGL, seleccionadoId: string | null): void {
   if (!mapa.getLayer(ID_CAPA_PUNTO)) return;
-  mapa.setFilter(ID_CAPA_HALO, filtroPerdido(seleccionadoId));
   mapa.setFilter(ID_CAPA_PUNTO, filtroPunto(seleccionadoId));
-  mapa.setFilter(ID_CAPA_CENTRO, filtroPunto(seleccionadoId));
 }
 
 export function agregarCapasRecorrido(

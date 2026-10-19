@@ -1,10 +1,10 @@
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
 import { Boton } from '@/components/ui/Boton';
 import { Cargando } from '@/components/ui/Cargando';
 import { Etiqueta } from '@/components/ui/Etiqueta';
+import { FotoMiniatura } from '@/components/ui/FotoMiniatura';
 import { Mensaje } from '@/components/ui/Mensaje';
 import { Pantalla } from '@/components/ui/Pantalla';
 import { Texto } from '@/components/ui/Texto';
@@ -15,7 +15,6 @@ import { usePerfil } from '@/features/perfil/api';
 import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 import { fechaHoraCorta } from '@/lib/fechas';
-import { urlFoto } from '@/lib/imagenes';
 
 /** Panel para moderadores (perfiles.es_moderador): denuncias y ocultar publicaciones. */
 export default function PantallaModeracion() {
@@ -54,8 +53,8 @@ export default function PantallaModeracion() {
           {denuncias.data.map((d) => (
             <View key={d.id} style={estilos.tarjeta}>
               <View style={estilos.cabecera}>
-                <Image
-                  source={{ uri: urlFoto(d.animal_foto_path) }}
+                <FotoMiniatura
+                  ruta={d.animal_foto_path}
                   style={estilos.foto}
                   contentFit="cover"
                   accessibilityIgnoresInvertColors

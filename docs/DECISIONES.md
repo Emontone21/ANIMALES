@@ -169,3 +169,49 @@ Para ocultar sola una publicación cuentan las denuncias de cuentas que tenían 
 ## 2026-10-19 · Recuperar la contraseña en web
 
 `resetPasswordForEmail` manda un link que vuelve a `/auth/nueva-contrasena`. En web, el cliente de Supabase procesa el link al crearse y emite `PASSWORD_RECOVERY` antes de que la app termine de montar (espera las fuentes). Por eso la suscripción va al cargar el módulo (`src/features/auth/recuperacion.ts`) y no en un efecto de React. El mismo módulo lee la URL antes de que el cliente la limpie: así detecta un link vencido, que no emite ningún evento, y si Supabase manda el link a la raíz, la app igual lleva a elegir la contraseña nueva. En nativo, el deep link pasa por `crearSesionDesdeUrl`, que marca la recuperación cuando trae `type=recovery`.
+
+## 2026-10-19 · Miniaturas junto a la original, con la convención en un solo lugar
+
+Cada foto se sube con una miniatura cuadrada de 320 px en la misma carpeta: `<uid>/<uuid>.jpg` y `<uid>/<uuid>.miniatura.jpg`. El nombre se arma solo en `src/lib/imagenes.ts` (`rutaMiniatura`), que no importa nada de React ni de Expo para que también lo use la función de la vista previa. La base guarda solo la ruta de la original: no hizo falta tocar `publicar_animal`, `registrar_avistamiento`, `cambiar_estado_animal` ni el avatar.
+
+Para saber si una foto tiene miniatura, quien la muestra la pide y, si no carga, pasa a la original (`FotoMiniatura`, y lo mismo en los marcadores web). Se descartaron una columna en la base y consultar `storage.objects`: habría que cambiar cuatro RPC y las fotos viejas igual necesitarían un camino de respaldo. El costo es un pedido fallido por foto vieja; hoy en producción no hay ninguna (las de demo son URLs externas y van directo a la original).
+
+Para no borrar la miniatura de lo que queda publicado, la base solo sabe que una foto y sus variantes comparten la ruta hasta el primer punto (`raiz_foto`, migración 0012). `fotos_para_borrar` y `fotos_del_reporte` comparan por esa raíz. El sufijo `.miniatura.jpg` sigue estando solo en la app.
+
+## 2026-10-19 · Foto en todos los marcadores: marcadores de vista sobre una zona táctil
+
+DISENO.md 6.6 pide la foto en todos los marcadores. En web cada punto suelto que se ve es un `Marker` de MapLibre GL JS con un elemento del DOM; en nativo, un `Marker` de MapLibre React Native con `MarcadorFoto`. Los clusters siguen siendo capas de círculos. Debajo de cada foto queda una capa de círculos casi transparente (`animales-punto`), corrida hasta donde está la foto: recibe el toque igual que antes y, al consultarla, dice qué puntos sueltos se ven. Así la regla de qué se dibuja es la misma en las dos plataformas.
+
+Se descartó una capa de símbolos con la foto como ícono: en web obliga a recortar cada foto en un canvas (y una URL de demo sin cabeceras CORS lo rompe) y en nativo no hay forma de recortarlas en círculo. Con marcadores de vista, el recorte, el anillo y el halo son estilos comunes. El costo es un elemento por punto visible: con el clustering, a cualquier zoom son pocas decenas. La opacidad de la zona táctil es 0,01 y no 0: con 0, MapLibre nativo puede no dibujar la capa y entonces no responde al toque.
+
+## 2026-10-19 · Editar y borrar un reporte: solo quien lo publicó
+
+`editar_reporte` y `borrar_reporte` son RPC `security definer` que validan con `reporte_propio`: quien llama es quien publicó (con `is distinct from`, así un caso sin autor no lo cambia nadie) y el reporte no se unió a otro caso. Un reporte unido ya es parte del caso principal: sus avistamientos pasaron allá y borrarlo se llevaría la confirmación que calibra el umbral.
+
+- **Qué se edita:** especie, tamaño, color, collar y descripción; en un perdido, también nombre y contacto de la familia. El tipo, la ubicación y las fotos quedan fijos. Editar pide los términos, como publicar, porque publica texto nuevo; borrar no, como borrar la cuenta.
+- **Cambio de especie:** las coincidencias se buscan dentro de la misma especie, así que las pendientes se descartan con sus avisos y las fotos del caso vuelven a la cola de reconocimiento. Las resueltas quedan: son decisiones de una persona. Lo decidí yo: el pedido no lo mencionaba, y sin esto una especie corregida dejaba sugerencias equivocadas y no buscaba las buenas.
+- **Qué se borra:** la misma lógica que `limpiar_cuenta` usa para un caso, ahora en una función compartida (`borrar_casos`, sobre `arbol_de_casos`): el caso y los reportes unidos a él, con todo lo que cuelga, también los avistamientos de otras personas. `limpiar_cuenta` pasó a llamarla, con la misma regla de la Fase 7; las pruebas de la Fase 7 lo cubren.
+- **Avisos:** además de los que llevaban al caso (`animal_id`), `borrar_casos` borra los que hablan de sus coincidencias o sus conversaciones, que antes quedaban apuntando a algo que ya no existe. Vale también al borrar una cuenta.
+- **Fotos:** como al borrar la cuenta, primero la app borra con la API de Storage las fotos propias del caso con sus miniaturas (`fotos_del_reporte`, que deja afuera las que algo fuera del caso usa) y después llama a la RPC. Las de otras personas quedan en Storage.
+
+## 2026-10-19 · Compartir: la hoja del sistema y, si no hay, WhatsApp y copiar
+
+El botón Compartir del detalle usa `navigator.share` en web y `Share` en nativo. En web el link va aparte del texto y la app elegida lo pone después; en nativo va dentro del mensaje, porque Android ignora el campo `url` y en iOS, con los dos, sale repetido. Si no hay hoja de compartir (la mayoría de las computadoras), o falla por otra cosa que no sea que la persona la cerró, aparece una hoja con "Mandar por WhatsApp" (`https://wa.me/?text=`) y "Copiar el link", con el link a la vista por si copiar no funciona. El texto depende del tipo y del estado y sale de `t.compartir`. Un caso oculto por moderación no muestra el botón. El link usa `EXPO_PUBLIC_SITE_URL`, con `https://animales-blue.vercel.app` por defecto: los links compartidos desde una preview también llevan a producción.
+
+## 2026-10-19 · Vista previa del link: primera pieza de servidor propia, solo para bots
+
+La web es una sola página: todas las rutas devuelven el mismo `index.html`, así que WhatsApp, Facebook y Telegram mostraban una vista previa genérica. Ninguna opción sin servidor resuelve eso: los bots no ejecutan JavaScript. Se sumó una función de Vercel, `api/vista-previa.ts`: la primera pieza de servidor propia del proyecto. Es TypeScript sin dependencias (`fetch` y `Response` del runtime de Node) y reutiliza los textos de `es-UY.ts`, la convención de miniaturas y el armado del link. Lee el caso con la clave anon, como la app, y devuelve el `index.html` del mismo deploy con las etiquetas Open Graph y Twitter.
+
+**Solo para bots.** `vercel.json` reescribe `/animal/<id>` a la función solo si el user-agent es de un bot de vista previa conocido (WhatsApp, Facebook, Telegram, X, Slack, LinkedIn, Discord, Teams, iMessage, Google, Bing y otros). Las personas reciben el `index.html` estático desde la CDN, como siempre. Así la función no suma demora ni un punto de falla al abrir un caso: si se cae, solo se pierde la vista previa. El costo es mantener la lista de bots: uno que no esté recibe la página de siempre y muestra la vista previa genérica. Se descartó servirla a todos: cada visita pasaría por la función y por Supabase antes de mostrar la app.
+
+**Sin datos personales.** Título y descripción salen de los datos estructurados (tipo, estado, nombre del animal, especie, color, tamaño, collar). Nunca el contacto, quién publicó, la ubicación ni la descripción libre, donde alguien pudo haber escrito un teléfono o una dirección. A la base solo se le piden esas columnas. Un caso oculto, unido a otro o inexistente lleva las etiquetas genéricas.
+
+**Detalles.** La imagen es la miniatura de 320 (con `twitter:card` `summary`, que la muestra chica y cuadrada); si no existe, la original. El `index.html` se pide al propio deploy con un user-agent que no es de bot y se guarda cinco minutos en memoria; si no se puede leer, la función devuelve una página mínima con las etiquetas y sin caché. La respuesta queda cinco minutos en la CDN: una edición se ve en la vista previa a los pocos minutos (cada red, además, guarda la suya).
+
+## 2026-10-19 · .vercelignore para el servicio de visión
+
+Con la carpeta `api/`, Vercel empieza a construir funciones. Para que nunca vuelva a detectar Python por `services/vision/` (ver "Preset Other en el proyecto de Vercel"), `.vercelignore` deja afuera `services/`: Vercel ni siquiera recibe esos archivos. El preset del proyecto sigue en Other.
+
+## 2026-10-19 · Lista de casos con los filtros del mapa
+
+"Ver lista" en la hoja "Cerca tuyo" abre `/casos`: todos los casos con los filtros activos, del más cercano al más lejano al centro del mapa. Los filtros y el centro pasaron de estado local del mapa a un store de zustand en memoria (`useFiltrosMapa`), compartido por las dos pantallas: si se cambia un filtro en la lista, el mapa también cambia. Se descartó pasarlos por la URL: habría dos copias que mantener iguales. No se guardan en el dispositivo: al recargar vuelven a los iniciales, como antes. En tablets y computadoras la lista ya está en el panel lateral, así que "Ver lista" aparece solo en la hoja del celular.

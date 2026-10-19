@@ -1,12 +1,10 @@
-import { Image } from 'expo-image';
-
+import { FotoMiniatura } from '@/components/ui/FotoMiniatura';
 import { type EventoLinea, LineaTiempo } from '@/components/ui/LineaTiempo';
 import { Texto } from '@/components/ui/Texto';
 import { coloresDeEstado, Fuentes, Radio, type TipoReporte } from '@/constants/tema';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 import { fechaHoraCorta } from '@/lib/fechas';
-import { urlFoto } from '@/lib/imagenes';
 import type { EstadoAnimal, EventoHistorial } from '@/types/dominio';
 
 type Props = {
@@ -36,8 +34,8 @@ export function Historial({ eventos, estado, tipo }: Props) {
         nota: av.nota,
         fecha: fechaHoraCorta(evento.fecha),
         extra: av.foto_path ? (
-          <Image
-            source={{ uri: urlFoto(av.foto_path) }}
+          <FotoMiniatura
+            ruta={av.foto_path}
             style={estilos.miniatura}
             contentFit="cover"
             accessibilityIgnoresInvertColors

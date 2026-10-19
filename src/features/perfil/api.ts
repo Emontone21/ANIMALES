@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { BUCKET_FOTOS, comprimirFoto, subirFoto } from '@/lib/imagenes';
+import { comprimirYSubir, conVariantes } from '@/lib/fotos';
+import { BUCKET_FOTOS } from '@/lib/imagenes';
 import { supabase } from '@/lib/supabase';
 import type { Perfil } from '@/types/dominio';
 
@@ -27,13 +28,13 @@ export type CambiosPerfil = {
 
 /**
  * Guarda el nombre y la foto de perfil. La foto se comprime como las de los
- * casos y se sube a fotos/<uid>/; la anterior se borra con la API de Storage.
+ * casos y se sube a fotos/<uid>/ con su miniatura; la anterior se borra con la
+ * API de Storage.
  */
 export async function actualizarPerfil(perfil: Perfil, cambios: CambiosPerfil): Promise<void> {
   let avatarPath = perfil.avatar_path;
   if (cambios.foto) {
-    const comprimida = await comprimirFoto(cambios.foto.uri, cambios.foto.width);
-    avatarPath = await subirFoto(comprimida.uri, perfil.id);
+    avatarPath = await comprimirYSubir(cambios.foto.uri, cambios.foto.width, perfil.id);
   } else if (cambios.foto === null) {
     avatarPath = null;
   }
@@ -44,9 +45,10 @@ export async function actualizarPerfil(perfil: Perfil, cambios: CambiosPerfil): 
     .eq('id', perfil.id);
   if (error) throw error;
 
-  // La foto vieja ya no la usa nadie. Si no se puede borrar, el perfil igual quedó bien.
+  // La foto vieja (y su miniatura, si la tiene) ya no la usa nadie. Si no se
+  // puede borrar, el perfil igual quedó bien.
   if (perfil.avatar_path && perfil.avatar_path !== avatarPath) {
-    await supabase.storage.from(BUCKET_FOTOS).remove([perfil.avatar_path]);
+    await supabase.storage.from(BUCKET_FOTOS).remove(conVariantes([perfil.avatar_path]));
   }
 }
 

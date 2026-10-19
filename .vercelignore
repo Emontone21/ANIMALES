@@ -1,0 +1,4 @@
+# El servicio de visión (Python) se despliega en Hugging Face Spaces, no en
+# Vercel. Sin estos archivos, Vercel no puede volver a detectar FastAPI y
+# cambiar el preset "Other" (ver docs/DECISIONES.md).
+services/

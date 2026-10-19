@@ -136,9 +136,10 @@ function Navegacion() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           {/* El detalle dibuja sus propios botones flotantes sobre la foto. */}
           <Stack.Screen
-            name="animal/[id]"
+            name="animal/[id]/index"
             options={{ title: t.animal.titulo, headerShown: false }}
           />
+          <Stack.Screen name="casos" options={{ title: t.mapa.lista.titulo }} />
           <Stack.Screen name="conversacion/[id]" options={{ title: t.mensajes.titulo }} />
           <Stack.Screen name="moderacion" options={{ title: t.moderacion.titulo }} />
           {/* Se leen sin cuenta. */}
@@ -172,6 +173,7 @@ function Navegacion() {
           <Stack.Protected guard={cargando || !!usuario}>
             <Stack.Screen name="cuenta/editar" options={{ title: t.cuenta.editar.titulo }} />
             <Stack.Screen name="cuenta/borrar" options={{ title: t.cuenta.borrar.titulo }} />
+            <Stack.Screen name="animal/[id]/editar" options={{ title: t.editarReporte.titulo }} />
           </Stack.Protected>
         </Stack>
       </View>

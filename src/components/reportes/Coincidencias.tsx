@@ -1,9 +1,9 @@
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
 import { Boton } from '@/components/ui/Boton';
+import { FotoMiniatura } from '@/components/ui/FotoMiniatura';
 import { Mensaje } from '@/components/ui/Mensaje';
 import { Texto } from '@/components/ui/Texto';
 import { Espacio, Radio } from '@/constants/tema';
@@ -18,7 +18,6 @@ import {
 import { usePerfil } from '@/features/perfil/api';
 import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
-import { urlFoto } from '@/lib/imagenes';
 import type { CoincidenciaDetalle } from '@/types/dominio';
 
 type Props = { animalId: string };
@@ -91,14 +90,14 @@ export function Coincidencias({ animalId }: Props) {
                 style={estilos.fotos}
                 accessibilityElementsHidden
                 importantForAccessibility="no-hide-descendants">
-                <Image
-                  source={{ uri: urlFoto(propia) }}
+                <FotoMiniatura
+                  ruta={propia}
                   style={estilos.foto}
                   contentFit="cover"
                   accessibilityIgnoresInvertColors
                 />
-                <Image
-                  source={{ uri: urlFoto(otro.fotoPath) }}
+                <FotoMiniatura
+                  ruta={otro.fotoPath}
                   style={[estilos.foto, estilos.fotoSuperpuesta]}
                   contentFit="cover"
                   accessibilityIgnoresInvertColors
