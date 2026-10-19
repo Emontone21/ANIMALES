@@ -12,6 +12,7 @@ import { AnchoMaximo, Espacio } from '@/constants/tema';
 import { ingresarConEmail, ingresarConGoogle } from '@/features/auth/acciones';
 import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
+import { mensajeDeError } from '@/lib/errores';
 
 export default function PantallaIngresar() {
   const router = useRouter();
@@ -28,7 +29,7 @@ export default function PantallaIngresar() {
     try {
       await accion();
     } catch (e) {
-      setError(e instanceof Error ? e.message : t.auth.errores.desconocido);
+      setError(mensajeDeError(e, t.auth.errores.desconocido));
     } finally {
       setCargando(null);
     }

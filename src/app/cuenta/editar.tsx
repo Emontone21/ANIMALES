@@ -11,14 +11,13 @@ import { Pantalla } from '@/components/ui/Pantalla';
 import { Texto } from '@/components/ui/Texto';
 import { AnchoMaximo, Espacio } from '@/constants/tema';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { LARGO_NOMBRE_PUBLICO, nombrePublicoValido } from '@/features/auth/validaciones';
 import { useActualizarPerfil, usePerfil } from '@/features/perfil/api';
 import { type FotoElegida, useElegirFoto } from '@/hooks/useElegirFoto';
 import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
+import { mensajeDeError } from '@/lib/errores';
 import type { Perfil } from '@/types/dominio';
-
-const NOMBRE_MIN = 2;
-const NOMBRE_MAX = 40;
 
 /** Perfil › Editar perfil: nombre público y foto. */
 export default function PantallaEditarPerfil() {
@@ -36,7 +35,7 @@ export default function PantallaEditarPerfil() {
     return (
       <Pantalla scroll bordes={['left', 'right', 'bottom']} ancho={AnchoMaximo.formulario}>
         <Mensaje
-          texto={perfil.error?.message ?? t.comunes.errorGenerico}
+          texto={mensajeDeError(perfil.error)}
           tipo="error"
           onReintentar={() => void perfil.refetch()}
         />
@@ -57,8 +56,7 @@ function Editor({ perfil }: { perfil: Perfil }) {
   // En el celular se puede recortar cuadrada; en web el navegador no lo ofrece.
   const elegir = useElegirFoto(setFoto, { allowsEditing: true, aspect: [1, 1] });
 
-  const largo = nombre.trim().length;
-  const nombreValido = largo >= NOMBRE_MIN && largo <= NOMBRE_MAX;
+  const nombreValido = nombrePublicoValido(nombre);
   const fotoActual = foto === undefined ? perfil.avatar_path : null;
   const tieneFoto = Boolean(foto || fotoActual);
 
@@ -79,7 +77,7 @@ function Editor({ perfil }: { perfil: Perfil }) {
       pie={
         <View style={estilos.pie}>
           {actualizar.isError ? (
-            <Mensaje texto={actualizar.error.message || t.comunes.errorGenerico} tipo="error" />
+            <Mensaje texto={mensajeDeError(actualizar.error)} tipo="error" />
           ) : null}
           <Boton
             titulo={t.cuenta.editar.guardar}
@@ -128,7 +126,7 @@ function Editor({ perfil }: { perfil: Perfil }) {
         value={nombre}
         onChangeText={setNombre}
         autoComplete="name"
-        maxLength={NOMBRE_MAX}
+        maxLength={LARGO_NOMBRE_PUBLICO.maximo}
       />
     </Pantalla>
   );

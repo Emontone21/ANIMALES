@@ -54,15 +54,20 @@ export function crearMapaWeb(
   opciones: Omit<MapOptions, 'container' | 'style'>,
 ): MapaGL {
   configurarMapLibreWeb();
-  return new MapaGL({
+  const mapa = new MapaGL({
     container: contenedor,
     style: aEstiloWeb(estilo),
     attributionControl: false,
-    // Una mano arrastrando el mapa no rota ni inclina: el mapa queda siempre al norte.
+    // Ni el mouse, ni dos dedos, ni el teclado rotan o inclinan: el mapa queda
+    // siempre al norte, como en nativo (y en web no hay brújula para volver).
     pitchWithRotate: false,
     dragRotate: false,
+    touchPitch: false,
     ...opciones,
   });
+  mapa.touchZoomRotate.disableRotation();
+  mapa.keyboard.disableRotation();
+  return mapa;
 }
 
 /** Agrega la fuente y las capas, o solo actualiza los datos si ya existen. */

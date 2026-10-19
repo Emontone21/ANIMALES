@@ -13,10 +13,20 @@ Si no detecta ningún animal usa la foto entera. YOLOv8 queda descartado por ser
 
 ## Cómo funciona
 
-1. Cada avistamiento con foto entra a `cola_vision` (trigger en Supabase) y, si `config_app.vision_url` está seteada, Supabase llama a `POST /procesar` con el header `X-Vision-Secret`.
+1. Cada avistamiento con foto entra a `cola_vision` (trigger en Supabase). Cada vez que una fila queda pendiente (al entrar, o al volver a la cola porque se corrigió la especie del caso), si `config_app.vision_url` está seteada, Supabase llama a `POST /procesar` con el header `X-Vision-Secret` (migración 0013; la URL puede terminar o no en `/`).
 2. El servicio descarga la foto del bucket público, recorta al animal, calcula el embedding y llama a la RPC `guardar_embedding`.
-3. La RPC guarda el vector, compara por similitud coseno contra los demás animales de la misma especie dentro del radio y la ventana de tiempo configurados, y crea filas en `coincidencias` (estado `pendiente`).
-4. Si el Space estaba dormido y el webhook se perdió, un bucle interno revisa la cola cada `INTERVALO_COLA_SEG` segundos y `POST /procesar-pendientes` la drena a mano.
+3. La RPC guarda el vector y, si el caso está abierto y visible, compara por similitud coseno contra los demás animales abiertos y visibles de la misma especie dentro del radio y la ventana de tiempo configurados, y crea filas en `coincidencias` (estado `pendiente`). Nunca sugiere un perdido con otro perdido, ni un encontrado visto solo antes de la pérdida (más de un día antes).
+4. Si algo falla, el servicio llama a `marcar_error_vision` y la fila se reintenta con espera creciente: 5, 10, 20… minutos después de cada error, hasta 8 intentos (unas 10 horas). `cola_vision_pendientes` muestra solo lo que ya se puede reintentar.
+5. Si el Space estaba dormido y el webhook se perdió, un bucle interno revisa la cola cada `INTERVALO_COLA_SEG` segundos y `POST /procesar-pendientes` la drena a mano.
+
+Para volver a intentar las fotos que agotaron los intentos (por ejemplo, después de arreglar el Space), en el SQL Editor:
+
+```sql
+update cola_vision set estado = 'pendiente', intentos = 0, ultimo_error = null
+where estado = 'error';
+```
+
+Cada fila que vuelve a pendiente avisa al servicio.
 
 ## Desplegar en Hugging Face Spaces
 

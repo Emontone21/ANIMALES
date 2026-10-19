@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import { type ComponentRef, useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -33,6 +33,7 @@ import {
 } from '@/features/mensajes/api';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
+import { mensajeDeError } from '@/lib/errores';
 import { fechaHoraCorta } from '@/lib/fechas';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -57,7 +58,9 @@ function Chat({ conversacionId, miId }: { conversacionId: string; miId: string }
   const estilos = useEstilos(crear);
   const queryClient = useQueryClient();
   const conversacion = useConversacion(conversacionId);
-  const mensajes = useMensajes(conversacionId);
+  // Si otra pantalla la tapa (por ejemplo, el caso), deja de pedir mensajes.
+  const enFoco = useIsFocused();
+  const mensajes = useMensajes(conversacionId, enFoco);
   const enviar = useEnviarMensaje(conversacionId, miId);
   const terminos = useTerminos(miId);
   const alternarBloqueo = useAlternarBloqueo(miId);
@@ -153,7 +156,7 @@ function Chat({ conversacionId, miId }: { conversacionId: string; miId: string }
           <MenuOpciones
             visible={menu === 'opciones'}
             titulo={t.mensajes.masOpciones}
-            error={alternarBloqueo.isError ? alternarBloqueo.error.message : null}
+            error={alternarBloqueo.isError ? mensajeDeError(alternarBloqueo.error) : null}
             onCerrar={() => setMenu(null)}
             opciones={[
               otro.bloqueaste
@@ -175,7 +178,7 @@ function Chat({ conversacionId, miId }: { conversacionId: string; miId: string }
             visible={menu === 'bloquear'}
             titulo={t.bloqueos.confirmarTitulo(nombreOtro)}
             descripcion={t.bloqueos.confirmarDetalle}
-            error={alternarBloqueo.isError ? alternarBloqueo.error.message : null}
+            error={alternarBloqueo.isError ? mensajeDeError(alternarBloqueo.error) : null}
             onCerrar={() => setMenu(null)}
             opciones={[
               {
@@ -204,7 +207,7 @@ function Chat({ conversacionId, miId }: { conversacionId: string; miId: string }
         ) : mensajes.isError ? (
           <View style={estilos.relleno}>
             <Mensaje
-              texto={mensajes.error.message}
+              texto={mensajeDeError(mensajes.error)}
               tipo="error"
               onReintentar={() => void mensajes.refetch()}
             />
@@ -240,7 +243,7 @@ function Chat({ conversacionId, miId }: { conversacionId: string; miId: string }
 
         {enviar.isError ? (
           <View style={estilos.relleno}>
-            <Mensaje texto={enviar.error.message || t.comunes.errorGenerico} tipo="error" />
+            <Mensaje texto={mensajeDeError(enviar.error)} tipo="error" />
           </View>
         ) : null}
 

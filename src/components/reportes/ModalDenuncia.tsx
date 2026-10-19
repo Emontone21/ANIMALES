@@ -8,6 +8,7 @@ import { Mensaje } from '@/components/ui/Mensaje';
 import { Seccion } from '@/components/ui/Seccion';
 import { useDenuncia } from '@/features/denuncias/api';
 import { t } from '@/i18n/es-UY';
+import { mensajeDeError } from '@/lib/errores';
 import { type MotivoDenuncia, MOTIVOS_DENUNCIA } from '@/types/dominio';
 
 type Props = {
@@ -70,9 +71,7 @@ export function ModalDenuncia({ visible, animalId, usuarioId, onCerrar, onExito 
         multiline
         maxLength={500}
       />
-      {enviar.isError ? (
-        <Mensaje texto={enviar.error.message || t.comunes.errorGenerico} tipo="error" />
-      ) : null}
+      {enviar.isError ? <Mensaje texto={mensajeDeError(enviar.error)} tipo="error" /> : null}
     </Hoja>
   );
 }

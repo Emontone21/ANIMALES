@@ -73,12 +73,13 @@ export async function marcarLeidos(conversacionId: string, miId: string): Promis
 
 // --- Hooks -----------------------------------------------------------------
 
-export function useConversaciones(habilitado: boolean) {
+/** Se refresca cada 20 s solo mientras `activo` (la pantalla en foco). */
+export function useConversaciones(habilitado: boolean, activo = true) {
   return useQuery({
     queryKey: clavesMensajes.conversaciones,
     queryFn: listarConversaciones,
     enabled: habilitado,
-    refetchInterval: 20_000,
+    refetchInterval: activo ? 20_000 : false,
   });
 }
 
@@ -90,13 +91,16 @@ export function useConversacion(conversacionId: string | undefined) {
   });
 }
 
-/** Sin WebSockets: la conversación abierta se refresca cada 4 s. */
-export function useMensajes(conversacionId: string | undefined) {
+/**
+ * Sin WebSockets: la conversación abierta se refresca cada 4 s, solo mientras
+ * `activo` (si otra pantalla la tapa, por ejemplo el caso, deja de pedir).
+ */
+export function useMensajes(conversacionId: string | undefined, activo = true) {
   return useQuery({
     queryKey: clavesMensajes.mensajes(conversacionId ?? ''),
     queryFn: () => listarMensajes(conversacionId as string),
     enabled: Boolean(conversacionId),
-    refetchInterval: 4_000,
+    refetchInterval: activo ? 4_000 : false,
   });
 }
 

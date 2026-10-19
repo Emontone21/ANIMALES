@@ -42,11 +42,14 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/react": "~19.3.0",
     "eslint": "^9.39.5",
     "eslint-config-expo": "~58.0.4",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.7",
+    "jest": "^30.5.2",
+    "jest-expo": "~58.0.11",
     "prettier": "^3.9.10",
     "typescript": "~6.0.3"
   },
@@ -57,14 +60,30 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
+    "test": "jest",
     "prebuild": "expo prebuild",
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
-    "db:types": "supabase gen types typescript --linked --schema public > src/types/database.ts",
-    "db:push": "supabase db push",
+    "db:types": "node scripts/tipos-db.js",
+    "db:push": "npx supabase db push",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "postinstall": "node scripts/copiar-worker-maplibre.js"
   },
-  "private": true
+  "private": true,
+  "jest": {
+    "preset": "jest-expo",
+    "roots": [
+      "<rootDir>/__tests__"
+    ],
+    "testMatch": [
+      "**/*.test.ts"
+    ],
+    "setupFiles": [
+      "<rootDir>/__tests__/entorno.ts"
+    ],
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/src/$1"
+    }
+  }
 }

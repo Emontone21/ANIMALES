@@ -10,6 +10,7 @@ import { Mensaje } from '@/components/ui/Mensaje';
 import { Seccion } from '@/components/ui/Seccion';
 import { useRegistrarAvistamiento } from '@/features/reportes/api';
 import { t } from '@/i18n/es-UY';
+import { mensajeDeError } from '@/lib/errores';
 import type { LngLat } from '@/types/dominio';
 
 type Props = {
@@ -95,9 +96,7 @@ export function ModalAvistamiento({ visible, animalId, usuarioId, onCerrar, onEx
         multiline
         maxLength={500}
       />
-      {registrar.isError ? (
-        <Mensaje texto={registrar.error.message || t.comunes.errorGenerico} tipo="error" />
-      ) : null}
+      {registrar.isError ? <Mensaje texto={mensajeDeError(registrar.error)} tipo="error" /> : null}
     </Hoja>
   );
 }

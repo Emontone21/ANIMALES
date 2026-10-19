@@ -17,10 +17,18 @@ import { useDenuncia } from '@/features/denuncias/api';
 import { useTerminos } from '@/features/legal/terminos';
 import { useAbrirConversacion } from '@/features/mensajes/api';
 import { useBorrarReporte } from '@/features/reportes/api';
+import {
+  avisosDeOtros,
+  type CambioDisponible,
+  cambiosDisponibles,
+  destinatariosDelCaso,
+  permisosDelCaso,
+} from '@/features/reportes/permisos';
 import { useSeguimiento } from '@/features/seguimientos/api';
 import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 import { datosParaCompartir, mensajeParaCompartir } from '@/lib/compartir';
+import { mensajeDeError } from '@/lib/errores';
 import { ErrorFotos } from '@/lib/fotos';
 import { abrirHojaCompartir, abrirWhatsApp, copiarLink } from '@/lib/hojaCompartir';
 import type { AnimalDetalle, AvistamientoDetalle, CambioEstadoDetalle } from '@/types/dominio';
@@ -41,7 +49,11 @@ type ModalCaso =
 
 type Novedad = { tipo: TipoCambio; titulo: string; icono: NombreIcono };
 
-type Destinatario = { usuarioId: string; titulo: string };
+const NOVEDADES: Record<CambioDisponible, Novedad> = {
+  resguardar: { tipo: 'resguardar', titulo: t.animal.acciones.resguardar, icono: 'home-outline' },
+  reabrir: { tipo: 'reabrir', titulo: t.animal.acciones.reabrir, icono: 'refresh-outline' },
+  reunido: { tipo: 'reunido', titulo: t.animal.acciones.reunido, icono: 'heart-outline' },
+};
 
 const DURACION_AVISO = 6000;
 
@@ -79,72 +91,18 @@ export function useAccionesCaso(
     return () => clearTimeout(reloj);
   }, [aviso]);
 
-  const abierto = animal.estado === 'avistado' || animal.estado === 'resguardado';
-  const esCreador = !!usuario && animal.creado_por === usuario.id;
-  const esPerdido = animal.tipo_reporte === 'perdido';
-  // Editar y borrar: solo quien lo publicó, y no un reporte que ya se unió a otro caso.
-  const puedeGestionar = esCreador && animal.estado !== 'vinculado';
+  // Las mismas reglas que la base (src/features/reportes/permisos.ts).
+  const permisos = permisosDelCaso(animal, usuario?.id, resguardo?.usuario_id);
+  const { abierto, puedeGestionar } = permisos;
   // Lo que se pierde al borrarlo: los avisos de otras personas que lo vieron.
-  const avisosDeOtros = avistamientos.filter((av) => av.usuario_id !== animal.creado_por).length;
+  const avisosOtros = avisosDeOtros(avistamientos, animal.creado_por);
   const mensajeCompartir = mensajeParaCompartir(animal.id, datosParaCompartir(animal));
-  // Quien lo tiene resguardado ahora (solo existe si el caso está resguardado).
-  const esQuienResguarda = !!usuario && resguardo?.usuario_id === usuario.id;
 
-  // Las mismas reglas que cambiar_estado_animal (migración 0011). Un caso
-  // anónimo (creado_por null) no tiene creador: nadie cumple esCreador.
-  const puedeResguardar = animal.estado === 'avistado' && !(esPerdido && esCreador);
-  const puedeReunir =
-    abierto && (esCreador || (!esPerdido && animal.estado === 'resguardado' && esQuienResguarda));
-  const puedeReabrir =
-    (animal.estado === 'resguardado' && (esCreador || (!esPerdido && esQuienResguarda))) ||
-    (animal.estado === 'reunido' && esCreador);
+  const novedades: Novedad[] = usuario
+    ? cambiosDisponibles(animal, permisos).map((tipo) => NOVEDADES[tipo])
+    : [];
 
-  const novedades: Novedad[] = [];
-  if (usuario) {
-    if (puedeResguardar) {
-      novedades.push({
-        tipo: 'resguardar',
-        titulo: t.animal.acciones.resguardar,
-        icono: 'home-outline',
-      });
-    }
-    if (puedeReabrir && animal.estado === 'resguardado') {
-      novedades.push({
-        tipo: 'reabrir',
-        titulo: t.animal.acciones.reabrir,
-        icono: 'refresh-outline',
-      });
-    }
-    if (puedeReunir) {
-      novedades.push({
-        tipo: 'reunido',
-        titulo: t.animal.acciones.reunido,
-        icono: 'heart-outline',
-      });
-    }
-    if (puedeReabrir && animal.estado === 'reunido') {
-      novedades.push({
-        tipo: 'reabrir',
-        titulo: t.animal.acciones.reabrir,
-        icono: 'refresh-outline',
-      });
-    }
-  }
-
-  // Quien publicó y, si es otra persona, quien lo resguarda. Nunca uno mismo,
-  // ni alguien que borró su cuenta (queda sin usuario).
-  const candidatos: { usuarioId: string | null; titulo: string }[] = [
-    {
-      usuarioId: animal.creado_por,
-      titulo: esPerdido ? t.mensajes.escribirAFamilia : t.mensajes.escribirAPublicador,
-    },
-    ...(resguardo && resguardo.usuario_id !== animal.creado_por
-      ? [{ usuarioId: resguardo.usuario_id, titulo: t.mensajes.escribirAResguardo }]
-      : []),
-  ];
-  const destinatarios = candidatos.filter(
-    (d): d is Destinatario => !!d.usuarioId && d.usuarioId !== usuario?.id,
-  );
+  const destinatarios = destinatariosDelCaso(animal, resguardo?.usuario_id, usuario?.id);
 
   /** Sin cuenta, toda acción lleva a ingresar o crear una cuenta. */
   const pedirCuenta = (motivo: string = t.animal.requiereCuentaAcciones) => {
@@ -175,7 +133,7 @@ export function useAccionesCaso(
           setModal(null);
           router.push({ pathname: '/conversacion/[id]', params: { id } });
         },
-        onError: (e) => setErrorEscribir(e.message || t.comunes.errorGenerico),
+        onError: (e) => setErrorEscribir(mensajeDeError(e)),
       },
     );
   };
@@ -228,7 +186,7 @@ export function useAccionesCaso(
   const errorBorrar = borrar.isError
     ? borrar.error instanceof ErrorFotos
       ? t.borrarReporte.errorFotos
-      : borrar.error.message || t.comunes.errorGenerico
+      : mensajeDeError(borrar.error)
     : null;
 
   const cerrarConAviso = (texto: string) => {
@@ -320,7 +278,7 @@ export function useAccionesCaso(
       <MenuOpciones
         visible={modal === 'borrar'}
         titulo={t.borrarReporte.titulo}
-        descripcion={t.borrarReporte.detalle(avisosDeOtros)}
+        descripcion={t.borrarReporte.detalle(avisosOtros)}
         error={errorBorrar}
         onCerrar={() => setModal(null)}
         opciones={[
@@ -400,8 +358,7 @@ export function useAccionesCaso(
     loVi: () => pedir('avistamiento'),
     cambiarEstado: (tipo: TipoCambio) => pedir(tipo),
     abrirOpciones: () => setModal('opciones'),
-    /** Un caso oculto por moderación no se difunde. */
-    puedeCompartir: !animal.oculto,
+    puedeCompartir: permisos.puedeCompartir,
     compartir: () => void compartir(),
     escribir,
     seguir,

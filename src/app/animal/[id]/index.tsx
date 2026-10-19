@@ -11,6 +11,7 @@ import {
   useCambiosEstado,
 } from '@/features/reportes/api';
 import { t } from '@/i18n/es-UY';
+import { mensajeDeError } from '@/lib/errores';
 
 export default function PantallaAnimal() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -38,7 +39,7 @@ export default function PantallaAnimal() {
     return (
       <AvisoCaso onVolver={volver}>
         <Mensaje
-          texto={animal.error.message}
+          texto={mensajeDeError(animal.error, t.animal.noEncontrado)}
           tipo="error"
           onReintentar={() => void animal.refetch()}
         />
@@ -72,7 +73,7 @@ export default function PantallaAnimal() {
         cargando: avistamientos.isPending || cambios.isPending,
         error:
           avistamientos.isError || cambios.isError
-            ? (avistamientos.error?.message ?? cambios.error?.message ?? t.comunes.errorGenerico)
+            ? mensajeDeError(avistamientos.error ?? cambios.error)
             : null,
         onReintentar: () => {
           void avistamientos.refetch();

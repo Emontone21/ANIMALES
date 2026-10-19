@@ -24,6 +24,7 @@ import { usePerfil } from '@/features/perfil/api';
 import { useMisAnimales } from '@/features/reportes/api';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
+import { mensajeDeError } from '@/lib/errores';
 import { haceCuanto } from '@/lib/fechas';
 
 const OPCIONES_APARIENCIA = PREFERENCIAS_APARIENCIA.map((valor) => ({
@@ -52,7 +53,7 @@ export default function PantallaPerfil() {
     try {
       await cerrarSesion();
     } catch (e) {
-      setError(e instanceof Error ? e.message : t.comunes.errorGenerico);
+      setError(mensajeDeError(e));
     } finally {
       setSaliendo(false);
     }
@@ -138,7 +139,7 @@ export default function PantallaPerfil() {
               <Cargando />
             ) : misAnimales.isError ? (
               <Mensaje
-                texto={misAnimales.error.message}
+                texto={mensajeDeError(misAnimales.error)}
                 tipo="error"
                 onReintentar={() => void misAnimales.refetch()}
               />
@@ -187,7 +188,7 @@ export default function PantallaPerfil() {
               <Cargando />
             ) : bloqueados.isError ? (
               <Mensaje
-                texto={bloqueados.error.message}
+                texto={mensajeDeError(bloqueados.error)}
                 tipo="error"
                 onReintentar={() => void bloqueados.refetch()}
               />

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useIsFocused, useRouter } from 'expo-router';
 import type { ComponentProps } from 'react';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
@@ -24,6 +24,7 @@ import {
 import { destinoDe } from '@/features/notificaciones/push';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
+import { mensajeDeError } from '@/lib/errores';
 import { haceCuanto } from '@/lib/fechas';
 import type {
   ConversacionDetalle,
@@ -76,7 +77,9 @@ function Novedades({ usuarioId }: { usuarioId: string }) {
   const router = useRouter();
   const { c } = useTema();
   const estilos = useEstilos(crear);
-  const notificaciones = useNotificaciones(true);
+  // Las pestañas siguen montadas: fuera de Actividad no se refresca.
+  const enFoco = useIsFocused();
+  const notificaciones = useNotificaciones(true, enFoco);
   const marcarLeida = useMarcarLeida();
   const marcarTodas = useMarcarTodasLeidas(usuarioId);
 
@@ -84,7 +87,7 @@ function Novedades({ usuarioId }: { usuarioId: string }) {
   if (notificaciones.isError) {
     return (
       <Mensaje
-        texto={notificaciones.error.message}
+        texto={mensajeDeError(notificaciones.error)}
         tipo="error"
         onReintentar={() => void notificaciones.refetch()}
       />
@@ -138,13 +141,14 @@ function Novedades({ usuarioId }: { usuarioId: string }) {
 function Conversaciones() {
   const router = useRouter();
   const estilos = useEstilos(crear);
-  const conversaciones = useConversaciones(true);
+  const enFoco = useIsFocused();
+  const conversaciones = useConversaciones(true, enFoco);
 
   if (conversaciones.isPending) return <Cargando />;
   if (conversaciones.isError) {
     return (
       <Mensaje
-        texto={conversaciones.error.message}
+        texto={mensajeDeError(conversaciones.error)}
         tipo="error"
         onReintentar={() => void conversaciones.refetch()}
       />

@@ -7,7 +7,7 @@ import { Pantalla } from '@/components/ui/Pantalla';
 import { Texto } from '@/components/ui/Texto';
 import { AnchoMaximo } from '@/constants/tema';
 import { useTerminos } from '@/features/legal/terminos';
-import { t } from '@/i18n/es-UY';
+import { mensajeDeError } from '@/lib/errores';
 
 /**
  * Pantalla que pide los términos aceptados (por ejemplo, Publicar): hasta que
@@ -40,7 +40,7 @@ export function RequiereTerminos({
       </Texto>
       {terminos.error ? (
         <Mensaje
-          texto={terminos.error.message || t.comunes.errorGenerico}
+          texto={mensajeDeError(terminos.error)}
           tipo="error"
           onReintentar={terminos.reintentar}
         />

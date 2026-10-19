@@ -19,6 +19,7 @@ import {
 } from '@/features/reportes/filtros';
 import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
+import { mensajeDeError } from '@/lib/errores';
 
 /**
  * "Ver lista" desde la hoja "Cerca tuyo" (docs/DISENO.md, 6.7): todos los
@@ -48,11 +49,7 @@ export default function PantallaCasos() {
         margen={0}
       />
       {isError ? (
-        <Mensaje
-          texto={error?.message ?? t.comunes.errorGenerico}
-          tipo="error"
-          onReintentar={() => void refetch()}
-        />
+        <Mensaje texto={mensajeDeError(error)} tipo="error" onReintentar={() => void refetch()} />
       ) : isLoading ? null : casos.length === 0 ? (
         <Mensaje texto={t.mapa.sinReportes} />
       ) : (

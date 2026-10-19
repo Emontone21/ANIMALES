@@ -15,6 +15,7 @@ import { ErrorFotos, type PasoBorrado, useBorrarCuenta } from '@/features/cuenta
 import { useMisAnimales } from '@/features/reportes/api';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
+import { mensajeDeError } from '@/lib/errores';
 import type { AlBorrarCuenta } from '@/types/dominio';
 
 // Dejarlo publicado va primero: es la opción por defecto.
@@ -62,7 +63,7 @@ export default function PantallaBorrarCuenta() {
   const error = borrar.isError
     ? borrar.error instanceof ErrorFotos
       ? t.cuenta.borrar.errorFotos
-      : borrar.error.message || t.comunes.errorGenerico
+      : mensajeDeError(borrar.error)
     : null;
 
   return (

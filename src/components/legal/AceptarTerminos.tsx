@@ -12,6 +12,7 @@ import { Espacio, Radio } from '@/constants/tema';
 import { useTerminos } from '@/features/legal/terminos';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
+import { mensajeDeError } from '@/lib/errores';
 
 type Props = {
   usuarioId: string;
@@ -63,7 +64,7 @@ export function AceptarTerminos({ usuarioId, onAceptado, onAntesDeNavegar, sinMa
         error={intentado && !marcado ? t.legal.aceptar.falta : null}
       />
       {terminos.aceptar.isError ? (
-        <Mensaje texto={terminos.aceptar.error.message || t.comunes.errorGenerico} tipo="error" />
+        <Mensaje texto={mensajeDeError(terminos.aceptar.error)} tipo="error" />
       ) : null}
       <Boton
         titulo={t.legal.aceptar.aceptar}
