@@ -9,6 +9,7 @@ import { Mensaje } from '@/components/ui/Mensaje';
 import { Seccion } from '@/components/ui/Seccion';
 import { useCambiarEstado } from '@/features/reportes/api';
 import { t } from '@/i18n/es-UY';
+import { mensajeDeError } from '@/lib/errores';
 import type { LngLat, TipoReporte } from '@/types/dominio';
 
 /** Qué cambio de estado está pidiendo el usuario. */
@@ -132,7 +133,11 @@ export function ModalEstado({
             maxLength={200}
           />
           <Seccion titulo={t.animal.modalResguardo.ubicacion}>
-            <CampoUbicacion valor={ubicacion} onCambio={setUbicacion} />
+            <CampoUbicacion
+              valor={ubicacion}
+              onCambio={setUbicacion}
+              ayuda={t.animal.modalResguardo.ubicacionAyuda}
+            />
           </Seccion>
         </>
       ) : null}
@@ -153,9 +158,7 @@ export function ModalEstado({
           maxLength={500}
         />
       ) : null}
-      {cambiar.isError ? (
-        <Mensaje texto={cambiar.error.message || t.comunes.errorGenerico} tipo="error" />
-      ) : null}
+      {cambiar.isError ? <Mensaje texto={mensajeDeError(cambiar.error)} tipo="error" /> : null}
     </Hoja>
   );
 }

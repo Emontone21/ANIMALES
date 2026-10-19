@@ -4,6 +4,14 @@ import { Platform } from 'react-native';
 
 import { marcarRecuperacion } from '@/features/auth/recuperacion';
 import { VERSION_TERMINOS } from '@/features/legal/terminos';
+import {
+  ErrorAuth,
+  traducirError,
+  validarContrasenaNueva,
+  validarEmail,
+  validarEmailYContrasena,
+  validarRegistro,
+} from '@/features/auth/validaciones';
 import { t } from '@/i18n/es-UY';
 import { supabase } from '@/lib/supabase';
 import { leerParametros, tieneErrorAuth } from '@/lib/urlAuth';
@@ -27,42 +35,6 @@ const redirectRecuperacion = esWeb
   ? Linking.createURL('/auth/nueva-contrasena')
   : Linking.createURL('auth/nueva-contrasena');
 
-export class ErrorAuth extends Error {}
-
-const MIN_CONTRASENA = 8;
-const EMAIL_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/** Traduce los errores más comunes de Supabase Auth a mensajes en español. */
-function traducirError(error: { message: string; code?: string }): ErrorAuth {
-  const codigo = error.code ?? '';
-  const mensaje = error.message.toLowerCase();
-
-  if (codigo === 'invalid_credentials' || mensaje.includes('invalid login credentials')) {
-    return new ErrorAuth(t.auth.errores.credenciales);
-  }
-  if (codigo === 'email_not_confirmed' || mensaje.includes('email not confirmed')) {
-    return new ErrorAuth(t.auth.errores.emailNoConfirmado);
-  }
-  if (codigo === 'user_already_exists' || mensaje.includes('already registered')) {
-    return new ErrorAuth(t.auth.errores.yaRegistrado);
-  }
-  if (codigo === 'same_password' || mensaje.includes('different from the old')) {
-    return new ErrorAuth(t.auth.nuevaContrasena.igualAnterior);
-  }
-  if (codigo === 'weak_password' || mensaje.includes('password')) {
-    return new ErrorAuth(t.auth.errores.contrasenaCorta);
-  }
-  if (codigo === 'validation_failed' || mensaje.includes('email')) {
-    return new ErrorAuth(t.auth.errores.emailInvalido);
-  }
-  return new ErrorAuth(t.auth.errores.desconocido);
-}
-
-function validarEmailYContrasena(email: string, contrasena: string): void {
-  if (!EMAIL_VALIDO.test(email.trim())) throw new ErrorAuth(t.auth.errores.emailInvalido);
-  if (contrasena.length < MIN_CONTRASENA) throw new ErrorAuth(t.auth.errores.contrasenaCorta);
-}
-
 export async function ingresarConEmail(email: string, contrasena: string): Promise<void> {
   validarEmailYContrasena(email, contrasena);
   const { error } = await supabase.auth.signInWithPassword({
@@ -78,10 +50,7 @@ export async function registrarse(
   contrasena: string,
   aceptoTerminos: boolean,
 ): Promise<{ requiereConfirmacion: boolean }> {
-  const nombre = nombrePublico.trim();
-  if (nombre.length < 2) throw new ErrorAuth(t.auth.errores.nombreCorto);
-  validarEmailYContrasena(email, contrasena);
-  if (!aceptoTerminos) throw new ErrorAuth(t.auth.errores.debeAceptar);
+  const nombre = validarRegistro(nombrePublico, email, contrasena, aceptoTerminos);
 
   const { data, error } = await supabase.auth.signUp({
     email: email.trim().toLowerCase(),
@@ -129,7 +98,7 @@ export async function ingresarConGoogle(): Promise<void> {
  * exista o no la cuenta, y la app muestra siempre el mismo mensaje.
  */
 export async function pedirRecuperacion(email: string): Promise<void> {
-  if (!EMAIL_VALIDO.test(email.trim())) throw new ErrorAuth(t.auth.errores.emailInvalido);
+  validarEmail(email);
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
     redirectTo: redirectRecuperacion,
   });
@@ -142,8 +111,7 @@ export async function pedirRecuperacion(email: string): Promise<void> {
 
 /** Guarda la contraseña nueva con la sesión que abrió el link de recuperación. */
 export async function cambiarContrasena(nueva: string, repetida: string): Promise<void> {
-  if (nueva.length < MIN_CONTRASENA) throw new ErrorAuth(t.auth.errores.contrasenaCorta);
-  if (nueva !== repetida) throw new ErrorAuth(t.auth.nuevaContrasena.noCoinciden);
+  validarContrasenaNueva(nueva, repetida);
   const { data } = await supabase.auth.getSession();
   if (!data.session) throw new ErrorAuth(t.auth.nuevaContrasena.linkVencido);
   const { error } = await supabase.auth.updateUser({ password: nueva });

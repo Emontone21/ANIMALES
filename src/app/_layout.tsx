@@ -14,6 +14,7 @@ import { Platform, View } from 'react-native';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 import { RielNavegacion } from '@/components/ui/BarraNavegacion';
+import { BotonVolver } from '@/components/ui/BotonVolver';
 import { FAMILIAS, Fuentes } from '@/constants/tema';
 import { useAparienciaHidratada } from '@/features/apariencia/preferencia';
 import { AuthProvider, useAuth } from '@/features/auth/AuthProvider';
@@ -131,6 +132,8 @@ function Navegacion() {
             headerTitleStyle: { ...Fuentes.titulo, fontSize: 20, color: c.texto },
             headerShadowVisible: false,
             headerBackButtonDisplayMode: 'minimal',
+            // En web, Volver de 44 × 44 y en español; en nativo, el del sistema.
+            headerLeft: Platform.OS === 'web' ? (props) => <BotonVolver {...props} /> : undefined,
             contentStyle: { backgroundColor: c.fondo },
           }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

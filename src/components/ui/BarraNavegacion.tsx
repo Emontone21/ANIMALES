@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { estaActivo } from '@/components/ui/interaccion';
 import { Espacio, Fuentes, MAX_ESCALA_TEXTO, Medida, Radio, Tipografia } from '@/constants/tema';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { useNotificaciones } from '@/features/notificaciones/api';
+import { useHayNoLeidas } from '@/features/notificaciones/api';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 
@@ -35,8 +35,8 @@ const RUTA_ACTIVIDAD = 'actividad';
 /** Hay notificaciones sin leer: punto en la pestaña Actividad. */
 function useHayNovedades(): boolean {
   const { usuario } = useAuth();
-  const { data } = useNotificaciones(!!usuario);
-  return !!data?.some((n) => !n.leida_en);
+  const { data } = useHayNoLeidas(!!usuario);
+  return !!data;
 }
 
 /** Barra de pestañas de abajo, en celulares y tablets (6.14). */

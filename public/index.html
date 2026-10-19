@@ -42,6 +42,12 @@
       }
     </style>
     <style id="encontrados-web">
+      /* Sin "tirar para recargar" en Chrome de Android: tirar hacia abajo una lista que
+         ya está arriba recargaba la app y se perdía, por ejemplo, un Publicar a medias. */
+      html,
+      body {
+        overscroll-behavior-y: none;
+      }
       /* Cursor de mano en todo lo que se toca. */
       [role='button']:not([aria-disabled='true']),
       [role='link'],

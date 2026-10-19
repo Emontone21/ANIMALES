@@ -246,20 +246,17 @@ De 44 a 52, fondo `superficie` con sombra y ícono en `texto`. El de mi ubicaci�
 
 **Mi ubicación.** Punto de 16 en `texto`, con borde de 3 en `superficie` y halo de 44 en `texto` al 10 % (12 % en oscuro).
 
-**Etapas.** La foto en cada marcador necesita las miniaturas de la Fase 8. Hasta entonces:
-
-1. Las capas de círculos actuales (`estilosCapa.ts`) pasan a usar fondo `superficie`, anillo del color del tipo y una capa extra de halo para perdidos.
-2. Solo el marcador seleccionado muestra la foto.
+**Foto en todos los marcadores** (desde la Fase 8, con las miniaturas): cada punto suelto que se ve es un marcador con su miniatura; los clusters siguen siendo capas de círculos. Debajo de cada foto hay una zona táctil casi transparente (ver `docs/DECISIONES.md`, "Foto en todos los marcadores").
 
 `estilosCapa.ts` recibe la paleta como parámetro. Así sirve igual para web y nativo, claro y oscuro.
 
 ### 6.7 Hoja inferior "Cerca tuyo"
 
 - Fondo `superficie`, radio `hoja` solo arriba y manija de 40 × 5 en `borde`.
-- Arriba: título `subtitulo` "Cerca tuyo". La acción "Ver lista" aparece recién con la lista de casos cercanos de la Fase 8.
+- Arriba: título `subtitulo` "Cerca tuyo" y, en el celular, la acción "Ver lista" (botón `fantasma`), que abre la lista de casos con los filtros del mapa.
 - Contenido: carrusel horizontal de tarjetas de 224 de ancho, separadas 12.
 - Los casos se ordenan por distancia al centro del mapa, calculada en el cliente.
-- Al tocar un marcador, su tarjeta pasa a ser la primera. Esto reemplaza la tarjeta flotante actual (`TarjetaAnimal`).
+- Al tocar un marcador, su tarjeta pasa a ser la primera. Las tarjetas son `TarjetaCaso`.
 - Alto fijo: el menor entre 300 y el 38 % del alto de la pantalla.
 
 ### 6.8 Tarjeta de caso
@@ -343,7 +340,7 @@ Texto de cada evento:
 - Etiqueta arriba en `etiquetaCampo`.
 - Con foco, borde de 2 en `primario`; con error, borde y mensaje en `peligro`.
 
-**Interruptor:** con la vía activa en `primario`.
+**Interruptor:** con la vía activa en `primario` y la apagada en `textoSecundario` (con `borde` no se distinguía del fondo: 1,2:1; hace falta 3:1). El círculo va en `superficie` en los dos estados. La etiqueta también lo cambia, con 44 de alto. En web mide 56 × 28.
 
 **Selector de foto:** recuadro grande con fondo `superficieSuave`, radio `xl` e ícono de cámara.
 
@@ -378,7 +375,7 @@ Esta sección describe la versión de celular (compacta). La sección 8 indica c
 
 - Foto de 380 de alto como máximo (el menor entre 380 y el 45 % del alto), con esquinas inferiores de radio `cabecera`.
 - Botones redondos flotantes: Volver a la izquierda; Seguir y Más opciones a la derecha.
-- "Más opciones" contiene Denunciar.
+- "Más opciones" contiene Editar el reporte y Borrar el reporte (solo para quien lo publicó) y Denunciar. Compartir es un botón redondo del encabezado.
 - La foto nunca se oscurece ni se filtra, tampoco en modo oscuro.
 
 **Contenido** (relleno de 24), en este orden:
@@ -396,7 +393,7 @@ Esta sección describe la versión de celular (compacta). La sección 8 indica c
 11. Aviso contra estafas (6.12).
 12. Espacio final igual al alto de la barra de acciones (6.13).
 
-**Si el caso fue vinculado,** se mantiene el comportamiento actual: el mensaje de redirección, y el arreglo del bug B1 cuando se haga.
+**Si el caso fue vinculado,** se mantiene el comportamiento actual: el mensaje de redirección al caso principal (el bug B1 se corrigió en la migración 0007).
 
 ### 7.3 Publicar
 
@@ -516,7 +513,10 @@ En amplio, el riel de navegación queda a la izquierda.
   - foco visible con anillo de 2 px en `primario`;
   - orden lógico al navegar con Tab;
   - el carrusel también se desplaza con mouse o trackpad;
-  - se respeta `prefers-reduced-motion`.
+  - se respeta `prefers-reduced-motion`;
+  - el Volver del encabezado mide 44 × 44 y se anuncia "Volver" (`BotonVolver`);
+  - el mapa queda siempre al norte: dos dedos acercan y alejan, pero no rotan ni inclinan;
+  - tirar hacia abajo no recarga la página (`overscroll-behavior-y: none` en `public/index.html`).
 - **Orientación:** `app.json` fija vertical en celulares nativos y `supportsTablet` es falso en iOS. Se mantienen así hasta la Etapa 3. En web, la app se adapta a cualquier ancho.
 
 ## 9. Modo oscuro
@@ -541,7 +541,7 @@ En amplio, el riel de navegación queda a la izquierda.
 
 **Sistema:**
 
-- **Barra de estado:** su estilo sigue al esquema. Hoy está fija en `style="dark"` en `src/app/_layout.tsx`.
+- **Barra de estado:** su estilo sigue al esquema (`src/app/_layout.tsx`).
 - **Navegación:** pasale un tema con `background`, `card`, `text`, `border` y `primary` tomados de la paleta, para evitar destellos blancos entre pantallas.
 - **Web:** el fondo del documento sigue al tema desde el primer pintado.
 - **`app.json`:**
@@ -552,7 +552,7 @@ En amplio, el riel de navegación queda a la izquierda.
 
 **Mapa:**
 
-- **Base:** hoy usa el estilo Liberty de OpenFreeMap. Pasa a usar Positron, que es el más limpio, recoloreado con los tokens de mapa de cada esquema.
+- **Base:** el estilo Positron de OpenFreeMap, que es el más limpio, recoloreado con los tokens de mapa de cada esquema (antes del rediseño era Liberty).
 - **Cómo recolorear:** descargá el JSON del estilo una vez y reemplazá los colores por tipo de capa (tierra, calles, parques, agua, etiquetas con su halo). Pasá el objeto resultante al mapa. Web y nativo usan el mismo JSON, igual que `estilosCapa.ts`.
 - **Si el recoloreo no funciona:** para oscuro existe `https://tiles.openfreemap.org/styles/dark`, aunque OpenFreeMap aclara que todavía no está completo.
 - **Variable de entorno:** `EXPO_PUBLIC_MAP_STYLE_URL` sigue sirviendo para cambiar el estilo base. Si el estilo no tiene las capas esperadas, se usa tal cual, sin recolorear.
@@ -564,9 +564,9 @@ En amplio, el riel de navegación queda a la izquierda.
 | --- | --- | --- |
 | Buscador "Buscar barrio o calle" | Necesita un servicio de geocodificación que todavía no se eligió | Decisión aparte. Mientras tanto, los chips suben al borde superior |
 | Nombre del barrio en las tarjetas | Necesita geocodificación inversa | Mientras tanto, se muestra la distancia |
-| Foto en todos los marcadores | Necesita miniaturas | Fase 8 |
-| Perdidos, nombre del animal y uso real del naranja | Necesita `tipo_reporte` | Fase 6. Los tokens y componentes quedan listos |
-| "Ver lista" y compartir con vista previa | Son funciones nuevas | Fase 8 |
+| Foto en todos los marcadores | Necesitaba miniaturas | Hecho en la Fase 8 |
+| Perdidos, nombre del animal y uso real del naranja | Necesitaba `tipo_reporte` | Hecho en la Fase 6 |
+| "Ver lista" y compartir con vista previa | Eran funciones nuevas | Hecho en la Fase 8 |
 | Ícono de la app y arte de la pantalla de carga | Es trabajo gráfico aparte | Más adelante |
 
 ## 11. Textos nuevos o que cambian en `es-UY.ts`

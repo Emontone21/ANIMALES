@@ -14,6 +14,7 @@ import { useAccionesModeracion, useDenuncias } from '@/features/moderacion/api';
 import { usePerfil } from '@/features/perfil/api';
 import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
+import { mensajeDeError } from '@/lib/errores';
 import { fechaHoraCorta } from '@/lib/fechas';
 
 /** Panel para moderadores (perfiles.es_moderador): denuncias y ocultar publicaciones. */
@@ -42,7 +43,7 @@ export default function PantallaModeracion() {
         <Cargando />
       ) : denuncias.isError ? (
         <Mensaje
-          texto={denuncias.error.message}
+          texto={mensajeDeError(denuncias.error)}
           tipo="error"
           onReintentar={() => void denuncias.refetch()}
         />

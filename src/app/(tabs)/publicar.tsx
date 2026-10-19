@@ -26,6 +26,7 @@ import { AnchoMaximo, Espacio } from '@/constants/tema';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { usePublicarAnimal } from '@/features/reportes/api';
 import { t } from '@/i18n/es-UY';
+import { mensajeDeError } from '@/lib/errores';
 import type { CambiosReporte, LngLat, TipoReporte } from '@/types/dominio';
 
 const DATOS_INICIALES: CambiosReporte = {
@@ -121,7 +122,7 @@ function FormularioPublicar({ usuarioId }: { usuarioId: string }) {
       pie={
         <View style={{ gap: Espacio.s }}>
           {publicar.isError ? (
-            <Mensaje texto={publicar.error.message || t.comunes.errorGenerico} tipo="error" />
+            <Mensaje texto={mensajeDeError(publicar.error)} tipo="error" />
           ) : null}
           <Boton
             titulo={publicar.isPending ? t.publicar.publicando : t.publicar.publicar}

@@ -11,6 +11,7 @@ import { Pantalla } from '@/components/ui/Pantalla';
 import { AnchoMaximo } from '@/constants/tema';
 import { registrarse } from '@/features/auth/acciones';
 import { t } from '@/i18n/es-UY';
+import { mensajeDeError } from '@/lib/errores';
 
 export default function PantallaRegistrarse() {
   const router = useRouter();
@@ -36,7 +37,7 @@ export default function PantallaRegistrarse() {
       }
       // Con sesión, Stack.Protected cierra la pantalla solo.
     } catch (e) {
-      setError(e instanceof Error ? e.message : t.auth.errores.desconocido);
+      setError(mensajeDeError(e, t.auth.errores.desconocido));
     } finally {
       setCargando(false);
     }

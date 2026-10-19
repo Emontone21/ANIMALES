@@ -201,6 +201,7 @@ export const t = {
       notaPlaceholder: 'Dónde está, cómo está…',
       notaAyudaPerdido: 'La nota la ve cualquiera: no pongas tu contacto acá.',
       ubicacion: '¿Dónde está ahora? (opcional)',
+      ubicacionAyuda: 'Se muestra aproximada, a unos 100 metros, para no marcar tu casa.',
       enviar: 'Marcar como resguardado',
     },
     modalReunido: {
@@ -565,6 +566,7 @@ export const t = {
       debeAceptar:
         'Para crear la cuenta tenés que aceptar los términos de uso y la política de privacidad.',
       googleCancelado: 'Se canceló el ingreso con Google.',
+      muchosIntentos: 'Hubo muchos intentos seguidos. Esperá unos minutos y probá de nuevo.',
       desconocido: 'No pudimos ingresar. Probá de nuevo.',
     },
   },

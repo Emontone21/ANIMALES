@@ -17,6 +17,7 @@ import { aplicarFiltros, ordenarPorCercania, useFiltrosMapa } from '@/features/r
 import { useDisposicion } from '@/hooks/useDisposicion';
 import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
+import { mensajeDeError } from '@/lib/errores';
 import { obtenerPosicionActual, ZOOM_PUNTO } from '@/lib/ubicacion';
 import type { LngLat } from '@/types/dominio';
 
@@ -82,11 +83,7 @@ export default function PantallaMapa() {
   const abrir = (id: string) => router.push(`/animal/${id}`);
 
   const aviso = isError ? (
-    <Mensaje
-      texto={error?.message ?? t.comunes.errorGenerico}
-      tipo="error"
-      onReintentar={() => void refetch()}
-    />
+    <Mensaje texto={mensajeDeError(error)} tipo="error" onReintentar={() => void refetch()} />
   ) : visibles.length === 0 && animales.length > 0 ? (
     <Mensaje texto={t.mapa.sinReportes} />
   ) : null;

@@ -26,6 +26,8 @@ export function fechaHoraCorta(fecha: string | Date): string {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    // Sin esto, es-UY usa 12 horas: "02:05 p. m.".
+    hourCycle: 'h23',
     timeZone: 'America/Montevideo',
   }).format(momento);
 }
@@ -44,7 +46,7 @@ const formatoDiaCorto = new Intl.DateTimeFormat('es-UY', {
   timeZone: ZONA,
 });
 
-/** "Hoy a las 9:40", "Ayer a las 18:05" o "17/10 a las 9:40", en horario de Uruguay. */
+/** "Hoy a las 09:40", "Ayer a las 18:05" o "17/10 a las 09:40", en horario de Uruguay. */
 export function diaYHora(fecha: string | Date, ahora: Date = new Date()): string {
   const momento = typeof fecha === 'string' ? new Date(fecha) : fecha;
   const hora = formatoHora.format(momento);

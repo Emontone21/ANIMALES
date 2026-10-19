@@ -4,7 +4,7 @@ import { ENV } from './env';
  * Rutas y URLs de las fotos del bucket "fotos". Es el único lugar con la
  * convención del nombre de las miniaturas: lo usan la app y la función de la
  * vista previa del link (api/), así que no importa nada de React ni de Expo.
- * Comprimir y subir está en subirFotos.ts.
+ * Comprimir, subir y borrar está en fotos.ts.
  */
 
 export const BUCKET_FOTOS = 'fotos';

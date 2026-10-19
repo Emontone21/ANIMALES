@@ -15,6 +15,7 @@ import { AnchoMaximo, Espacio } from '@/constants/tema';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useAnimal, useEditarReporte } from '@/features/reportes/api';
 import { t } from '@/i18n/es-UY';
+import { mensajeDeError } from '@/lib/errores';
 import type { AnimalDetalle, CambiosReporte } from '@/types/dominio';
 
 /**
@@ -44,7 +45,7 @@ export default function PantallaEditarReporte() {
     return (
       <Pantalla scroll bordes={['left', 'right', 'bottom']} ancho={AnchoMaximo.formulario}>
         <Mensaje
-          texto={animal.error?.message ?? t.animal.noEncontrado}
+          texto={mensajeDeError(animal.error, t.animal.noEncontrado)}
           tipo={animal.isError ? 'error' : 'info'}
         />
       </Pantalla>
@@ -98,9 +99,7 @@ function FormularioEditar({ animal }: { animal: AnimalDetalle }) {
       ancho={AnchoMaximo.formulario}
       pie={
         <View style={{ gap: Espacio.s }}>
-          {editar.isError ? (
-            <Mensaje texto={editar.error.message || t.comunes.errorGenerico} tipo="error" />
-          ) : null}
+          {editar.isError ? <Mensaje texto={mensajeDeError(editar.error)} tipo="error" /> : null}
           <Boton
             titulo={editar.isPending ? t.editarReporte.guardando : t.editarReporte.guardar}
             icono="checkmark-outline"

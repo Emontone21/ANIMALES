@@ -18,6 +18,7 @@ import {
 import { usePerfil } from '@/features/perfil/api';
 import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
+import { mensajeDeError } from '@/lib/errores';
 import type { CoincidenciaDetalle } from '@/types/dominio';
 
 type Props = { animalId: string };
@@ -72,9 +73,7 @@ export function Coincidencias({ animalId }: Props) {
         <Texto variante="secundario">{t.coincidencias.intro}</Texto>
       )}
       {aviso ? <Mensaje texto={aviso} tipo="exito" /> : null}
-      {resolver.isError ? (
-        <Mensaje texto={resolver.error.message || t.comunes.errorGenerico} tipo="error" />
-      ) : null}
+      {resolver.isError ? <Mensaje texto={mensajeDeError(resolver.error)} tipo="error" /> : null}
 
       {pendientes.map((c) => {
         const otro = otroAnimal(c, animalId);

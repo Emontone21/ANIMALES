@@ -13,6 +13,7 @@ import { cambiarContrasena } from '@/features/auth/acciones';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { terminarRecuperacion, useRecuperacion } from '@/features/auth/recuperacion';
 import { t } from '@/i18n/es-UY';
+import { mensajeDeError } from '@/lib/errores';
 
 /**
  * Al volver del link de recuperación: Supabase ya abrió una sesión (evento
@@ -44,7 +45,7 @@ export default function PantallaNuevaContrasena() {
       terminarRecuperacion();
       setListo(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t.comunes.errorGenerico);
+      setError(mensajeDeError(e));
     } finally {
       setGuardando(false);
     }

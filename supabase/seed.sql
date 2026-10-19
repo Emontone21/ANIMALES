@@ -1,5 +1,5 @@
 -- =============================================================================
--- Datos de demo para desarrollo local (se cargan con `supabase db reset`).
+-- Datos de demo: se cargan una vez en el SQL Editor (ver README, paso 1.4).
 -- Crea una usuaria demo, tres animales encontrados y uno perdido en Montevideo.
 --   email: demo@encontrados.uy · contraseña: demo1234
 -- Las fotos de demo apuntan a servicios públicos de imágenes de prueba;

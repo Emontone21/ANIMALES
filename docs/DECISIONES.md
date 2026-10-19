@@ -28,7 +28,7 @@ Recién / hace 1 h / hace 3 h / hoy temprano / ayer, en vez de un selector de fe
 
 ## 2026-10-17 · Vincular reportes en vez de fusionarlos
 
-Cuando alguien confirma "es el mismo animal", los avistamientos del reporte más nuevo se mueven al más viejo y el nuevo queda `vinculado` con `vinculado_a`. Nada se borra, y la confirmación o el rechazo quedan guardados para ajustar el umbral. La vinculación no se puede deshacer: no hay ninguna función para eso y los avistamientos movidos no guardan de qué reporte venían, así que revertir una vinculación equivocada hoy es trabajo manual en SQL y no siempre se puede reconstruir qué avistamiento era de cuál.
+Cuando alguien confirma "es el mismo animal", los avistamientos del reporte más nuevo se mueven al más viejo y el nuevo queda `vinculado` con `vinculado_a` (desde la Fase 6, si el par incluye un perdido, el perdido queda siempre como principal: ver "Quién cierra un caso y quién confirma una coincidencia"). Nada se borra, y la confirmación o el rechazo quedan guardados para ajustar el umbral. La vinculación no se puede deshacer: no hay ninguna función para eso y los avistamientos movidos no guardan de qué reporte venían, así que revertir una vinculación equivocada hoy es trabajo manual en SQL y no siempre se puede reconstruir qué avistamiento era de cuál.
 
 ## 2026-10-17 · Todo en la nube: Supabase hosted + web en Vercel
 
@@ -52,7 +52,7 @@ Expo Notifications no cubre web push. Las notificaciones se guardan siempre en l
 
 ## 2026-10-17 · Moderación mínima sin roles de Auth
 
-`perfiles.es_moderador` se asigna por SQL. Los moderadores ven y resuelven denuncias y ocultan publicaciones (`animales.oculto`); tres denuncias de personas distintas ocultan solas. No hay panel de administración más allá de eso.
+`perfiles.es_moderador` se asigna por SQL. Los moderadores ven y resuelven denuncias y ocultan publicaciones (`animales.oculto`); tres denuncias de personas distintas ocultan solas (desde la Fase 7, solo cuentan las de cuentas con al menos 7 días: ver "Denuncias: la edad de la cuenta al denunciar"). No hay panel de administración más allá de eso.
 
 ## 2026-10-19 · Casos solo por RPC y UPDATE limitado por columna
 
@@ -106,7 +106,7 @@ El lugar donde vieron por última vez a un perdido suele ser la casa de la famil
 
 Hasta la Fase 5, cualquier usuario con cuenta podía marcar un caso como reunido y confirmar coincidencias. Ahora depende del tipo:
 - **Perdido:** solo su familia (quien lo publicó) lo marca como reunido o lo reabre, también cuando "se volvió a escapar". Cualquiera puede avisar que lo vio o que lo tiene resguardado.
-- **Encontrado:** lo marca como reunido quien lo publicó o quien lo tiene resguardado (el autor del último pase a resguardado); "se volvió a escapar" sigue abierto a cualquiera, y reabrir un caso cerrado, solo quien lo publicó.
+- **Encontrado:** lo marca como reunido quien lo publicó o quien lo tiene resguardado (el autor del último pase a resguardado); "se volvió a escapar" sigue abierto a cualquiera (desde la Fase 7, solo quien lo publicó o quien lo tiene resguardado), y reabrir un caso cerrado, solo quien lo publicó.
 - **Coincidencias:** si el par incluye un perdido, solo su familia confirma o rechaza; entre dos encontrados, quien publicó cualquiera de los dos o un moderador. Al confirmar, el perdido queda siempre como principal (es el caso que la familia sigue); entre dos encontrados, el más viejo, como antes.
 
 Además, si el secundario estaba resguardado y el principal no, el principal pasa a resguardado con el mismo contacto: así la familia ve enseguida quién tiene a su animal, en vez de encontrarlo solo en el historial. La app muestra las acciones con las mismas reglas, y quien no puede decidir una coincidencia ve un mensaje de espera. A la familia de un perdido no se le ofrece "Me lo llevé / está resguardado" sobre su propio animal, aunque la base lo permitiría.
@@ -215,3 +215,39 @@ Con la carpeta `api/`, Vercel empieza a construir funciones. Para que nunca vuel
 ## 2026-10-19 · Lista de casos con los filtros del mapa
 
 "Ver lista" en la hoja "Cerca tuyo" abre `/casos`: todos los casos con los filtros activos, del más cercano al más lejano al centro del mapa. Los filtros y el centro pasaron de estado local del mapa a un store de zustand en memoria (`useFiltrosMapa`), compartido por las dos pantallas: si se cambia un filtro en la lista, el mapa también cambia. Se descartó pasarlos por la URL: habría dos copias que mantener iguales. No se guardan en el dispositivo: al recargar vuelven a los iniciales, como antes. En tablets y computadoras la lista ya está en el panel lateral, así que "Ver lista" aparece solo en la hoja del celular.
+
+## 2026-10-19 · Con quién se abre una conversación
+
+La app siempre ofreció escribirle a quien publicó el caso o a quien lo resguarda, pero `abrir_conversacion` aceptaba cualquier usuario: como los perfiles son públicos, cualquiera con cuenta podía escribirle a todos (y mandarles un aviso con el texto). Desde la migración 0013 la otra persona tiene que haber publicado el caso (o un reporte unido a él) o haberlo resguardado alguna vez. Una conversación que ya existe se puede retomar, así quien publicó le contesta a quien le escribió primero. Se descartó sumar a quienes avisaron que lo vieron: la app no lo ofrece y abriría de nuevo la puerta a escribirle a cualquiera que aparezca en un historial.
+
+## 2026-10-19 · Coincidencias y bloqueos
+
+Los avisos de coincidencias no llevaban actor, así que quien bloqueaba a alguien seguía recibiendo los avisos de los reportes de esa persona. Ahora el actor es quien publicó el otro reporte del par: si la familia bloqueó a quien encontró un animal parecido, no le llega el aviso, pero la coincidencia se sigue viendo en el detalle y la puede confirmar. Un reporte sin autor (cuenta borrada) avisa igual. Efecto a tener en cuenta: si esa persona borra su cuenta, esos avisos se borran con ella, como el resto de sus avisos.
+
+## 2026-10-19 · La ubicación de un resguardo, redondeada
+
+El "¿Dónde está ahora?" de un resguardo se publica como un avistamiento que ve cualquiera, y suele ser la casa de quien tiene al animal. Igual que el punto de un perdido, la base lo guarda con 3 decimales (unos 100 m) y el formulario lo avisa. Alcanza para que la familia sepa la zona; el resto se habla por mensajes o con el contacto que deja quien lo resguarda.
+
+## 2026-10-19 · El bucket de fotos no se lista
+
+Las fotos se ven por su URL pública, que en un bucket público no pasa por la RLS. La política de lectura de `storage.objects` solo servía para listar, y con lectura para todos cualquiera podía listar las carpetas de todos los usuarios, también fotos de casos ocultos o de publicaciones que no se completaron. Ahora cada usuario lee y lista solo su carpeta, que es lo que Storage necesita para subir y borrar lo propio. Hay que confirmar en producción que subir y borrar fotos sigue andando (ver el reporte de la revisión).
+
+## 2026-10-19 · El servicio de visión se avisa desde la cola, con reintentos que esperan
+
+El aviso al servicio salía del trigger de `avistamientos`, así que una foto que volvía a la cola (al corregir la especie) solo se procesaba cuando el bucle del servicio pasaba, o cuando otro avistamiento lo despertaba. Ahora sale de `cola_vision` cada vez que una fila queda pendiente. Los errores se reintentaban cada vez que pasaba el bucle y a los 5 intentos la foto quedaba afuera: una caída de media hora la perdía para siempre. Ahora se espera el doble después de cada error (5, 10, 20… minutos) y hay hasta 8 intentos, unas 10 horas. Además, una foto de un caso cerrado, unido a otro u oculto guarda su embedding pero no busca coincidencias, y un caso oculto nunca se sugiere: antes una publicación ocultada por moderación seguía generando avisos a otras familias.
+
+## 2026-10-19 · Errores en español en todas las pantallas
+
+Las pantallas mostraban `error.message` tal cual: "Failed to fetch" sin conexión, "invalid input syntax for type uuid" con un link roto, errores de Storage en inglés. `mensajeDeError` (`src/lib/errores.ts`) decide qué mostrar: los textos de la app (`ErrorVisible`, como `ErrorAuth`), los avisos de las RPC (códigos 42501, 22023, P0002 con texto en español), "No hay conexión" si es la red, y si no, un texto de respaldo que elige cada pantalla. Auth suma el caso de los límites de Supabase: sin SMTP propio manda pocos mails por hora, y antes ese error decía "Ese email no parece válido".
+
+## 2026-10-19 · Sondeo solo con la pantalla a la vista
+
+Las pestañas quedan montadas, así que la lista de conversaciones y la de novedades se seguían pidiendo fuera de Actividad, y una conversación tapada por otra pantalla seguía pidiendo todos sus mensajes cada 4 s. Ahora cada una se refresca solo mientras su pantalla está en foco (`useIsFocused`), y el punto de "sin leer" de la pestaña pide si hay alguna (una fila), no las últimas 100. Se descartó por ahora pedir solo los mensajes nuevos: cambia cómo se arma la caché y los "leído" de los mensajes viejos dejarían de actualizarse.
+
+## 2026-10-19 · Ubicación en web directo del navegador
+
+En web, `expo-location` pide la posición con antigüedad máxima infinita: con la página abierta, el navegador devuelve la primera posición que obtuvo (por ejemplo, la de casa) aunque la persona se haya movido, y "Usar mi ubicación" guardaba ese punto. Además consulta `navigator.permissions`, que Safari de iPhone anterior a iOS 16 no tiene, y ahí el botón quedaba cargando para siempre. En web, `obtenerPosicionActual` usa `navigator.geolocation` con alta precisión, una antigüedad máxima de 10 s y 15 s de espera; en nativo sigue con `expo-location`.
+
+## 2026-10-19 · Pruebas de la app con jest-expo
+
+`npm run test` corre jest con el preset `jest-expo` del SDK (instalado con `npx expo install`, en la versión que fija `expo`). Se prueba la lógica, no las pantallas: lo que calcula la app pasó a funciones puras (`permisos.ts`, `validaciones.ts`, `errores.ts`) para poder probarlo sin React ni Supabase, y `useAccionesCaso` usa esas funciones. La función de la vista previa se prueba con `fetch` simulado, sin red. Las pantallas se prueban a mano con `docs/PRUEBAS-MANUALES.md`: las pruebas de componentes o de punta a punta quedan para cuando haya una app nativa que probar.

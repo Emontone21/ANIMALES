@@ -10,6 +10,7 @@ import { Texto } from '@/components/ui/Texto';
 import { AnchoMaximo } from '@/constants/tema';
 import { pedirRecuperacion } from '@/features/auth/acciones';
 import { t } from '@/i18n/es-UY';
+import { mensajeDeError } from '@/lib/errores';
 
 /** "¿Olvidaste tu contraseña?": pide el email y manda el link para elegir una nueva. */
 export default function PantallaRecuperar() {
@@ -27,7 +28,7 @@ export default function PantallaRecuperar() {
       // Mismo mensaje exista o no la cuenta: no revela qué emails están registrados.
       setEnviado(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t.auth.recuperar.error);
+      setError(mensajeDeError(e, t.auth.recuperar.error));
     } finally {
       setCargando(false);
     }
