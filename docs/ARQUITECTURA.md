@@ -18,7 +18,7 @@
                         └─────────────────────────┘
 ```
 
-- La app habla directo con Supabase. Toda escritura pasa por RLS o por funciones SQL (`security invoker` cuando alcanza con RLS, `security definer` cuando hay que validar reglas que RLS no expresa).
+- La app habla directo con Supabase. Lee con RLS. Escribe directo solo en lo personal (perfil propio, seguimientos, denuncias, mensajes, notificaciones, tokens), con UPDATE limitado por columna; `animales`, `avistamientos` y `cambios_estado` solo se escriben por funciones SQL `security definer` que validan las reglas.
 - No hay servidor propio: lo que no puede confiar en el cliente vive en Postgres (RPC y triggers). Las llamadas salientes (servicio de visión, Expo Push) se hacen con `pg_net` desde triggers.
 - El reconocimiento de imágenes corre en un microservicio Python gratuito (Hugging Face Spaces). Escribe el embedding y la base busca coincidencias.
 
@@ -53,11 +53,12 @@
 
 Vistas (con `security_invoker`): `animales_mapa`, `animales_detalle`, `avistamientos_detalle`, `cambios_estado_detalle`, `coincidencias_detalle`, `conversaciones_detalle`, `mensajes_detalle`, `denuncias_detalle`, `cola_vision_pendientes` (solo servicio).
 
-RPC: `publicar_animal`, `registrar_avistamiento`, `cambiar_estado_animal`, `resolver_coincidencia`, `abrir_conversacion` (usuarios); `guardar_embedding`, `marcar_error_vision` (servicio, `service_role`); `notificar`, `interesados_en`, `es_moderador` (internas).
+RPC: `publicar_animal`, `registrar_avistamiento`, `cambiar_estado_animal`, `resolver_coincidencia`, `abrir_conversacion` (usuarios); `moderar_animal` (moderadores); `guardar_embedding`, `marcar_error_vision` (servicio, `service_role`); `notificar`, `interesados_en`, `es_moderador` (internas).
 
 ## Seguridad
 
 - RLS en todas las tablas. Lectura pública de animales, avistamientos, historial y coincidencias; todo lo personal (seguimientos, denuncias, notificaciones, conversaciones, mensajes, tokens) solo para su dueño o participantes.
+- Permisos de tabla además de RLS: `anon` y `authenticated` no tienen INSERT, UPDATE ni DELETE sobre `animales`, `avistamientos` ni `cambios_estado`. En `perfiles`, `mensajes`, `notificaciones` y `denuncias` el UPDATE se concede solo sobre las columnas que la app cambia; `es_moderador` se asigna únicamente por SQL. En `mensajes` y `denuncias` también el INSERT está limitado a las columnas que manda la app (`leido_en`, `estado` y `created_at` toman su default).
 - Storage: bucket público de lectura; cada usuario escribe solo en `fotos/<uid>/`.
 - Nada de datos personales en tablas públicas. Contacto por mensajería interna o por lo que la persona decide compartir en `cambios_estado.contacto_compartido`.
 - Claves: la `anon` va en la app (pública por diseño); la `service_role` solo en el servicio de visión; `vision_secret` en `config_app` y en el servicio; Google en el dashboard de Supabase.

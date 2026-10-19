@@ -59,7 +59,7 @@
     "db:start": "supabase start",
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
-    "db:types": "supabase gen types typescript --local --schema public > src/types/database.ts",
+    "db:types": "supabase gen types typescript --linked --schema public > src/types/database.ts",
     "db:push": "supabase db push",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "postinstall": "node scripts/copiar-worker-maplibre.js"

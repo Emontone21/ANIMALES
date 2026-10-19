@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { claveSeguimientos } from '@/features/seguimientos/api';
 import { comprimirFoto, subirFoto } from '@/lib/imagenes';
 import { supabase } from '@/lib/supabase';
 import type {
@@ -192,7 +193,10 @@ export function useCambiosEstado(animalId: string | undefined) {
   });
 }
 
-/** Invalida todo lo que muestra un animal: mapa, detalle, historial. */
+/**
+ * Invalida todo lo que muestra un animal: mapa, detalle, historial y el botón
+ * Seguir (avisar que lo viste o cambiar el estado te hace seguir el caso).
+ */
 function useInvalidarAnimal() {
   const queryClient = useQueryClient();
   return (animalId: string) => {
@@ -200,6 +204,7 @@ function useInvalidarAnimal() {
     void queryClient.invalidateQueries({ queryKey: clavesReportes.animal(animalId) });
     void queryClient.invalidateQueries({ queryKey: clavesReportes.avistamientos(animalId) });
     void queryClient.invalidateQueries({ queryKey: clavesReportes.cambiosEstado(animalId) });
+    void queryClient.invalidateQueries({ queryKey: claveSeguimientos });
   };
 }
 

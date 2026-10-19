@@ -12,7 +12,7 @@ App Expo + React Native + TypeScript con backend Supabase en la nube para reunir
 - **Privacidad:** ninguna tabla pública guarda email ni teléfono. El contacto entre usuarios es por mensajería interna o por el dato que la persona decide compartir explícitamente.
 - **RLS en todas las tablas.** Toda tabla nueva lleva `enable row level security` y políticas en la misma migración.
 - **Migraciones versionadas** en `supabase/migrations/AAAAMMDDhhmmss_nombre.sql`. Nunca editar una migración ya aplicada: agregar otra.
-- **Tipos de la base:** `src/types/database.ts` se regenera con `npm run db:types`. Si cambiás el esquema y no tenés Docker, actualizalo a mano con el mismo formato.
+- **Tipos de la base:** `src/types/database.ts` se regenera con `npm run db:types` desde el proyecto enlazado (`npx supabase link`), con las migraciones ya aplicadas. Si cambiás el esquema y todavía no está aplicado, actualizalo a mano con el mismo formato.
 - **Reconocimiento:** nunca fusionar reportes automáticamente. Mostrar coincidencias y que una persona confirme.
 - **Licencias:** solo modelos y librerías con licencias permisivas (Apache 2.0, MIT, BSD). Nada de AGPL (por ejemplo YOLOv8).
 - **Dependencias:** instalar con `npx expo install <paquete>` para respetar la versión del SDK. Módulos nativos nuevos exigen rebuild (`npx expo run:android`).
@@ -40,7 +40,7 @@ npx supabase db push        # subir migraciones al proyecto en la nube (tras sup
 - `src/components/ui/`: componentes genéricos reutilizables. `mapa/`, `reportes/`, `auth/`: componentes por área.
 - `src/features/<área>/`: acceso a datos (`api.ts`), hooks y acciones. Único lugar que llama a Supabase.
 - `src/lib/`: utilidades sin React (supabase, imágenes, ubicación, fechas, env).
-- `supabase/`: configuración, migraciones (0001–0006), seed. `services/vision/`: microservicio Python de reconocimiento.
+- `supabase/`: configuración, migraciones (0001–0008), seed. `services/vision/`: microservicio Python de reconocimiento.
 - `public/`: archivos estáticos de la web. `vercel.json`: despliegue.
 
 ## Fases

@@ -292,6 +292,7 @@ export const t = {
     version: (v: string) => `Versión ${v}`,
     misReportes: 'Mis reportes',
     sinReportes: 'Todavía no publicaste ningún animal.',
+    verCasoPrincipal: 'tocá para ver el caso principal',
   },
   fechas: {
     ahora: 'recién',

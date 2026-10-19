@@ -1,8 +1,8 @@
 /**
  * Tipos de la base de datos.
  *
- * Escritos a mano siguiendo el formato de `supabase gen types` para que la app
- * compile sin Docker. Cuando tengas Supabase local corriendo, regeneralos con:
+ * Escritos a mano siguiendo el formato de `supabase gen types`. Con el proyecto
+ * enlazado (`npx supabase link`) y las migraciones aplicadas, regeneralos con:
  *
  *   npm run db:types
  *
@@ -465,9 +465,9 @@ export type Database = {
           creador_nombre: string;
           created_at: string;
           ultimo_avistamiento_en: string | null;
-          lat: number;
-          lng: number;
-          ultimo_visto_en: string;
+          lat: number | null;
+          lng: number | null;
+          ultimo_visto_en: string | null;
           cantidad_avistamientos: number;
           oculto: boolean;
         };
@@ -532,6 +532,10 @@ export type Database = {
       es_moderador: {
         Args: Record<string, never>;
         Returns: boolean;
+      };
+      moderar_animal: {
+        Args: { p_animal_id: string; p_oculto: boolean };
+        Returns: undefined;
       };
       resolver_coincidencia: {
         Args: { p_id: string; p_confirmada: boolean };
