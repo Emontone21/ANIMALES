@@ -14,7 +14,7 @@ Todo corre en la nube: no hace falta Docker ni Android Studio. Solo Node 20+ par
 
 1. Creá un proyecto en [supabase.com](https://supabase.com) (plan gratuito). Guardá la contraseña de la base.
 2. En **Project Settings → API** copiá la **Project URL**, la clave **anon / publishable** y la **service_role** (esta última es secreta: solo va al servicio de visión).
-3. Aplicá las migraciones de `supabase/migrations/` **en orden** (0001 a 0007). Dos formas:
+3. Aplicá las migraciones de `supabase/migrations/` **en orden** (0001 a 0008). Dos formas:
 
    **a) CLI** (sin instalar nada):
 
@@ -52,7 +52,7 @@ Abre `http://localhost:8081`. En PowerShell, si `npx` está bloqueado por la pol
 
 ### 4. Vercel
 
-1. En [vercel.com](https://vercel.com) → **Add New Project** → importá `Emontone21/ANIMALES`. Sin framework: `vercel.json` ya trae build (`npx expo export -p web`) y salida (`dist`).
+1. En [vercel.com](https://vercel.com) → **Add New Project** → importá `Emontone21/ANIMALES`. En **Framework Preset** elegí **Other**: Vercel suele detectar **FastAPI** por el servicio de visión en `services/vision/` y el build falla en `uv pip install`. `vercel.json` ya trae build (`npx expo export -p web`) y salida (`dist`). Si el proyecto ya existe, se cambia en **Settings → Build and Deployment → Framework Preset**.
 2. Cargá `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_ANON_KEY` (y opcionalmente `EXPO_PUBLIC_MAP_STYLE_URL`).
 3. Deploy. Cada push a `main` redeploya. Volvé a Supabase y poné la URL de Vercel como Site URL.
 
@@ -121,7 +121,7 @@ src/features/       auth, reportes, seguimientos, denuncias, coincidencias, noti
 src/lib/            supabase, imágenes, ubicación, fechas, env
 src/i18n/es-UY.ts   todos los textos
 src/types/          database.ts (esquema), dominio.ts
-supabase/           migrations/ (0001–0007), seed.sql, config.toml
+supabase/           migrations/ (0001–0008), seed.sql, config.toml
 services/vision/    microservicio Python de reconocimiento (Hugging Face Spaces)
 public/             estáticos de la web (worker de MapLibre, generado en postinstall)
 docs/               arquitectura y decisiones

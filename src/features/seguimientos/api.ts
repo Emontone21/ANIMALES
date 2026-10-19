@@ -2,8 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from '@/lib/supabase';
 
+/** Prefijo de todas las consultas de seguimiento (para invalidarlas desde otras áreas). */
+export const claveSeguimientos = ['seguimientos'] as const;
+
 const clave = (usuarioId: string, animalId: string) =>
-  ['seguimientos', usuarioId, animalId] as const;
+  [...claveSeguimientos, usuarioId, animalId] as const;
 
 export async function sigueAnimal(usuarioId: string, animalId: string): Promise<boolean> {
   const { data, error } = await supabase
@@ -16,10 +19,18 @@ export async function sigueAnimal(usuarioId: string, animalId: string): Promise<
   return data !== null;
 }
 
+/**
+ * Si ya lo sigue (por ejemplo, porque avisó que lo vio) no hace nada. Sin
+ * ignoreDuplicates el upsert intenta un UPDATE, y seguimientos no tiene
+ * política de UPDATE: fallaba.
+ */
 export async function seguirAnimal(usuarioId: string, animalId: string): Promise<void> {
   const { error } = await supabase
     .from('seguimientos')
-    .upsert({ usuario_id: usuarioId, animal_id: animalId }, { onConflict: 'usuario_id,animal_id' });
+    .upsert(
+      { usuario_id: usuarioId, animal_id: animalId },
+      { onConflict: 'usuario_id,animal_id', ignoreDuplicates: true },
+    );
   if (error) throw error;
 }
 

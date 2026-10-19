@@ -40,7 +40,7 @@ npx supabase db push        # subir migraciones al proyecto en la nube (tras sup
 - `src/components/ui/`: componentes genéricos reutilizables. `mapa/`, `reportes/`, `auth/`: componentes por área.
 - `src/features/<área>/`: acceso a datos (`api.ts`), hooks y acciones. Único lugar que llama a Supabase.
 - `src/lib/`: utilidades sin React (supabase, imágenes, ubicación, fechas, env).
-- `supabase/`: configuración, migraciones (0001–0007), seed. `services/vision/`: microservicio Python de reconocimiento.
+- `supabase/`: configuración, migraciones (0001–0008), seed. `services/vision/`: microservicio Python de reconocimiento.
 - `public/`: archivos estáticos de la web. `vercel.json`: despliegue.
 
 ## Fases

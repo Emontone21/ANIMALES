@@ -58,7 +58,7 @@ RPC: `publicar_animal`, `registrar_avistamiento`, `cambiar_estado_animal`, `reso
 ## Seguridad
 
 - RLS en todas las tablas. Lectura pública de animales, avistamientos, historial y coincidencias; todo lo personal (seguimientos, denuncias, notificaciones, conversaciones, mensajes, tokens) solo para su dueño o participantes.
-- Permisos de tabla además de RLS: `anon` y `authenticated` no tienen INSERT, UPDATE ni DELETE sobre `animales`, `avistamientos` ni `cambios_estado`. En `perfiles`, `mensajes`, `notificaciones` y `denuncias` el UPDATE se concede solo sobre las columnas que la app cambia; `es_moderador` se asigna únicamente por SQL.
+- Permisos de tabla además de RLS: `anon` y `authenticated` no tienen INSERT, UPDATE ni DELETE sobre `animales`, `avistamientos` ni `cambios_estado`. En `perfiles`, `mensajes`, `notificaciones` y `denuncias` el UPDATE se concede solo sobre las columnas que la app cambia; `es_moderador` se asigna únicamente por SQL. En `mensajes` y `denuncias` también el INSERT está limitado a las columnas que manda la app (`leido_en`, `estado` y `created_at` toman su default).
 - Storage: bucket público de lectura; cada usuario escribe solo en `fotos/<uid>/`.
 - Nada de datos personales en tablas públicas. Contacto por mensajería interna o por lo que la persona decide compartir en `cambios_estado.contacto_compartido`.
 - Claves: la `anon` va en la app (pública por diseño); la `service_role` solo en el servicio de visión; `vision_secret` en `config_app` y en el servicio; Google en el dashboard de Supabase.
