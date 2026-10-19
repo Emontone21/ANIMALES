@@ -1,21 +1,35 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Pressable, type StyleProp, Text, type ViewStyle } from 'react-native';
 
-import { Colores, Espacio, Radio } from '@/constants/tema';
+import { estaActivo } from '@/components/ui/interaccion';
+import { Espacio, Medida, type Paleta, Radio, Tipografia } from '@/constants/tema';
+import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 
-type Variante = 'primario' | 'secundario' | 'fantasma' | 'peligro';
+export type VarianteBoton =
+  'primario' | 'secundario' | 'suave' | 'fantasma' | 'peligro' | 'inverso';
 
 export type BotonProps = {
   titulo: string;
   onPress: () => void;
-  variante?: Variante;
+  variante?: VarianteBoton;
   icono?: ComponentProps<typeof Ionicons>['name'];
   cargando?: boolean;
   deshabilitado?: boolean;
-  style?: ViewStyle;
+  accessibilityLabel?: string;
+  style?: StyleProp<ViewStyle>;
 };
 
+const COLOR_TEXTO: Record<VarianteBoton, keyof Paleta> = {
+  primario: 'textoSobrePrimario',
+  secundario: 'texto',
+  suave: 'primario',
+  fantasma: 'primario',
+  peligro: 'peligro',
+  inverso: 'textoInverso',
+};
+
+/** Botón de 54 de alto y bordes redondos (docs/DISENO.md, 6.1). */
 export function Boton({
   titulo,
   onPress,
@@ -23,22 +37,25 @@ export function Boton({
   icono,
   cargando = false,
   deshabilitado = false,
+  accessibilityLabel,
   style,
 }: BotonProps) {
+  const { c } = useTema();
+  const estilos = useEstilos(crear);
   const inactivo = deshabilitado || cargando;
-  const colorTexto =
-    variante === 'primario' || variante === 'peligro' ? Colores.textoInvertido : Colores.primario;
+  const colorTexto = c[COLOR_TEXTO[variante]];
 
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled: inactivo, busy: cargando }}
       onPress={onPress}
       disabled={inactivo}
-      style={({ pressed }) => [
+      style={(estado) => [
         estilos.base,
         estilos[variante],
-        pressed && estilos.presionado,
+        !inactivo && estaActivo(estado) && estilos[`${variante}Activo`],
         inactivo && estilos.inactivo,
         style,
       ]}>
@@ -46,29 +63,38 @@ export function Boton({
         <ActivityIndicator color={colorTexto} />
       ) : (
         <>
-          {icono ? <Ionicons name={icono} size={18} color={colorTexto} /> : null}
-          <Text style={[estilos.texto, { color: colorTexto }]}>{titulo}</Text>
+          {icono ? <Ionicons name={icono} size={20} color={colorTexto} /> : null}
+          <Text style={[estilos.texto, { color: colorTexto }]} numberOfLines={1}>
+            {titulo}
+          </Text>
         </>
       )}
     </Pressable>
   );
 }
 
-const estilos = StyleSheet.create({
+const crear = crearEstilos((c) => ({
   base: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: Espacio.s,
-    minHeight: 48,
-    paddingHorizontal: Espacio.m,
-    borderRadius: Radio.m,
+    minHeight: Medida.boton,
+    paddingHorizontal: Espacio.l,
+    borderRadius: Radio.redondo,
   },
-  primario: { backgroundColor: Colores.primario },
-  secundario: { backgroundColor: Colores.primarioSuave },
-  fantasma: { backgroundColor: 'transparent' },
-  peligro: { backgroundColor: Colores.peligro },
-  presionado: { opacity: 0.85 },
-  inactivo: { opacity: 0.5 },
-  texto: { fontSize: 16, fontWeight: '600' },
-});
+  primario: { backgroundColor: c.primario },
+  primarioActivo: { backgroundColor: c.primarioPresionado },
+  secundario: { borderWidth: 1.5, borderColor: c.texto },
+  secundarioActivo: { backgroundColor: c.superficieSuave },
+  suave: { backgroundColor: c.superficie },
+  suaveActivo: { backgroundColor: c.superficieSuave },
+  fantasma: {},
+  fantasmaActivo: { backgroundColor: c.superficieSuave },
+  peligro: {},
+  peligroActivo: { backgroundColor: c.superficieSuave },
+  inverso: { backgroundColor: c.inverso },
+  inversoActivo: { opacity: 0.85 },
+  inactivo: { opacity: 0.45 },
+  texto: { ...Tipografia.boton, flexShrink: 1 },
+}));

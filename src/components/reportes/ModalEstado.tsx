@@ -75,7 +75,13 @@ export function ModalEstado({ visible, tipo, animalId, onCerrar, onExito }: Prop
       pie={
         <Boton
           titulo={textos.enviar}
-          icono={tipo === 'resguardar' ? 'home' : tipo === 'reunido' ? 'heart' : 'refresh'}
+          icono={
+            tipo === 'resguardar'
+              ? 'home-outline'
+              : tipo === 'reunido'
+                ? 'heart-outline'
+                : 'refresh-outline'
+          }
           cargando={cambiar.isPending}
           onPress={enviar}
         />

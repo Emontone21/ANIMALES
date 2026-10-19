@@ -65,7 +65,7 @@ RPC: `publicar_animal`, `registrar_avistamiento`, `cambiar_estado_animal`, `reso
 
 ## Mapa
 
-Estilo `liberty` de OpenFreeMap (gratis, sin clave, datos de OpenStreetMap bajo ODbL). Marcadores como capa de círculos sobre una fuente GeoJSON con clustering; color por especie, borde verde para resguardados; recorrido como línea punteada con puntos numerados. Dos implementaciones con el mismo contrato (`src/components/mapa/tipos.ts`):
+Estilo `positron` de OpenFreeMap (gratis, sin clave, datos de OpenStreetMap bajo ODbL), descargado una vez por sesión y recoloreado en el cliente con los tokens de mapa del esquema claro u oscuro (`estiloBase.ts` y `recolorearEstilo.ts`). Marcadores como capas de círculos sobre una fuente GeoJSON con clustering: fondo `superficie`, anillo del color del estado y halo para los perdidos; el seleccionado se dibuja aparte con su foto. Recorrido como línea punteada con el último punto en el color del caso. Las capas salen de `estilosCapa.ts`, que recibe la paleta. Colores y medidas en `docs/DISENO.md`. Dos implementaciones con el mismo contrato (`src/components/mapa/tipos.ts`):
 
 - **Web:** `maplibre-gl` (BSD-3) en los `.web.tsx`. El worker se sirve desde `public/`.
 - **Nativo:** MapLibre React Native (MIT) en los `.tsx`. Exige development build (no corre en Expo Go).

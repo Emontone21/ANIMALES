@@ -1,5 +1,6 @@
 import { t } from '@/i18n/es-UY';
-import type { AnimalEnMapa, Especie, EstadoAnimal } from '@/types/dominio';
+import { distanciaMetros } from '@/lib/ubicacion';
+import type { AnimalEnMapa, Especie, EstadoAnimal, LngLat } from '@/types/dominio';
 
 /** Filtros del mapa. Se aplican en el cliente sobre la lista ya cargada. */
 
@@ -25,6 +26,9 @@ export const OPCIONES_ESPECIE: { valor: FiltroEspecie; etiqueta: string }[] = [
   { valor: 'gato', etiqueta: t.especiePlural.gato },
   { valor: 'otro', etiqueta: t.especiePlural.otro },
 ];
+
+/** Chips flotantes sobre el mapa (antes de la Fase 6): Todos, Perros, Gatos. */
+export const OPCIONES_RAPIDAS = OPCIONES_ESPECIE.filter((opcion) => opcion.valor !== 'otro');
 
 export const OPCIONES_ESTADO: { valor: FiltroEstado; etiqueta: string }[] = [
   { valor: 'activos', etiqueta: t.mapa.filtros.activos },
@@ -69,5 +73,31 @@ export function aplicarFiltros(
       if (ultimo < limite) return false;
     }
     return true;
+  });
+}
+
+export type CasoCercano = {
+  animal: AnimalEnMapa;
+  /** Distancia al centro del mapa, o null si todavía no se conoce el centro. */
+  km: number | null;
+};
+
+/**
+ * Casos ordenados por distancia al centro del mapa (se calcula en el cliente).
+ * El seleccionado en el mapa va primero.
+ */
+export function ordenarPorCercania(
+  animales: AnimalEnMapa[],
+  centro: LngLat | null,
+  primeroId: string | null = null,
+): CasoCercano[] {
+  const casos = animales.map((animal) => ({
+    animal,
+    km: centro ? distanciaMetros(centro, [animal.lng, animal.lat]) / 1000 : null,
+  }));
+  return casos.sort((a, b) => {
+    if (a.animal.id === primeroId) return -1;
+    if (b.animal.id === primeroId) return 1;
+    return (a.km ?? 0) - (b.km ?? 0);
   });
 }

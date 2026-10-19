@@ -1,57 +1,85 @@
-import { AttributionControl, Map as MapaGL } from 'maplibre-gl';
+import type { Map as MapaGL } from 'maplibre-gl';
 import { useEffect, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
-import { agregarCapasRecorrido } from '@/components/mapa/capasWeb';
-import { configurarMapLibreWeb } from '@/components/mapa/maplibreWeb';
+import { AtribucionMapa } from '@/components/mapa/AtribucionMapa';
+import { aEstiloWeb, agregarCapasRecorrido, crearMapaWeb } from '@/components/mapa/capasWeb';
+import { useEstiloMapa } from '@/components/mapa/estiloBase';
 import { limitesDe, type MapaRecorridoProps, recorridoAGeoJSON } from '@/components/mapa/tipos';
-import { Radio } from '@/constants/tema';
-import { t } from '@/i18n/es-UY';
-import { ENV } from '@/lib/env';
+import { coloresDeEstado, Radio } from '@/constants/tema';
+import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { ZOOM_PUNTO } from '@/lib/ubicacion';
 
-/** Mini mapa del detalle (navegador) con el recorrido del animal. */
-export function MapaRecorrido({ avistamientos }: MapaRecorridoProps) {
+const ALTO = 140;
+
+/** Mini mapa del detalle (navegador) con el recorrido del animal (6.9). */
+export function MapaRecorrido({ avistamientos, estado, tipo }: MapaRecorridoProps) {
+  const { c, esquema } = useTema();
+  const estilos = useEstilos(crear);
+  const estiloBase = useEstiloMapa();
   const contenedorRef = useRef<HTMLElement | null>(null);
-  const datosRef = useRef(recorridoAGeoJSON(avistamientos));
+  const mapaRef = useRef<MapaGL | null>(null);
+  const colorTipo = coloresDeEstado(c, estado, tipo).anillo;
+  const actual = useRef({ datos: recorridoAGeoJSON([]), c, colorTipo });
 
   useEffect(() => {
-    datosRef.current = recorridoAGeoJSON(avistamientos);
-  }, [avistamientos]);
+    actual.current = { datos: recorridoAGeoJSON(avistamientos), c, colorTipo };
+  });
 
+  // Se crea una vez, cuando el estilo está listo; si cambian los avistamientos, el padre cambia la key.
   useEffect(() => {
     const contenedor = contenedorRef.current;
     const limites = limitesDe(avistamientos.map((av) => [av.lng, av.lat]));
-    if (!contenedor || !limites) return;
-    configurarMapLibreWeb();
+    if (!contenedor || !limites || !estiloBase || mapaRef.current) return;
 
     const unSoloPunto = avistamientos.length === 1;
-    const mapa = new MapaGL({
-      container: contenedor,
-      style: ENV.mapStyleUrl,
-      attributionControl: false,
+    const mapa = crearMapaWeb(contenedor, estiloBase, {
       interactive: false,
       ...(unSoloPunto
         ? { center: limites[0], zoom: ZOOM_PUNTO }
-        : { bounds: limites, fitBoundsOptions: { padding: 48 } }),
+        : { bounds: limites, fitBoundsOptions: { padding: 32 } }),
     });
-    mapa.addControl(
-      new AttributionControl({ compact: true, customAttribution: t.mapa.atribucion }),
-      'bottom-left',
-    );
-    mapa.on('load', () => agregarCapasRecorrido(mapa, datosRef.current));
-
-    return () => mapa.remove();
-    // Solo al montar: si cambian los avistamientos, el padre cambia la key.
+    mapaRef.current = mapa;
+    mapa.on('style.load', () => {
+      const { datos, c: paleta, colorTipo: color } = actual.current;
+      agregarCapasRecorrido(mapa, datos, paleta, color);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [estiloBase]);
+
+  useEffect(
+    () => () => {
+      mapaRef.current?.remove();
+      mapaRef.current = null;
+    },
+    [],
+  );
+
+  // Cambio de esquema: otro estilo y las capas con la paleta nueva.
+  const esquemaRef = useRef(esquema);
+  useEffect(() => {
+    if (esquemaRef.current === esquema) return;
+    esquemaRef.current = esquema;
+    if (estiloBase) mapaRef.current?.setStyle(aEstiloWeb(estiloBase), { diff: false });
+  }, [esquema, estiloBase]);
 
   if (avistamientos.length === 0) return null;
 
-  // En react-native-web la ref de un View es el elemento del DOM.
-  return <View ref={contenedorRef as never} style={estilos.contenedor} />;
+  return (
+    <View style={estilos.contenedor}>
+      {/* En react-native-web la ref de un View es el elemento del DOM. */}
+      <View ref={contenedorRef as never} style={estilos.mapa} />
+      <AtribucionMapa />
+    </View>
+  );
 }
 
-const estilos = StyleSheet.create({
-  contenedor: { height: 220, borderRadius: Radio.m, overflow: 'hidden' },
-});
+const crear = crearEstilos((c) => ({
+  contenedor: {
+    height: ALTO,
+    borderRadius: Radio.m,
+    overflow: 'hidden',
+    backgroundColor: c.mapaTierra,
+  },
+  mapa: { flex: 1 },
+}));

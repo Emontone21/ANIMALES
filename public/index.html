@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es-UY">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="color-scheme" content="light dark" />
+    <title>%WEB_TITLE%</title>
+    <!--
+      Primer pintado según la apariencia elegida en Perfil (clave "encontrados-apariencia",
+      ver src/features/apariencia/preferencia.ts). No hay colores escritos acá: el navegador
+      pinta su fondo claro u oscuro y la app aplica el color exacto de src/constants/tema.ts
+      apenas monta.
+    -->
+    <script>
+      try {
+        var guardada = JSON.parse(localStorage.getItem('encontrados-apariencia') || 'null');
+        var preferencia = guardada && guardada.state && guardada.state.preferencia;
+        if (preferencia === 'claro') document.documentElement.style.colorScheme = 'light';
+        if (preferencia === 'oscuro') document.documentElement.style.colorScheme = 'dark';
+      } catch (e) {}
+    </script>
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      html {
+        color-scheme: light dark;
+      }
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+      }
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+      }
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    </style>
+    <style id="encontrados-web">
+      /* Cursor de mano en todo lo que se toca. */
+      [role='button']:not([aria-disabled='true']),
+      [role='link'],
+      [role='tab'],
+      [role='radio'],
+      [role='switch'],
+      [role='checkbox'],
+      a {
+        cursor: pointer;
+      }
+      /* Foco visible al navegar con teclado: anillo de 2 px en el primario, separado 2 px.
+         La app define --color-foco con la paleta activa. */
+      :focus-visible {
+        outline: 2px solid var(--color-foco, currentColor) !important;
+        outline-offset: 2px !important;
+      }
+      /* Los campos de texto marcan el foco con su borde de 2 px (CampoTexto). */
+      input:focus-visible,
+      textarea:focus-visible {
+        outline: none !important;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <noscript>Necesitás activar JavaScript para usar Encontrados.</noscript>
+    <div id="root"></div>
+  </body>
+</html>

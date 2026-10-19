@@ -1,17 +1,19 @@
-import { Link } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
+import { CambiarAcceso, MarcaAcceso } from '@/components/auth/Acceso';
 import { Boton } from '@/components/ui/Boton';
 import { CampoTexto } from '@/components/ui/CampoTexto';
 import { Mensaje } from '@/components/ui/Mensaje';
 import { Pantalla } from '@/components/ui/Pantalla';
 import { Texto } from '@/components/ui/Texto';
-import { Colores, Espacio } from '@/constants/tema';
+import { AnchoMaximo, Espacio } from '@/constants/tema';
 import { ingresarConEmail, ingresarConGoogle } from '@/features/auth/acciones';
+import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 
 export default function PantallaIngresar() {
+  const estilos = useEstilos(crear);
   const [email, setEmail] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [cargando, setCargando] = useState<'email' | 'google' | null>(null);
@@ -31,8 +33,8 @@ export default function PantallaIngresar() {
   };
 
   return (
-    <Pantalla scroll bordes={['left', 'right', 'bottom']}>
-      <Texto variante="titulo">{t.auth.ingresar}</Texto>
+    <Pantalla scroll bordes={['left', 'right', 'bottom']} ancho={AnchoMaximo.acceso}>
+      <MarcaAcceso />
 
       <CampoTexto
         etiqueta={t.auth.email}
@@ -79,19 +81,16 @@ export default function PantallaIngresar() {
         onPress={() => void ejecutar('google', ingresarConGoogle)}
       />
 
-      <View style={estilos.pie}>
-        <Texto variante="secundario">{t.auth.sinCuenta}</Texto>
-        <Link href="/auth/registrarse" replace style={estilos.enlace}>
-          {t.auth.registrarse}
-        </Link>
-      </View>
+      <CambiarAcceso
+        pregunta={t.auth.sinCuenta}
+        accion={t.auth.registrarse}
+        destino={'/auth/registrarse'}
+      />
     </Pantalla>
   );
 }
 
-const estilos = StyleSheet.create({
+const crear = crearEstilos((c) => ({
   separador: { flexDirection: 'row', alignItems: 'center', gap: Espacio.m },
-  linea: { flex: 1, height: 1, backgroundColor: Colores.borde },
-  pie: { flexDirection: 'row', justifyContent: 'center', gap: Espacio.s, marginTop: Espacio.m },
-  enlace: { color: Colores.primario, fontWeight: '600', fontSize: 14 },
-});
+  linea: { flex: 1, height: 1, backgroundColor: c.borde },
+}));

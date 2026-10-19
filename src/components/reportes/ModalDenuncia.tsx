@@ -6,7 +6,6 @@ import { Chips } from '@/components/ui/Chips';
 import { Hoja } from '@/components/ui/Hoja';
 import { Mensaje } from '@/components/ui/Mensaje';
 import { Seccion } from '@/components/ui/Seccion';
-import { Colores } from '@/constants/tema';
 import { useDenuncia } from '@/features/denuncias/api';
 import { t } from '@/i18n/es-UY';
 import { type MotivoDenuncia, MOTIVOS_DENUNCIA } from '@/types/dominio';
@@ -22,7 +21,6 @@ type Props = {
 const OPCIONES = MOTIVOS_DENUNCIA.map((valor) => ({
   valor,
   etiqueta: t.motivoDenuncia[valor],
-  color: Colores.peligro,
 }));
 
 /** Denunciar una publicación inapropiada. */
@@ -45,7 +43,7 @@ export function ModalDenuncia({ visible, animalId, usuarioId, onCerrar, onExito 
       pie={
         <Boton
           titulo={t.animal.modalDenuncia.enviar}
-          icono="flag"
+          icono="flag-outline"
           variante="peligro"
           cargando={enviar.isPending}
           onPress={() =>

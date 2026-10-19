@@ -75,7 +75,7 @@ export function ModalAvistamiento({ visible, animalId, usuarioId, onCerrar, onEx
       pie={
         <Boton
           titulo={t.animal.modalAvistamiento.enviar}
-          icono="eye"
+          icono="eye-outline"
           cargando={registrar.isPending}
           onPress={enviar}
         />

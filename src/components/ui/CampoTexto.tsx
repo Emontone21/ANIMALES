@@ -1,7 +1,9 @@
-import { StyleSheet, TextInput, type TextInputProps, View } from 'react-native';
+import { useState } from 'react';
+import { TextInput, type TextInputProps, View } from 'react-native';
 
 import { Texto } from '@/components/ui/Texto';
-import { Colores, Espacio, Radio } from '@/constants/tema';
+import { Espacio, Medida, Radio, Tipografia } from '@/constants/tema';
+import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 
 export type CampoTextoProps = TextInputProps & {
   etiqueta: string;
@@ -9,25 +11,46 @@ export type CampoTextoProps = TextInputProps & {
   error?: string | null;
 };
 
-/** Input con etiqueta, texto de ayuda y error. */
-export function CampoTexto({ etiqueta, ayuda, error, style, ...props }: CampoTextoProps) {
+/** Campo con etiqueta arriba, ayuda y error (6.15). */
+export function CampoTexto({
+  etiqueta,
+  ayuda,
+  error,
+  style,
+  onFocus,
+  onBlur,
+  ...props
+}: CampoTextoProps) {
+  const { c } = useTema();
+  const estilos = useEstilos(crear);
+  const [conFoco, setConFoco] = useState(false);
+
   return (
     <View style={estilos.contenedor}>
-      <Texto variante="secundario" style={estilos.etiqueta}>
-        {etiqueta}
-      </Texto>
+      <Texto variante="etiquetaCampo">{etiqueta}</Texto>
       <TextInput
-        placeholderTextColor={Colores.textoSecundario}
+        accessibilityLabel={etiqueta}
+        placeholderTextColor={c.textoSecundario}
+        selectionColor={c.primario}
+        onFocus={(e) => {
+          setConFoco(true);
+          onFocus?.(e);
+        }}
+        onBlur={(e) => {
+          setConFoco(false);
+          onBlur?.(e);
+        }}
         style={[
           estilos.input,
           props.multiline && estilos.multilinea,
-          error && estilos.conError,
+          conFoco && estilos.conFoco,
+          error ? estilos.conError : null,
           style,
         ]}
         {...props}
       />
       {error ? (
-        <Texto variante="pequeno" style={estilos.error}>
+        <Texto variante="pequeno" color="peligro">
           {error}
         </Texto>
       ) : ayuda ? (
@@ -37,21 +60,21 @@ export function CampoTexto({ etiqueta, ayuda, error, style, ...props }: CampoTex
   );
 }
 
-const estilos = StyleSheet.create({
-  contenedor: { gap: Espacio.xs },
-  etiqueta: { fontWeight: '600' },
+const crear = crearEstilos((c) => ({
+  contenedor: { gap: Espacio.s },
   input: {
-    minHeight: 48,
+    ...Tipografia.cuerpo,
+    minHeight: Medida.campo,
     paddingHorizontal: Espacio.m,
-    paddingVertical: Espacio.s,
+    paddingVertical: Espacio.sm,
     borderWidth: 1,
-    borderColor: Colores.borde,
+    borderColor: c.borde,
     borderRadius: Radio.m,
-    backgroundColor: Colores.fondo,
-    fontSize: 16,
-    color: Colores.texto,
+    backgroundColor: c.superficie,
+    color: c.texto,
   },
-  multilinea: { minHeight: 96, textAlignVertical: 'top' },
-  conError: { borderColor: Colores.peligro },
-  error: { color: Colores.peligro },
-});
+  multilinea: { minHeight: 112, textAlignVertical: 'top' },
+  // El borde crece 1 px: se compensa en el relleno para que el texto no salte.
+  conFoco: { borderWidth: 2, borderColor: c.primario, paddingHorizontal: Espacio.m - 1 },
+  conError: { borderColor: c.peligro },
+}));

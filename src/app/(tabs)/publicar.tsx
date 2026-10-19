@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import { View } from 'react-native';
 
 import { RequiereCuenta } from '@/components/auth/RequiereCuenta';
 import { CampoUbicacion } from '@/components/reportes/CampoUbicacion';
@@ -13,17 +14,13 @@ import { Mensaje } from '@/components/ui/Mensaje';
 import { Pantalla } from '@/components/ui/Pantalla';
 import { Seccion } from '@/components/ui/Seccion';
 import { Texto } from '@/components/ui/Texto';
-import { ColorEspecie } from '@/constants/tema';
+import { AnchoMaximo, Espacio } from '@/constants/tema';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { usePublicarAnimal } from '@/features/reportes/api';
 import { t } from '@/i18n/es-UY';
 import { ESPECIES, type Especie, type LngLat, TAMANIOS, type Tamanio } from '@/types/dominio';
 
-const OPCIONES_ESPECIE = ESPECIES.map((valor) => ({
-  valor,
-  etiqueta: t.especie[valor],
-  color: ColorEspecie[valor],
-}));
+const OPCIONES_ESPECIE = ESPECIES.map((valor) => ({ valor, etiqueta: t.especie[valor] }));
 
 const OPCIONES_TAMANIO = TAMANIOS.map((valor) => ({ valor, etiqueta: t.tamanio[valor] }));
 
@@ -83,8 +80,25 @@ function FormularioPublicar({ usuarioId }: { usuarioId: string }) {
   };
 
   return (
-    <Pantalla scroll>
-      <Texto variante="titulo">{t.publicar.titulo}</Texto>
+    <Pantalla
+      scroll
+      ancho={AnchoMaximo.formulario}
+      pie={
+        <View style={{ gap: Espacio.s }}>
+          {publicar.isError ? (
+            <Mensaje texto={publicar.error.message || t.comunes.errorGenerico} tipo="error" />
+          ) : null}
+          <Boton
+            titulo={publicar.isPending ? t.publicar.publicando : t.publicar.publicar}
+            icono="paper-plane-outline"
+            cargando={publicar.isPending}
+            onPress={enviar}
+          />
+        </View>
+      }>
+      <Texto variante="titulo" accessibilityRole="header">
+        {t.publicar.titulo}
+      </Texto>
       <Texto variante="secundario">{t.publicar.intro}</Texto>
 
       <SelectorFoto foto={foto} onCambio={setFoto} error={errorFoto} />
@@ -123,17 +137,6 @@ function FormularioPublicar({ usuarioId }: { usuarioId: string }) {
       <Seccion titulo={t.publicar.ubicacion}>
         <CampoUbicacion valor={ubicacion} onCambio={setUbicacion} error={errorUbicacion} />
       </Seccion>
-
-      {publicar.isError ? (
-        <Mensaje texto={publicar.error.message || t.comunes.errorGenerico} tipo="error" />
-      ) : null}
-
-      <Boton
-        titulo={publicar.isPending ? t.publicar.publicando : t.publicar.publicar}
-        icono="paper-plane"
-        cargando={publicar.isPending}
-        onPress={enviar}
-      />
     </Pantalla>
   );
 }

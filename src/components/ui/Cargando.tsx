@@ -1,19 +1,28 @@
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
 import { Texto } from '@/components/ui/Texto';
-import { Colores, Espacio } from '@/constants/tema';
+import { Espacio } from '@/constants/tema';
+import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 
-/** Indicador de carga centrado, a pantalla completa. */
+/** Indicador de carga centrado. */
 export function Cargando({ texto = t.comunes.cargando }: { texto?: string }) {
+  const { c } = useTema();
+  const estilos = useEstilos(crear);
   return (
-    <View style={estilos.contenedor}>
-      <ActivityIndicator size="large" color={Colores.primario} />
+    <View style={estilos.contenedor} accessibilityRole="progressbar" accessibilityLabel={texto}>
+      <ActivityIndicator size="large" color={c.primario} />
       <Texto variante="secundario">{texto}</Texto>
     </View>
   );
 }
 
-const estilos = StyleSheet.create({
-  contenedor: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: Espacio.m },
-});
+const crear = crearEstilos(() => ({
+  contenedor: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Espacio.m,
+    padding: Espacio.l,
+  },
+}));

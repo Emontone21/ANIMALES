@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import type { ComponentProps } from 'react';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { RequiereCuenta } from '@/components/auth/RequiereCuenta';
 import { Boton } from '@/components/ui/Boton';
@@ -11,8 +11,9 @@ import { Cargando } from '@/components/ui/Cargando';
 import { Chips } from '@/components/ui/Chips';
 import { Mensaje } from '@/components/ui/Mensaje';
 import { Pantalla } from '@/components/ui/Pantalla';
+import { estaActivo } from '@/components/ui/interaccion';
 import { Texto } from '@/components/ui/Texto';
-import { Colores, Espacio, Radio } from '@/constants/tema';
+import { AnchoMaximo, Espacio, Fuentes, Radio } from '@/constants/tema';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useConversaciones } from '@/features/mensajes/api';
 import {
@@ -21,6 +22,7 @@ import {
   useNotificaciones,
 } from '@/features/notificaciones/api';
 import { destinoDe } from '@/features/notificaciones/push';
+import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 import { haceCuanto } from '@/lib/fechas';
 import { urlFoto } from '@/lib/imagenes';
@@ -34,10 +36,10 @@ import type {
 type Pestania = 'novedades' | 'mensajes';
 
 const ICONO: Record<TipoNotificacion, ComponentProps<typeof Ionicons>['name']> = {
-  coincidencia: 'git-compare',
-  avistamiento: 'eye',
-  estado: 'heart',
-  mensaje: 'chatbubble',
+  coincidencia: 'git-compare-outline',
+  avistamiento: 'eye-outline',
+  estado: 'heart-outline',
+  mensaje: 'chatbubble-outline',
 };
 
 export default function PantallaActividad() {
@@ -54,8 +56,10 @@ export default function PantallaActividad() {
   }
 
   return (
-    <Pantalla scroll>
-      <Texto variante="titulo">{t.actividad.titulo}</Texto>
+    <Pantalla scroll ancho={AnchoMaximo.lista}>
+      <Texto variante="titulo" accessibilityRole="header">
+        {t.actividad.titulo}
+      </Texto>
       <Chips
         opciones={[
           { valor: 'novedades', etiqueta: t.actividad.novedades },
@@ -71,6 +75,8 @@ export default function PantallaActividad() {
 
 function Novedades({ usuarioId }: { usuarioId: string }) {
   const router = useRouter();
+  const { c } = useTema();
+  const estilos = useEstilos(crear);
   const notificaciones = useNotificaciones(true);
   const marcarLeida = useMarcarLeida();
   const marcarTodas = useMarcarTodasLeidas(usuarioId);
@@ -102,34 +108,37 @@ function Novedades({ usuarioId }: { usuarioId: string }) {
         <Boton
           titulo={t.actividad.marcarTodasLeidas}
           variante="fantasma"
-          icono="checkmark-done"
+          icono="checkmark-done-outline"
           cargando={marcarTodas.isPending}
           onPress={() => marcarTodas.mutate()}
         />
       ) : null}
-      {notificaciones.data.map((n) => (
-        <Pressable
-          key={n.id}
-          accessibilityRole="button"
-          onPress={() => abrir(n)}
-          style={[estilos.fila, !n.leida_en && estilos.filaNoLeida]}>
-          <View style={estilos.icono}>
-            <Ionicons name={ICONO[n.tipo]} size={18} color={Colores.primario} />
-          </View>
-          <View style={estilos.cuerpo}>
-            <Texto style={estilos.titulo}>{n.titulo}</Texto>
-            <Texto variante="secundario">{n.cuerpo}</Texto>
-            <Texto variante="pequeno">{haceCuanto(n.created_at)}</Texto>
-          </View>
-          {!n.leida_en ? <View style={estilos.punto} /> : null}
-        </Pressable>
-      ))}
+      <View style={estilos.filas}>
+        {notificaciones.data.map((n) => (
+          <Pressable
+            key={n.id}
+            accessibilityRole="button"
+            onPress={() => abrir(n)}
+            style={(estado) => [estilos.fila, estaActivo(estado) && estilos.filaActiva]}>
+            <View style={estilos.icono}>
+              <Ionicons name={ICONO[n.tipo]} size={18} color={c.textoPrimarioSuave} />
+            </View>
+            <View style={estilos.cuerpo}>
+              <Texto style={estilos.titulo}>{n.titulo}</Texto>
+              <Texto variante="secundario">{n.cuerpo}</Texto>
+              <Texto variante="pequeno">{haceCuanto(n.created_at)}</Texto>
+            </View>
+            {!n.leida_en ? <View style={estilos.punto} /> : null}
+          </Pressable>
+        ))}
+      </View>
     </View>
   );
 }
 
 function Conversaciones() {
   const router = useRouter();
+  const estilos = useEstilos(crear);
   const conversaciones = useConversaciones(true);
 
   if (conversaciones.isPending) return <Cargando />;
@@ -147,17 +156,18 @@ function Conversaciones() {
   }
 
   return (
-    <View style={estilos.lista}>
+    <View style={estilos.filas}>
       {conversaciones.data.map((c: ConversacionDetalle) => (
         <Pressable
           key={c.id}
           accessibilityRole="button"
           onPress={() => router.push({ pathname: '/conversacion/[id]', params: { id: c.id } })}
-          style={[estilos.fila, c.no_leidos > 0 && estilos.filaNoLeida]}>
+          style={(estado) => [estilos.fila, estaActivo(estado) && estilos.filaActiva]}>
           <Image
             source={{ uri: urlFoto(c.animal_foto_path) }}
             style={estilos.foto}
             contentFit="cover"
+            accessibilityIgnoresInvertColors
           />
           <View style={estilos.cuerpo}>
             <Texto style={estilos.titulo}>{c.otro_nombre}</Texto>
@@ -171,7 +181,7 @@ function Conversaciones() {
           </View>
           {c.no_leidos > 0 ? (
             <View style={estilos.contador}>
-              <Texto variante="pequeno" style={estilos.contadorTexto}>
+              <Texto variante="pequeno" color="textoSobrePrimario" style={estilos.contadorTexto}>
                 {c.no_leidos}
               </Texto>
             </View>
@@ -182,29 +192,31 @@ function Conversaciones() {
   );
 }
 
-const estilos = StyleSheet.create({
-  lista: { gap: Espacio.s },
+const crear = crearEstilos((c) => ({
+  lista: { gap: Espacio.xs },
+  filas: { borderTopWidth: 1, borderTopColor: c.borde },
   fila: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Espacio.m,
-    padding: Espacio.m,
-    borderRadius: Radio.m,
-    backgroundColor: Colores.fondoSuave,
+    gap: Espacio.sm,
+    paddingVertical: Espacio.sm,
+    paddingHorizontal: Espacio.s,
+    borderBottomWidth: 1,
+    borderBottomColor: c.borde,
   },
-  filaNoLeida: { backgroundColor: Colores.primarioSuave },
+  filaActiva: { backgroundColor: c.superficieSuave },
   icono: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radio.redondo,
-    backgroundColor: Colores.fondo,
+    backgroundColor: c.primarioSuave,
   },
-  foto: { width: 48, height: 48, borderRadius: Radio.s, backgroundColor: Colores.borde },
-  cuerpo: { flex: 1, gap: 2 },
-  titulo: { fontWeight: '600' },
-  punto: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colores.primario },
+  foto: { width: 48, height: 48, borderRadius: Radio.s, backgroundColor: c.superficieSuave },
+  cuerpo: { flex: 1, gap: 2, minWidth: 0 },
+  titulo: { ...Fuentes.negrita, fontSize: 15, lineHeight: 20, color: c.texto },
+  punto: { width: 10, height: 10, borderRadius: 5, backgroundColor: c.primario },
   contador: {
     minWidth: 22,
     height: 22,
@@ -212,7 +224,7 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radio.redondo,
-    backgroundColor: Colores.primario,
+    backgroundColor: c.primario,
   },
-  contadorTexto: { color: Colores.textoInvertido, fontWeight: '700' },
-});
+  contadorTexto: Fuentes.negrita,
+}));

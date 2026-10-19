@@ -1,6 +1,6 @@
 # AGENTS.md · Encontrados
 
-Instrucciones para agentes de código que trabajen en este repo. Leé también `README.md`, `docs/ARQUITECTURA.md` y `docs/DECISIONES.md`.
+Instrucciones para agentes de código que trabajen en este repo. Leé también `README.md`, `docs/ARQUITECTURA.md`, `docs/DECISIONES.md` y `docs/DISENO.md`.
 
 ## Qué es
 
@@ -8,13 +8,14 @@ App Expo + React Native + TypeScript con backend Supabase en la nube para reunir
 
 ## Reglas del proyecto
 
+- **Diseño:** las decisiones visuales están en `docs/DISENO.md`. Todo componente nuevo o modificado las respeta. Ningún color se escribe fuera de `src/constants/tema.ts`: los componentes toman la paleta activa con `useTema()` o `useEstilos()` (`src/hooks/useTema.ts`), así funcionan en modo claro y oscuro.
 - **Textos:** todo texto visible sale de `src/i18n/es-UY.ts`. Nada de strings inline en componentes. Voseo ("tocá", "elegí"), nunca "tú".
 - **Privacidad:** ninguna tabla pública guarda email ni teléfono. El contacto entre usuarios es por mensajería interna o por el dato que la persona decide compartir explícitamente.
 - **RLS en todas las tablas.** Toda tabla nueva lleva `enable row level security` y políticas en la misma migración.
 - **Migraciones versionadas** en `supabase/migrations/AAAAMMDDhhmmss_nombre.sql`. Nunca editar una migración ya aplicada: agregar otra.
 - **Tipos de la base:** `src/types/database.ts` se regenera con `npm run db:types` desde el proyecto enlazado (`npx supabase link`), con las migraciones ya aplicadas. Si cambiás el esquema y todavía no está aplicado, actualizalo a mano con el mismo formato.
 - **Reconocimiento:** nunca fusionar reportes automáticamente. Mostrar coincidencias y que una persona confirme.
-- **Licencias:** solo modelos y librerías con licencias permisivas (Apache 2.0, MIT, BSD). Nada de AGPL (por ejemplo YOLOv8).
+- **Licencias:** solo modelos y librerías con licencias permisivas (Apache 2.0, MIT, BSD). Nada de AGPL (por ejemplo YOLOv8). Excepción aprobada por el dueño: fuentes tipográficas bajo SIL OFL 1.1 (hoy Fredoka y Figtree, ver `docs/DECISIONES.md`).
 - **Dependencias:** instalar con `npx expo install <paquete>` para respetar la versión del SDK. Módulos nativos nuevos exigen rebuild (`npx expo run:android`).
 - **Nada local:** el backend es Supabase en la nube y la app se prueba en el navegador (`npx expo start --web`) o en Vercel. No propongas Docker ni builds nativos salvo que lo pidan.
 - **Web y nativo:** todo componente que use mapas tiene versión `.web.tsx` (maplibre-gl) y `.tsx` (MapLibre React Native) con el mismo contrato en `src/components/mapa/tipos.ts`. Lo que toque cámara, archivos o auth debe funcionar en web (`Platform.OS === 'web'`).
@@ -40,6 +41,7 @@ npx supabase db push        # subir migraciones al proyecto en la nube (tras sup
 - `src/components/ui/`: componentes genéricos reutilizables. `mapa/`, `reportes/`, `auth/`: componentes por área.
 - `src/features/<área>/`: acceso a datos (`api.ts`), hooks y acciones. Único lugar que llama a Supabase.
 - `src/lib/`: utilidades sin React (supabase, imágenes, ubicación, fechas, env).
+- `src/constants/tema.ts`: paletas claro y oscuro, espacios, radios, fuentes y escala tipográfica. `src/hooks/`: `useTema`, `useEstilos` y `useDisposicion` (compacto, medio, amplio).
 - `supabase/`: configuración, migraciones (0001–0008), seed. `services/vision/`: microservicio Python de reconocimiento.
 - `public/`: archivos estáticos de la web. `vercel.json`: despliegue.
 
