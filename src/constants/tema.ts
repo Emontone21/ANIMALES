@@ -1,6 +1,6 @@
 import { Platform, type TextStyle, type ViewStyle } from 'react-native';
 
-import type { EstadoAnimal } from '@/types/dominio';
+import type { EstadoAnimal, TipoReporte } from '@/types/dominio';
 
 /**
  * Tema "Calma oliva" (ver docs/DISENO.md). Único archivo con colores escritos:
@@ -137,8 +137,8 @@ export const paletas: Record<Esquema, Paleta> = { claro, oscuro };
 /** Opacidad del marcador de un caso reunido. */
 export const OPACIDAD_REUNIDO = 0.45;
 
-/** Perdido o encontrado. Hasta la Fase 6 todos los reportes son "encontrado". */
-export type TipoReporte = 'perdido' | 'encontrado';
+/** Perdido o encontrado (animales.tipo_reporte). */
+export type { TipoReporte };
 
 export type ColoresEstado = {
   fondo: string;

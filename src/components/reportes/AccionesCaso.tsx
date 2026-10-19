@@ -55,31 +55,42 @@ export function useAccionesCaso(animal: AnimalDetalle, resguardo: CambioEstadoDe
 
   const abierto = animal.estado === 'avistado' || animal.estado === 'resguardado';
   const esCreador = !!usuario && animal.creado_por === usuario.id;
+  const esPerdido = animal.tipo_reporte === 'perdido';
+  // Quien lo tiene resguardado ahora (solo existe si el caso está resguardado).
+  const esQuienResguarda = !!usuario && resguardo?.usuario_id === usuario.id;
+
+  // Las mismas reglas que cambiar_estado_animal (migración 0010).
+  const puedeResguardar = animal.estado === 'avistado' && !(esPerdido && esCreador);
+  const puedeReunir =
+    abierto && (esCreador || (!esPerdido && animal.estado === 'resguardado' && esQuienResguarda));
+  const puedeReabrir =
+    (animal.estado === 'resguardado' && (!esPerdido || esCreador)) ||
+    (animal.estado === 'reunido' && esCreador);
 
   const novedades: Novedad[] = [];
   if (usuario) {
-    if (animal.estado === 'avistado') {
+    if (puedeResguardar) {
       novedades.push({
         tipo: 'resguardar',
         titulo: t.animal.acciones.resguardar,
         icono: 'home-outline',
       });
     }
-    if (animal.estado === 'resguardado') {
+    if (puedeReabrir && animal.estado === 'resguardado') {
       novedades.push({
         tipo: 'reabrir',
         titulo: t.animal.acciones.reabrir,
         icono: 'refresh-outline',
       });
     }
-    if (abierto) {
+    if (puedeReunir) {
       novedades.push({
         tipo: 'reunido',
         titulo: t.animal.acciones.reunido,
         icono: 'heart-outline',
       });
     }
-    if (animal.estado === 'reunido' && esCreador) {
+    if (puedeReabrir && animal.estado === 'reunido') {
       novedades.push({
         tipo: 'reabrir',
         titulo: t.animal.acciones.reabrir,
@@ -90,7 +101,10 @@ export function useAccionesCaso(animal: AnimalDetalle, resguardo: CambioEstadoDe
 
   // Quien publicó y, si es otra persona, quien lo resguarda. Nunca uno mismo.
   const destinatarios: Destinatario[] = [
-    { usuarioId: animal.creado_por, titulo: t.mensajes.escribirAPublicador },
+    {
+      usuarioId: animal.creado_por,
+      titulo: esPerdido ? t.mensajes.escribirAFamilia : t.mensajes.escribirAPublicador,
+    },
     ...(resguardo && resguardo.usuario_id !== animal.creado_por
       ? [{ usuarioId: resguardo.usuario_id, titulo: t.mensajes.escribirAResguardo }]
       : []),

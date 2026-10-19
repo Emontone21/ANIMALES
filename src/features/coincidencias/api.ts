@@ -64,5 +64,29 @@ export function otroAnimal(c: CoincidenciaDetalle, animalId: string) {
     especie: esOrigen ? c.candidato_especie : c.origen_especie,
     estado: esOrigen ? c.candidato_estado : c.origen_estado,
     descripcion: esOrigen ? c.candidato_descripcion : c.origen_descripcion,
+    tipo: esOrigen ? c.candidato_tipo_reporte : c.origen_tipo_reporte,
+    nombre: esOrigen ? c.candidato_nombre : c.origen_nombre,
   };
+}
+
+/** Si el par incluye un perdido (nunca hay dos), quién es su familia. */
+export function familiaDelPerdido(c: CoincidenciaDetalle): string | null {
+  if (c.origen_tipo_reporte === 'perdido') return c.origen_creado_por;
+  if (c.candidato_tipo_reporte === 'perdido') return c.candidato_creado_por;
+  return null;
+}
+
+/**
+ * Las mismas reglas que resolver_coincidencia: con un perdido decide solo su
+ * familia; entre dos encontrados, quien publicó cualquiera de los dos o un moderador.
+ */
+export function puedeResolver(
+  c: CoincidenciaDetalle,
+  usuarioId: string | null | undefined,
+  esModerador: boolean,
+): boolean {
+  if (!usuarioId) return false;
+  const familia = familiaDelPerdido(c);
+  if (familia) return usuarioId === familia;
+  return usuarioId === c.origen_creado_por || usuarioId === c.candidato_creado_por || esModerador;
 }

@@ -151,9 +151,9 @@ export default function PantallaPerfil() {
                       accessibilityIgnoresInvertColors
                     />
                     <View style={estilos.cuerpo}>
-                      <EtiquetaEstado estado={a.estado} />
+                      <EtiquetaEstado estado={a.estado} tipo={a.tipo_reporte} />
                       <Texto numberOfLines={1} style={estilos.tituloFila}>
-                        {t.animal.tituloCorto(a.especie, a.color, a.tamanio)}
+                        {t.animal.tituloCaso(a.nombre, a.especie, a.color, a.tamanio)}
                       </Texto>
                       <Texto variante="pequeno">
                         {haceCuanto(a.created_at)} ·{' '}

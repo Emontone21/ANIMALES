@@ -18,10 +18,12 @@ type Props = {
   valor: LngLat | null;
   onCambio: (punto: LngLat) => void;
   error?: string | null;
+  /** Aclaración debajo de los botones (en los perdidos: no hace falta la casa exacta). */
+  ayuda?: string;
 };
 
 /** Botones "Usar mi ubicación" / "Elegir en el mapa" con el estado del punto elegido. */
-export function CampoUbicacion({ valor, onCambio, error }: Props) {
+export function CampoUbicacion({ valor, onCambio, error, ayuda }: Props) {
   const { c } = useTema();
   const estilos = useEstilos(crear);
   const [eligiendoEnMapa, setEligiendoEnMapa] = useState(false);
@@ -59,6 +61,7 @@ export function CampoUbicacion({ valor, onCambio, error }: Props) {
           style={estilos.botonMitad}
         />
       </View>
+      {ayuda ? <Texto variante="secundario">{ayuda}</Texto> : null}
       {valor ? (
         <>
           {/* Mini mapa con el punto elegido; se vuelve a crear si cambia. */}

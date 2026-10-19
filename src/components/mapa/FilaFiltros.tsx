@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { BotonRedondo } from '@/components/ui/BotonRedondo';
 import { Chips } from '@/components/ui/Chips';
 import { Espacio, Medida } from '@/constants/tema';
-import { type FiltrosMapa, OPCIONES_RAPIDAS } from '@/features/reportes/filtros';
+import { type FiltrosMapa, OPCIONES_TIPO } from '@/features/reportes/filtros';
 import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 
@@ -17,7 +17,7 @@ type Props = {
   margen: number;
 };
 
-/** Chips rápidos (Todos, Perros, Gatos) y, a la derecha, el botón que abre el resto de los filtros. */
+/** Chips rápidos (Todos, Perdidos, Encontrados) y, a la derecha, el botón que abre el resto de los filtros. */
 export function FilaFiltros({ filtros, onCambio, onMasFiltros, flotante = false, margen }: Props) {
   const estilos = useEstilos(crear);
   return (
@@ -27,10 +27,10 @@ export function FilaFiltros({ filtros, onCambio, onMasFiltros, flotante = false,
           scroll
           flotante={flotante}
           margen={margen}
-          opciones={OPCIONES_RAPIDAS}
-          valor={filtros.especie}
-          onCambio={(especie) => onCambio({ ...filtros, especie })}
-          accessibilityLabel={t.mapa.filtros.especie}
+          opciones={OPCIONES_TIPO}
+          valor={filtros.tipo}
+          onCambio={(tipo) => onCambio({ ...filtros, tipo })}
+          accessibilityLabel={t.mapa.filtros.tipo}
         />
       </View>
       <BotonRedondo

@@ -20,9 +20,9 @@ Si no detecta ningún animal usa la foto entera. YOLOv8 queda descartado por ser
 
 ## Desplegar en Hugging Face Spaces
 
-1. Creá un Space nuevo: tipo **Docker**, hardware **CPU basic** (gratis), visibilidad pública o privada.
-2. Subí el contenido de esta carpeta (`Dockerfile`, `requirements.txt`, `app/`). Podés hacerlo con git: el Space es un repo.
-3. En **Settings → Variables and secrets** cargá `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (secret) y `VISION_SECRET` (secret, un string largo al azar).
+1. Creá un Space nuevo: tipo **Docker** (plantilla Blank), hardware **CPU basic** (gratis), visibilidad **pública**. Un Space privado exige un token de Hugging Face en cada pedido y el aviso de Supabase no lo manda; los endpoints igual están protegidos con `X-Vision-Secret`.
+2. Subí el contenido de esta carpeta (`Dockerfile`, `requirements.txt`, `app/`). Podés hacerlo con git: el Space es un repo. **No subas este README**: el del Space trae la configuración (`sdk: docker`) y se pisaría.
+3. En **Settings → Variables and secrets** cargá `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (secret: la clave `service_role` de **Project Settings → API Keys → Legacy API Keys**, que es un JWT; el servicio la manda como `Bearer`) y `VISION_SECRET` (secret, un string largo al azar).
 4. Esperá el build (descarga los modelos; tarda unos minutos). Probá `https://<usuario>-<space>.hf.space/salud`.
 5. En Supabase, SQL Editor:
 
@@ -30,6 +30,12 @@ Si no detecta ningún animal usa la foto entera. YOLOv8 queda descartado por ser
    update config_app set valor = 'https://<usuario>-<space>.hf.space' where clave = 'vision_url';
    update config_app set valor = '<el mismo VISION_SECRET>' where clave = 'vision_secret';
    ```
+
+Para procesar lo que ya estaba en la cola sin esperar el bucle interno:
+
+```bash
+curl -X POST https://<usuario>-<space>.hf.space/procesar-pendientes -H "X-Vision-Secret: <VISION_SECRET>"
+```
 
 El plan gratuito duerme el Space tras 48 h sin tráfico; el primer request lo despierta (tarda hasta un minuto). Las coincidencias de ese intervalo llegan cuando se procesa la cola.
 

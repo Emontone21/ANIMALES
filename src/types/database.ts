@@ -55,6 +55,9 @@ export type Database = {
           creado_por: string;
           ultimo_avistamiento_en: string | null;
           oculto: boolean;
+          tipo_reporte: Database['public']['Enums']['tipo_reporte'];
+          nombre: string | null;
+          contacto_familia: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -71,6 +74,9 @@ export type Database = {
           creado_por: string;
           ultimo_avistamiento_en?: string | null;
           oculto?: boolean;
+          tipo_reporte?: Database['public']['Enums']['tipo_reporte'];
+          nombre?: string | null;
+          contacto_familia?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -87,6 +93,9 @@ export type Database = {
           creado_por?: string;
           ultimo_avistamiento_en?: string | null;
           oculto?: boolean;
+          tipo_reporte?: Database['public']['Enums']['tipo_reporte'];
+          nombre?: string | null;
+          contacto_familia?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -447,6 +456,12 @@ export type Database = {
           candidato_especie: Database['public']['Enums']['especie'];
           candidato_estado: Database['public']['Enums']['estado_animal'];
           candidato_descripcion: string | null;
+          origen_tipo_reporte: Database['public']['Enums']['tipo_reporte'];
+          origen_nombre: string | null;
+          origen_creado_por: string;
+          candidato_tipo_reporte: Database['public']['Enums']['tipo_reporte'];
+          candidato_nombre: string | null;
+          candidato_creado_por: string;
         };
         Relationships: [];
       };
@@ -470,6 +485,11 @@ export type Database = {
           ultimo_visto_en: string | null;
           cantidad_avistamientos: number;
           oculto: boolean;
+          tipo_reporte: Database['public']['Enums']['tipo_reporte'];
+          nombre: string | null;
+          contacto_familia: string | null;
+          /** Cuándo se perdió (avistamiento de tipo perdido); null en los encontrados. */
+          perdido_desde: string | null;
         };
         Relationships: [];
       };
@@ -504,6 +524,9 @@ export type Database = {
           lng: number;
           ultimo_visto_en: string;
           cantidad_avistamientos: number;
+          tipo_reporte: Database['public']['Enums']['tipo_reporte'];
+          nombre: string | null;
+          contacto_familia: string | null;
         };
         Relationships: [];
       };
@@ -574,6 +597,9 @@ export type Database = {
           p_color?: string | null;
           p_tiene_collar?: boolean;
           p_descripcion?: string | null;
+          p_tipo?: Database['public']['Enums']['tipo_reporte'];
+          p_nombre?: string | null;
+          p_contacto_familia?: string | null;
         };
         Returns: string;
       };
@@ -587,7 +613,8 @@ export type Database = {
       especie: 'perro' | 'gato' | 'otro';
       tamanio: 'chico' | 'mediano' | 'grande';
       estado_animal: 'avistado' | 'resguardado' | 'reunido' | 'vinculado';
-      tipo_avistamiento: 'encontrado' | 'visto' | 'resguardado';
+      tipo_avistamiento: 'encontrado' | 'visto' | 'resguardado' | 'perdido';
+      tipo_reporte: 'perdido' | 'encontrado';
     };
     CompositeTypes: Record<string, never>;
   };

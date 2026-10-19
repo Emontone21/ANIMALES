@@ -10,6 +10,7 @@ import type {
   MotivoDenuncia,
   Tamanio,
   TipoAvistamiento,
+  TipoReporte,
 } from '@/types/dominio';
 
 export const t = {
@@ -59,6 +60,9 @@ export const t = {
       estado: 'Estado',
       antiguedad: 'Antigüedad',
       todos: 'Todos',
+      tipo: 'Tipo de reporte',
+      perdidos: 'Perdidos',
+      encontrados: 'Encontrados',
       activos: 'Activos',
       ultimas24h: 'Últimas 24 h',
       ultimos7d: '7 días',
@@ -92,10 +96,19 @@ export const t = {
     reunido: 'Reunido con su familia',
     vinculado: 'Vinculado a otro reporte',
   } satisfies Record<EstadoAnimal, string>,
+  tipoReporte: {
+    perdido: 'Perdido',
+    encontrado: 'Encontrado',
+  } satisfies Record<TipoReporte, string>,
+  /** Etiqueta del caso: un perdido que todavía nadie tiene se ve como "Perdido". */
+  etiquetaEstado: (estado: EstadoAnimal, tipo: TipoReporte): string =>
+    tipo === 'perdido' && estado === 'avistado' ? t.tipoReporte.perdido : t.estado[estado],
   tipoAvistamiento: {
     encontrado: 'Lo encontró',
     visto: 'Lo vio',
     resguardado: 'Lo resguardó',
+    // El primer avistamiento de un perdido: el historial no agrega quién.
+    perdido: 'Se perdió acá',
   } satisfies Record<TipoAvistamiento, string>,
   animal: {
     titulo: 'Detalle del animal',
@@ -106,7 +119,18 @@ export const t = {
         : tamanio
           ? `${t.especie[especie]} ${t.tamanio[tamanio].toLowerCase()}`
           : t.especie[especie],
+    /** Título de un caso: el nombre si lo tiene ("Toby"); si no, "Gato gris atigrado". */
+    tituloCaso: (
+      nombre: string | null,
+      especie: Especie,
+      color: string | null,
+      tamanio: Tamanio | null,
+    ): string => nombre ?? t.animal.tituloCorto(especie, color, tamanio),
     publicado: (hace: string) => `Publicado ${hace}`,
+    /** "Perdido desde el sábado 17", "Perdido desde ayer". */
+    perdidoDesde: (cuando: string) => `Perdido desde ${cuando}`,
+    loBuscan: 'Lo buscan',
+    contactoFamiliaAyuda: 'Es el dato que eligió mostrar su familia.',
     ultimaVez: 'Visto por última vez',
     novedades: 'Novedades del caso',
     masOpciones: 'Más opciones',
@@ -183,7 +207,10 @@ export const t = {
       'El reconocimiento de imágenes encontró reportes parecidos. Mirá las fotos y decidí vos: nada se une solo.',
     vacio:
       'Todavía no hay coincidencias. Las fotos se comparan automáticamente; si aparece algo, lo vas a ver acá.',
-    requiereCuenta: 'Para confirmar o rechazar una coincidencia necesitás una cuenta.',
+    /** Quien no puede decidir ve por qué espera. */
+    esperaFamilia: 'Su familia está mirando las fotos para confirmar si es el mismo animal.',
+    esperaPublicadores:
+      'Quien publicó alguno de los dos reportes va a confirmar si es el mismo animal.',
     tiempo: (horas: number) =>
       horas < 1
         ? 'con menos de 1 h de diferencia'
@@ -198,11 +225,23 @@ export const t = {
     esElMismo: 'Es el mismo animal',
     noEsElMismo: 'No es el mismo',
     verOtro: 'Ver el otro reporte',
-    /** "Un perro encontrado a 1,2 km se parece en un 86 %." */
-    resumen: (especie: Especie, km: number | null, porcentaje: number): string =>
-      km === null
-        ? `${t.especieConArticulo[especie]} encontrado se parece en un ${porcentaje} %.`
-        : `${t.especieConArticulo[especie]} encontrado ${t.mapa.distancia(km).toLowerCase()} se parece en un ${porcentaje} %.`,
+    /**
+     * "Un perro encontrado a 1,2 km se parece en un 86 %." o, con nombre,
+     * "Toby, perdido a 1,2 km, se parece en un 86 %."
+     */
+    resumen: (
+      especie: Especie,
+      tipo: TipoReporte,
+      nombre: string | null,
+      km: number | null,
+      porcentaje: number,
+    ): string => {
+      const tipoTexto = t.tipoReporte[tipo].toLowerCase();
+      const donde = km === null ? '' : ` ${t.mapa.distancia(km).toLowerCase()}`;
+      return nombre
+        ? `${nombre}, ${tipoTexto}${donde}, se parece en un ${porcentaje} %.`
+        : `${t.especieConArticulo[especie]} ${tipoTexto}${donde} se parece en un ${porcentaje} %.`;
+    },
     confirmada: 'Listo: los reportes quedaron unidos.',
     rechazada: 'Gracias. Lo anotamos para afinar el reconocimiento.',
     resueltas: (n: number) =>
@@ -225,6 +264,7 @@ export const t = {
     escribir: 'Escribir',
     elegirDestinatario: '¿A quién le querés escribir?',
     escribirAPublicador: 'Escribirle a quien publicó',
+    escribirAFamilia: 'Escribirle a su familia',
     escribirAResguardo: 'Escribirle a quien lo resguarda',
     aviso:
       'Hablás dentro de la app: tu email y tu teléfono no se comparten. Compartí solo lo que quieras.',
@@ -258,9 +298,42 @@ export const t = {
     otro: 'Otro',
   } satisfies Record<MotivoDenuncia, string>,
   publicar: {
-    titulo: 'Publicar un animal encontrado',
+    titulo: 'Publicar',
+    elegirTipo: '¿Qué te pasó?',
+    tipos: {
+      perdido: {
+        titulo: 'Perdí a mi animal',
+        detalle: 'Publicalo para que te avisen si lo ven o si alguien encuentra uno parecido.',
+      },
+      encontrado: {
+        titulo: 'Encontré un animal',
+        detalle: 'Ayudá a que vuelva con su familia.',
+      },
+    } satisfies Record<TipoReporte, { titulo: string; detalle: string }>,
     intro:
       'Subí una foto y marcá dónde lo viste. Cuanto más detalle, más fácil es que lo reconozcan.',
+    introPerdido:
+      'Subí una foto reciente y contá dónde lo vieron por última vez. Te avisamos si alguien lo ve o encuentra uno parecido.',
+    nombre: 'Nombre',
+    nombrePlaceholder: 'Cómo se llama (opcional)',
+    senas: 'Señas particulares',
+    senasPlaceholder: 'Manchas, cicatrices, si responde a su nombre…',
+    cuandoPerdido: '¿Cuándo se perdió?',
+    cuandoPerdidoOpciones: {
+      hoy: 'Hoy',
+      ayer: 'Ayer',
+      hace2d: 'Hace 2 días',
+      hace3d: 'Hace 3 días',
+      semana: 'Hace una semana',
+      dosSemanas: 'Hace dos semanas',
+    },
+    ubicacionPerdido: '¿Dónde lo vieron por última vez?',
+    ubicacionPerdidoAyuda:
+      'No hace falta marcar tu casa exacta: alcanza con la cuadra o la zona. Igual guardamos el punto aproximado, a unos 100 m.',
+    contactoFamilia: 'Contacto que querés mostrar (opcional)',
+    contactoFamiliaPlaceholder: 'Ej: WhatsApp 099 123 456 o "escribime por la app"',
+    contactoFamiliaAyuda:
+      'Lo ve cualquiera que abra el reporte. También te pueden escribir por la app sin que muestres nada.',
     foto: 'Foto',
     fotoObligatoria: 'La foto es obligatoria.',
     sacarFoto: 'Sacar foto',
@@ -349,6 +422,12 @@ export const t = {
     haceHoras: (n: number) => (n === 1 ? 'hace 1 hora' : `hace ${n} horas`),
     haceDias: (n: number) => (n === 1 ? 'ayer' : `hace ${n} días`),
     haceSemanas: (n: number) => (n === 1 ? 'hace 1 semana' : `hace ${n} semanas`),
+    hoy: 'hoy',
+    ayer: 'ayer',
+    /** "el sábado 17" */
+    elDiaDeLaSemana: (dia: string, numero: string) => `el ${dia} ${numero}`,
+    /** "el 3 de octubre" */
+    elDiaDelMes: (numero: string, mes: string) => `el ${numero} de ${mes}`,
     hoyALas: (hora: string) => `Hoy a las ${hora}`,
     ayerALas: (hora: string) => `Ayer a las ${hora}`,
     diaALas: (dia: string, hora: string) => `${dia} a las ${hora}`,

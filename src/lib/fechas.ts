@@ -54,6 +54,31 @@ export function diaYHora(fecha: string | Date, ahora: Date = new Date()): string
   return t.fechas.diaALas(formatoDiaCorto.format(momento), hora);
 }
 
+const formatoDiaSemana = new Intl.DateTimeFormat('es-UY', { weekday: 'long', timeZone: ZONA });
+const formatoNumeroDia = new Intl.DateTimeFormat('es-UY', { day: 'numeric', timeZone: ZONA });
+const formatoMes = new Intl.DateTimeFormat('es-UY', { month: 'long', timeZone: ZONA });
+
+/**
+ * Para "Perdido desde…": "hoy", "ayer", "el sábado 17" en la última semana y
+ * "el 3 de octubre" antes, en horario de Uruguay.
+ */
+export function desdeCuando(fecha: string | Date, ahora: Date = new Date()): string {
+  const momento = typeof fecha === 'string' ? new Date(fecha) : fecha;
+  const dia = formatoDia.format(momento);
+  if (dia === formatoDia.format(ahora)) return t.fechas.hoy;
+  if (dia === formatoDia.format(new Date(ahora.getTime() - DIA))) return t.fechas.ayer;
+  const numero = formatoNumeroDia.format(momento);
+  if (ahora.getTime() - momento.getTime() < 6 * DIA) {
+    return t.fechas.elDiaDeLaSemana(minuscula(formatoDiaSemana.format(momento)), numero);
+  }
+  return t.fechas.elDiaDelMes(numero, minuscula(formatoMes.format(momento)));
+}
+
+// Algunos motores devuelven "Octubre" o "Sábado"; en español van en minúscula.
+function minuscula(texto: string): string {
+  return texto.toLocaleLowerCase('es-UY');
+}
+
 /** Fecha N horas antes de ahora. */
 export function hace(horas: number, ahora: Date = new Date()): Date {
   return new Date(ahora.getTime() - horas * HORA);

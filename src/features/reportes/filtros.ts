@@ -1,20 +1,23 @@
 import { t } from '@/i18n/es-UY';
 import { distanciaMetros } from '@/lib/ubicacion';
-import type { AnimalEnMapa, Especie, EstadoAnimal, LngLat } from '@/types/dominio';
+import type { AnimalEnMapa, Especie, EstadoAnimal, LngLat, TipoReporte } from '@/types/dominio';
 
 /** Filtros del mapa. Se aplican en el cliente sobre la lista ya cargada. */
 
+export type FiltroTipo = 'todos' | TipoReporte;
 export type FiltroEspecie = 'todas' | Especie;
 export type FiltroEstado = 'activos' | EstadoAnimal;
 export type FiltroAntiguedad = '24h' | '7d' | '30d' | 'todo';
 
 export type FiltrosMapa = {
+  tipo: FiltroTipo;
   especie: FiltroEspecie;
   estado: FiltroEstado;
   antiguedad: FiltroAntiguedad;
 };
 
 export const FILTROS_INICIALES: FiltrosMapa = {
+  tipo: 'todos',
   especie: 'todas',
   estado: 'activos',
   antiguedad: '30d',
@@ -27,8 +30,15 @@ export const OPCIONES_ESPECIE: { valor: FiltroEspecie; etiqueta: string }[] = [
   { valor: 'otro', etiqueta: t.especiePlural.otro },
 ];
 
-/** Chips flotantes sobre el mapa (antes de la Fase 6): Todos, Perros, Gatos. */
-export const OPCIONES_RAPIDAS = OPCIONES_ESPECIE.filter((opcion) => opcion.valor !== 'otro');
+/**
+ * Chips flotantes sobre el mapa: Todos, Perdidos, Encontrados (docs/DISENO.md,
+ * 7.1), con el punto del color de cada tipo. La especie queda en la hoja de filtros.
+ */
+export const OPCIONES_TIPO: { valor: FiltroTipo; etiqueta: string; punto?: TipoReporte }[] = [
+  { valor: 'todos', etiqueta: t.mapa.filtros.todos },
+  { valor: 'perdido', etiqueta: t.mapa.filtros.perdidos, punto: 'perdido' },
+  { valor: 'encontrado', etiqueta: t.mapa.filtros.encontrados, punto: 'encontrado' },
+];
 
 export const OPCIONES_ESTADO: { valor: FiltroEstado; etiqueta: string }[] = [
   { valor: 'activos', etiqueta: t.mapa.filtros.activos },
@@ -60,6 +70,7 @@ export function aplicarFiltros(
   const limite = horas === null ? null : ahora.getTime() - horas * 3_600_000;
 
   return animales.filter((a) => {
+    if (filtros.tipo !== 'todos' && a.tipo_reporte !== filtros.tipo) return false;
     if (filtros.especie !== 'todas' && a.especie !== filtros.especie) return false;
 
     if (filtros.estado === 'activos') {

@@ -89,3 +89,40 @@ Automático (sigue al sistema, por defecto), Claro u Oscuro, en Perfil › Apari
 ## 2026-10-19 · Estilo del mapa: Positron recoloreado en el cliente
 
 El mapa pasa de Liberty a Positron de OpenFreeMap, el más limpio, recoloreado con los tokens de mapa de cada esquema. En vez de copiar el JSON del estilo al repo, la app lo descarga una vez por sesión y le cambia los colores por tipo de capa del esquema OpenMapTiles (tierra, calles, avenidas, parques, agua, edificios, límites y etiquetas con su halo). Así el repo no carga 40 KB de estilo que habría que actualizar a mano, `EXPO_PUBLIC_MAP_STYLE_URL` sigue sirviendo para cambiar el estilo base, y si un estilo no tiene las capas esperadas o la descarga falla, se usa tal cual. Web y nativo usan la misma función (`src/components/mapa/estiloBase.ts`), igual que `estilosCapa.ts`, que ahora recibe la paleta como parámetro. Al cambiar de esquema, el mapa cambia de estilo sin perder posición ni selección.
+
+## 2026-10-19 · Perdidos y encontrados en la misma tabla
+
+La familia que perdió un animal publica en `animales`, igual que quien encuentra uno, con `tipo_reporte` (`perdido` o `encontrado`). Así reutilizan sin cambios el mapa, los avistamientos, los seguimientos, la mensajería y las coincidencias. Se descartó una tabla aparte de "búsquedas": habría duplicado todo eso y las coincidencias tendrían que cruzar dos tablas. El tipo es independiente del estado (un perdido también pasa por avistado, resguardado, reunido o vinculado), queda fijo desde que se publica y los existentes quedaron como `encontrado`. `nombre` (hasta 40) y `contacto_familia` (hasta 200) son opcionales; un CHECK impide `contacto_familia` en un encontrado, porque quien encuentra no conoce a la familia. No hay campo de recompensa.
+
+## 2026-10-19 · publicar_animal con p_tipo, en vez de una RPC nueva
+
+Se agregaron `p_tipo`, `p_nombre` y `p_contacto_familia` a `publicar_animal`, con default (`encontrado` y null). Una sola función mantiene en un solo lugar las validaciones (cuenta, ubicación, foto propia) y el alta atómica de animal más primer avistamiento; con dos, cada regla nueva habría que escribirla dos veces. Además, una app que todavía no se actualizó sigue publicando encontrados igual mientras se despliega la versión nueva: PostgREST resuelve la llamada por nombre de parámetros y los nuevos tienen default. Hubo que borrar la firma vieja y crear la nueva (agregar parámetros cambia la firma), y la nueva declara `security definer` explícitamente.
+
+## 2026-10-19 · La ubicación de un perdido se redondea en la base
+
+El lugar donde vieron por última vez a un perdido suele ser la casa de la familia. `publicar_animal` lo guarda con latitud y longitud redondeadas a 3 decimales (unos 100 m), y el formulario avisa que no hace falta marcar la casa exacta. Se redondea en la base y no en la app para que ningún cliente pueda saltearlo. Los avistamientos posteriores ("Lo vi") se guardan con precisión: son de otras personas en la calle.
+
+## 2026-10-19 · Quién cierra un caso y quién confirma una coincidencia
+
+Hasta la Fase 5, cualquier usuario con cuenta podía marcar un caso como reunido y confirmar coincidencias. Ahora depende del tipo:
+- **Perdido:** solo su familia (quien lo publicó) lo marca como reunido o lo reabre, también cuando "se volvió a escapar". Cualquiera puede avisar que lo vio o que lo tiene resguardado.
+- **Encontrado:** lo marca como reunido quien lo publicó o quien lo tiene resguardado (el autor del último pase a resguardado); "se volvió a escapar" sigue abierto a cualquiera, y reabrir un caso cerrado, solo quien lo publicó.
+- **Coincidencias:** si el par incluye un perdido, solo su familia confirma o rechaza; entre dos encontrados, quien publicó cualquiera de los dos o un moderador. Al confirmar, el perdido queda siempre como principal (es el caso que la familia sigue); entre dos encontrados, el más viejo, como antes.
+
+Además, si el secundario estaba resguardado y el principal no, el principal pasa a resguardado con el mismo contacto: así la familia ve enseguida quién tiene a su animal, en vez de encontrarlo solo en el historial. La app muestra las acciones con las mismas reglas, y quien no puede decidir una coincidencia ve un mensaje de espera. A la familia de un perdido no se le ofrece "Me lo llevé / está resguardado" sobre su propio animal, aunque la base lo permitiría.
+
+## 2026-10-19 · Qué coincidencias no se sugieren
+
+`guardar_embedding` no sugiere nunca un perdido con otro perdido (son dos familias buscando, no hay nada que unir) ni un encontrado cuyos avistamientos son todos de más de un día antes de la pérdida: ese animal ya andaba suelto antes de que el otro se perdiera. El día de margen cubre que la familia no sepa la hora exacta (el formulario pregunta en días) y las diferencias de zona horaria. La fecha de la pérdida es la del avistamiento `perdido`. Las demás condiciones (misma especie, casos abiertos, radio y ventana de tiempo, umbral) no cambian.
+
+## 2026-10-19 · Fotos solo desde el bucket propio
+
+`publicar_animal` y `registrar_avistamiento` aceptaban cualquier `p_foto_path`, incluida una URL externa que la app mostraba tal cual: se podía publicar una imagen que nunca pasó por Storage. Ahora exigen que la ruta empiece con la carpeta del usuario (`<uid>/`) y que el objeto exista en `storage.objects` del bucket `fotos` (función interna `es_foto_propia`). Mirar `storage.objects` y no solo el prefijo evita publicar con una ruta inventada. Los datos de demo con URLs externas se cargan directo por SQL, sin pasar por las RPC.
+
+## 2026-10-19 · El valor 'perdido' del enum va en una migración aparte
+
+Postgres no deja usar un valor de enum en la misma transacción en que se agrega ("New enum values must be committed before they can be used"), y `supabase db push` corre cada archivo en una transacción. Por eso `alter type tipo_avistamiento add value 'perdido'` va solo en la 0009 y todo lo que lo usa, en la 0010. En el SQL Editor también hay que ejecutarlas por separado.
+
+## 2026-10-19 · Operador de pgvector calificado en guardar_embedding
+
+`guardar_embedding` corre con `search_path = ''`, y el operador de distancia coseno `<=>` vive en el esquema `extensions`, donde se instaló pgvector. Sin calificarlo, la función fallaba siempre con "operator does not exist", así que el reconocimiento nunca llegó a guardar un embedding; no se notó porque el servicio de visión todavía no estaba conectado. La 0010 lo escribe `operator(extensions.<=>)`. Se eligió calificar el operador en vez de sumar `extensions` al `search_path`: con `search_path` vacío, otra función u operador con el mismo nombre no puede colarse.

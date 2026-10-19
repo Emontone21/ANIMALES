@@ -99,7 +99,10 @@ export function armarHistorial(
 
 // --- Escrituras -------------------------------------------------------------
 
-/** Comprime la foto, la sube y crea animal + primer avistamiento. Devuelve el id. */
+/**
+ * Comprime la foto, la sube y crea animal + primer avistamiento (perdido o
+ * encontrado). En los perdidos la base redondea la ubicación. Devuelve el id.
+ */
 export async function publicarAnimal(reporte: NuevoReporte, usuarioId: string): Promise<string> {
   const comprimida = await comprimirFoto(reporte.fotoUri, reporte.fotoAncho);
   const fotoPath = await subirFoto(comprimida.uri, usuarioId);
@@ -114,6 +117,9 @@ export async function publicarAnimal(reporte: NuevoReporte, usuarioId: string): 
     p_color: reporte.color.trim() || null,
     p_tiene_collar: reporte.tieneCollar,
     p_descripcion: reporte.descripcion.trim() || null,
+    p_tipo: reporte.tipo,
+    p_nombre: reporte.tipo === 'perdido' ? reporte.nombre.trim() || null : null,
+    p_contacto_familia: reporte.tipo === 'perdido' ? reporte.contactoFamilia.trim() || null : null,
   });
   if (error) throw error;
   return data;

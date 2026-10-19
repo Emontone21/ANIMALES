@@ -14,7 +14,8 @@ App Expo + React Native + TypeScript con backend Supabase en la nube para reunir
 - **RLS en todas las tablas.** Toda tabla nueva lleva `enable row level security` y políticas en la misma migración.
 - **Migraciones versionadas** en `supabase/migrations/AAAAMMDDhhmmss_nombre.sql`. Nunca editar una migración ya aplicada: agregar otra.
 - **Tipos de la base:** `src/types/database.ts` se regenera con `npm run db:types` desde el proyecto enlazado (`npx supabase link`), con las migraciones ya aplicadas. Si cambiás el esquema y todavía no está aplicado, actualizalo a mano con el mismo formato.
-- **Reconocimiento:** nunca fusionar reportes automáticamente. Mostrar coincidencias y que una persona confirme.
+- **Reconocimiento:** nunca fusionar reportes automáticamente. Mostrar coincidencias y que una persona confirme: si el par incluye un perdido, solo su familia; entre dos encontrados, quien publicó cualquiera de los dos o un moderador.
+- **Perdidos y encontrados** conviven en `animales` (`tipo_reporte`). Un perdido solo lo cierra o reabre su familia, y nunca se sugiere con otro perdido. Las RPC de publicación y avistamiento solo aceptan fotos subidas a la carpeta del usuario en el bucket `fotos`.
 - **Licencias:** solo modelos y librerías con licencias permisivas (Apache 2.0, MIT, BSD). Nada de AGPL (por ejemplo YOLOv8). Excepción aprobada por el dueño: fuentes tipográficas bajo SIL OFL 1.1 (hoy Fredoka y Figtree, ver `docs/DECISIONES.md`).
 - **Dependencias:** instalar con `npx expo install <paquete>` para respetar la versión del SDK. Módulos nativos nuevos exigen rebuild (`npx expo run:android`).
 - **Nada local:** el backend es Supabase en la nube y la app se prueba en el navegador (`npx expo start --web`) o en Vercel. No propongas Docker ni builds nativos salvo que lo pidan.
@@ -42,7 +43,7 @@ npx supabase db push        # subir migraciones al proyecto en la nube (tras sup
 - `src/features/<área>/`: acceso a datos (`api.ts`), hooks y acciones. Único lugar que llama a Supabase.
 - `src/lib/`: utilidades sin React (supabase, imágenes, ubicación, fechas, env).
 - `src/constants/tema.ts`: paletas claro y oscuro, espacios, radios, fuentes y escala tipográfica. `src/hooks/`: `useTema`, `useEstilos` y `useDisposicion` (compacto, medio, amplio).
-- `supabase/`: configuración, migraciones (0001–0008), seed. `services/vision/`: microservicio Python de reconocimiento.
+- `supabase/`: configuración, migraciones (0001–0010), seed. `services/vision/`: microservicio Python de reconocimiento.
 - `public/`: archivos estáticos de la web. `vercel.json`: despliegue.
 
 ## Fases
@@ -51,5 +52,6 @@ npx supabase db push        # subir migraciones al proyecto en la nube (tras sup
 2. Interacciones: "lo vi acá también", estados, historial, recorrido, denuncias. **(hecha)**
 3. Reconocimiento: cola, servicio de visión, pgvector, coincidencias con confirmar/rechazar. **(hecha)**
 4. Notificaciones, mensajería, moderación. **(hecha)**
+6. Reportes de perdidos: la familia publica a su animal (`animales.tipo_reporte`, `nombre`, `contacto_familia`), chips Todos · Perdidos · Encontrados, reglas de quién cierra un caso y quién confirma coincidencias, perdido siempre como principal. **(hecha)**
 
 Pendiente de configuración externa (lo hace el dueño del proyecto): proyecto Supabase con migraciones aplicadas, proyecto Vercel con variables, Space de Hugging Face para el servicio de visión. Ver README.

@@ -16,7 +16,7 @@ const DIAMETRO = 58;
 export function MarcadorFoto({ animal }: { animal: AnimalEnMapa }) {
   const { c } = useTema();
   const estilos = useEstilos(crear);
-  const anillo = coloresDeEstado(c, animal.estado).anillo;
+  const anillo = coloresDeEstado(c, animal.estado, animal.tipo_reporte).anillo;
 
   return (
     <View style={estilos.raiz} pointerEvents="none" accessibilityElementsHidden>

@@ -27,7 +27,11 @@ export function Historial({ eventos, estado, tipo }: Props) {
       const av = evento.avistamiento;
       return {
         id: `av-${av.id}`,
-        titulo: `${t.tipoAvistamiento[av.tipo]} ${av.usuario_nombre}`,
+        // "Lo vio Carla"; el primer avistamiento de un perdido es "Se perdió acá".
+        titulo:
+          av.tipo === 'perdido'
+            ? t.tipoAvistamiento.perdido
+            : `${t.tipoAvistamiento[av.tipo]} ${av.usuario_nombre}`,
         nota: av.nota,
         fecha: fechaHoraCorta(evento.fecha),
         extra: av.foto_path ? (
