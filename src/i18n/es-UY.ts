@@ -31,6 +31,8 @@ export const t = {
     cerrar: 'Cerrar',
     errorGenerico: 'Algo salió mal. Probá de nuevo.',
     sinConexion: 'No hay conexión. Fijate la red y probá de nuevo.',
+    /** Quien hizo algo y después borró su cuenta: "Lo vio una cuenta eliminada". */
+    cuentaEliminada: 'una cuenta eliminada',
   },
   tabs: {
     mapa: 'Mapa',
@@ -156,6 +158,8 @@ export const t = {
       denunciado: 'Denuncia enviada',
     },
     contacto: 'Contacto para recuperarlo',
+    /** Perdido resguardado visto por alguien que no es su familia. */
+    contactoPrivado: 'Alguien avisó que lo tiene. Su contacto lo ve solo la familia.',
     cambioEstado: {
       titulo: (estado: string) => `Cambio de estado: ${estado}`,
       por: (nombre: string) => `por ${nombre}`,
@@ -171,10 +175,16 @@ export const t = {
       titulo: 'Lo tenés a salvo',
       intro:
         'Contanos cómo contactarte si aparece la familia. Es opcional y lo ve cualquiera que abra el reporte.',
+      introPerdido:
+        'Sacale una foto ahora, así su familia puede reconocerlo. El contacto que dejes lo ven solo su familia y vos.',
+      foto: 'Foto actual del animal',
+      fotoObligatoria: 'Para avisar que lo tenés, sacale una foto actual.',
       contacto: 'Contacto que querés compartir',
       contactoPlaceholder: 'Ej: WhatsApp 099 123 456 o "escribime por la app"',
+      contactoAyudaPerdido: 'Lo ven solo su familia y vos. También te pueden escribir por la app.',
       nota: 'Nota (opcional)',
       notaPlaceholder: 'Dónde está, cómo está…',
+      notaAyudaPerdido: 'La nota la ve cualquiera: no pongas tu contacto acá.',
       ubicacion: '¿Dónde está ahora? (opcional)',
       enviar: 'Marcar como resguardado',
     },
@@ -211,6 +221,8 @@ export const t = {
     esperaFamilia: 'Su familia está mirando las fotos para confirmar si es el mismo animal.',
     esperaPublicadores:
       'Quien publicó alguno de los dos reportes va a confirmar si es el mismo animal.',
+    sinFamilia:
+      'La familia de este animal borró su cuenta: nadie puede confirmar esta coincidencia.',
     tiempo: (horas: number) =>
       horas < 1
         ? 'con menos de 1 h de diferencia'
@@ -272,6 +284,20 @@ export const t = {
     placeholder: 'Escribí un mensaje…',
     enviar: 'Enviar',
     verReporte: 'Ver el reporte',
+    masOpciones: 'Más opciones',
+    aceptarParaEscribir: 'Para escribir, aceptá los términos de uso y la política de privacidad.',
+    verYAceptar: 'Ver y aceptar',
+  },
+  bloqueos: {
+    bloquear: (nombre: string) => `Bloquear a ${nombre}`,
+    desbloquear: (nombre: string) => `Desbloquear a ${nombre}`,
+    confirmarTitulo: (nombre: string) => `¿Bloquear a ${nombre}?`,
+    confirmarDetalle:
+      'No va a poder escribirte ni abrir conversaciones con vos, y no te van a llegar sus avisos. No le avisamos. Lo podés deshacer cuando quieras, desde acá o desde Perfil.',
+    confirmar: 'Bloquear',
+    bloqueaste: (nombre: string) =>
+      `Bloqueaste a ${nombre}. Para volver a escribirle, desbloqueá a esta persona.`,
+    noPodes: 'No podés escribir en esta conversación.',
   },
   moderacion: {
     titulo: 'Moderación',
@@ -284,6 +310,9 @@ export const t = {
     marcarRevisada: 'Marcar revisada',
     descartar: 'Descartar',
     abrirPanel: 'Panel de moderación',
+    cuentaNueva: 'Cuenta nueva',
+    cuentaNuevaAyuda:
+      'La cuenta tenía menos de 7 días: no cuenta para ocultar sola la publicación.',
   },
   estadoDenuncia: {
     pendiente: 'Pendiente',
@@ -384,6 +413,33 @@ export const t = {
     nombrePlaceholder: 'Cómo te van a ver los demás',
     nombreAyuda: 'No mostramos tu email ni tu teléfono a nadie.',
     conGoogle: 'Continuar con Google',
+    olvidaste: '¿Olvidaste tu contraseña?',
+    aceptoTerminos: 'Leí y acepto los términos de uso y la política de privacidad.',
+    recuperar: {
+      titulo: 'Recuperar tu contraseña',
+      intro:
+        'Escribí el email de tu cuenta y te mandamos un link para elegir una contraseña nueva.',
+      enviar: 'Mandar el link',
+      // Neutro: no dice si el email tiene cuenta.
+      enviado:
+        'Si hay una cuenta con ese email, te mandamos un link. Revisá tu casilla y el correo no deseado. El link sirve una sola vez y vence en una hora.',
+      volver: 'Volver a ingresar',
+      error: 'No pudimos mandar el link. Probá de nuevo.',
+      muchosPedidos: 'Pediste varios links seguidos. Esperá unos minutos y probá de nuevo.',
+    },
+    nuevaContrasena: {
+      titulo: 'Elegí una contraseña nueva',
+      intro: 'Tiene que tener al menos 8 caracteres.',
+      contrasena: 'Contraseña nueva',
+      repetir: 'Repetí la contraseña',
+      guardar: 'Guardar contraseña',
+      exito: 'Listo: tu contraseña cambió y ya ingresaste.',
+      noCoinciden: 'Las dos contraseñas no coinciden.',
+      igualAnterior: 'Elegí una contraseña distinta de la anterior.',
+      linkVencido: 'Este link ya no sirve: venció o ya se usó. Pedí uno nuevo.',
+      pedirOtro: 'Pedir otro link',
+      irAlMapa: 'Ir al mapa',
+    },
     o: 'o',
     sinCuenta: '¿No tenés cuenta?',
     conCuenta: '¿Ya tenés cuenta?',
@@ -395,6 +451,8 @@ export const t = {
       contrasenaCorta: 'La contraseña tiene que tener al menos 8 caracteres.',
       emailInvalido: 'Ese email no parece válido.',
       nombreCorto: 'Poné un nombre de al menos 2 caracteres.',
+      debeAceptar:
+        'Para crear la cuenta tenés que aceptar los términos de uso y la política de privacidad.',
       googleCancelado: 'Se canceló el ingreso con Google.',
       desconocido: 'No pudimos ingresar. Probá de nuevo.',
     },
@@ -415,6 +473,219 @@ export const t = {
       oscuro: 'Oscuro',
     },
     aparienciaAyuda: 'Automático sigue la configuración de tu teléfono o computadora.',
+    editar: 'Editar perfil',
+    fotoDe: (nombre: string) => `Foto de ${nombre}`,
+    bloqueados: 'Personas bloqueadas',
+    bloqueadosAyuda:
+      'No pueden escribirte ni abrir conversaciones con vos, y no te llegan sus avisos.',
+    sinBloqueados: 'No bloqueaste a nadie.',
+    desbloquear: 'Desbloquear',
+    legal: 'Términos y privacidad',
+    borrarCuenta: 'Borrar mi cuenta',
+  },
+  cuenta: {
+    editar: {
+      titulo: 'Editar perfil',
+      foto: 'Foto de perfil',
+      fotoAyuda: 'Es opcional. La ve cualquiera que vea tu nombre.',
+      quitarFoto: 'Quitar la foto',
+      nombreAyuda: 'De 2 a 40 caracteres. Es lo que ven los demás.',
+      nombreInvalido: 'El nombre tiene que tener entre 2 y 40 caracteres.',
+      guardar: 'Guardar cambios',
+      exito: 'Listo, guardamos tus cambios.',
+    },
+    borrar: {
+      titulo: 'Borrar mi cuenta',
+      intro: 'Tu cuenta se borra para siempre y no se puede recuperar.',
+      seBorra: 'Se borra siempre',
+      seBorraLista: [
+        'Tu perfil: tu nombre público y tu foto.',
+        'Tus animales perdidos, aunque sigan abiertos: sin vos nadie podría cerrarlos ni confirmar si alguien los encontró, y quedarían en el mapa para siempre.',
+        'Tus casos cerrados y lo que aportaste a casos cerrados.',
+        'Lo que seguís, tus notificaciones y tus mensajes.',
+        'Las denuncias que hiciste y las personas que bloqueaste.',
+        'Cualquier contacto que hayas compartido en un caso.',
+      ],
+      /** Si tiene perdidos abiertos, se lo decimos antes de que confirme. */
+      perdidosAviso: (n: number) =>
+        n === 1
+          ? 'Tenés 1 animal perdido publicado: se va a borrar aunque elijas dejar publicado lo demás.'
+          : `Tenés ${n} animales perdidos publicados: se van a borrar aunque elijas dejar publicado lo demás.`,
+      abiertos: '¿Qué hacemos con tus encontrados abiertos y lo que aportaste a casos de otros?',
+      abiertosCantidad: (n: number) =>
+        n === 1
+          ? 'Tenés 1 animal encontrado abierto.'
+          : `Tenés ${n} animales encontrados abiertos.`,
+      opciones: {
+        conservar: {
+          titulo: 'Dejarlo publicado sin mi nombre',
+          detalle:
+            'Recomendado: así no se pierde nada que pueda ayudar a una familia que busca. Se ve como de una cuenta eliminada y nadie te puede escribir.',
+        },
+        borrar: {
+          titulo: 'Borrarlo',
+          detalle:
+            'Se borran tus encontrados abiertos, con todo lo que tienen, y tus avisos y fotos en casos de otros.',
+        },
+      },
+      confirmo: 'Entiendo que no se puede deshacer.',
+      boton: 'Borrar mi cuenta para siempre',
+      borrandoFotos: 'Borrando tus fotos…',
+      borrandoCuenta: 'Borrando tu cuenta…',
+      errorFotos: 'No pudimos borrar todas tus fotos. Tu cuenta sigue igual: probá de nuevo.',
+    },
+  },
+  /**
+   * BORRADOR: términos de uso y política de privacidad para que los revise el
+   * dueño del proyecto. No es asesoramiento legal. Los datos entre corchetes
+   * hay que completarlos. Al cambiar estos textos, subí VERSION_TERMINOS en
+   * src/features/legal/terminos.ts y config_app.terminos_version en una migración.
+   */
+  legal: {
+    borrador: 'Borrador',
+    borradorAviso:
+      'Este texto es un borrador: todavía no fue revisado y puede cambiar antes de la versión final.',
+    version: (fecha: string) => `Versión del ${fecha}`,
+    leerTerminos: 'Leer los términos de uso',
+    leerPrivacidad: 'Leer la política de privacidad',
+    aceptar: {
+      titulo: 'Antes de seguir',
+      intro:
+        'Para publicar, avisar que lo viste, escribir o denunciar, aceptá los términos de uso y la política de privacidad.',
+      cambiaron:
+        'Actualizamos los términos de uso y la política de privacidad. Leelos y aceptalos para seguir.',
+      aceptar: 'Aceptar y seguir',
+      falta: 'Marcá la casilla para seguir.',
+    },
+    terminos: {
+      titulo: 'Términos de uso',
+      intro:
+        'Encontrados ayuda a que los animales perdidos vuelvan con sus familias en Montevideo. Al usar la app aceptás estas reglas.',
+      secciones: [
+        {
+          titulo: 'Qué es Encontrados',
+          parrafos: [
+            'Una app gratuita donde cualquiera puede publicar un animal perdido o encontrado, avisar que lo vio y hablar con otras personas para que vuelva a su casa.',
+            'No somos un refugio ni una veterinaria, y no podemos garantizar que un animal aparezca.',
+          ],
+        },
+        {
+          titulo: 'Tu cuenta',
+          parrafos: [
+            'Para publicar, avisar que viste un animal, escribir o denunciar necesitás una cuenta. Usá un nombre que no confunda, cuidá tu contraseña y no te hagas pasar por otra persona.',
+            'Si sos menor de 18 años, usá la app con un adulto responsable.',
+          ],
+        },
+        {
+          titulo: 'Qué es público',
+          parrafos: [
+            'Lo que publicás en un caso lo ve cualquiera, con o sin cuenta: las fotos, la descripción, el lugar y la fecha, tu nombre público y el contacto que decidas mostrar.',
+            'Tu email y tu teléfono no se muestran nunca. Ver la política de privacidad.',
+          ],
+        },
+        {
+          titulo: 'Qué no está permitido',
+          parrafos: [
+            'Pedir plata para devolver un animal, publicar datos falsos, vender animales, hacer spam, acosar o insultar, y publicar datos de otras personas sin su permiso.',
+            'Nunca pagues para recuperar a un animal. Si alguien te pide plata o datos de tu tarjeta, denuncialo.',
+          ],
+        },
+        {
+          titulo: 'Denuncias, moderación y bloqueos',
+          parrafos: [
+            'Podés denunciar una publicación y bloquear a quien te moleste. El equipo de moderación puede ocultar lo que no cumpla estas reglas y suspender cuentas.',
+            'Una publicación se oculta sola si la denuncian tres cuentas con más de una semana, hasta que alguien la revise.',
+          ],
+        },
+        {
+          titulo: 'Encuentros y coincidencias',
+          parrafos: [
+            'Encontrados pone en contacto a personas, pero no verifica cada publicación ni participa en los encuentros. Encontrate en lugares públicos y, si podés, acompañado.',
+            'Las coincidencias que sugiere el reconocimiento de imágenes son solo sugerencias: siempre decide una persona.',
+          ],
+        },
+        {
+          titulo: 'Borrar tu cuenta',
+          parrafos: [
+            'La podés borrar cuando quieras desde Perfil. Qué se borra y qué puede quedar publicado sin tu nombre está en la política de privacidad.',
+          ],
+        },
+        {
+          titulo: 'Cambios y contacto',
+          parrafos: [
+            'Si cambiamos estas reglas, te vamos a pedir que las aceptes de nuevo antes de publicar, escribir o denunciar.',
+            'Por consultas, escribinos a [email de contacto, a completar].',
+          ],
+        },
+      ],
+    },
+    privacidad: {
+      titulo: 'Política de privacidad',
+      intro:
+        'Esta política explica qué datos tuyos guardamos, para qué y cómo podés pedir que los corrijamos o los borremos, según la Ley 18.331 de Protección de Datos Personales de Uruguay.',
+      secciones: [
+        {
+          titulo: 'Quién es responsable',
+          parrafos: [
+            'El responsable de la base de datos de Encontrados es [nombre o razón social, documento y domicilio, a completar]. Por cualquier consulta sobre tus datos, escribinos a [email de contacto, a completar].',
+          ],
+        },
+        {
+          titulo: 'Qué datos guardamos y para qué',
+          parrafos: [
+            'Cuenta: tu email y tu contraseña (guardada cifrada), o los datos básicos que da Google si entrás con Google. Sirven para que entres y recuperes tu contraseña. No se muestran a nadie.',
+            'Perfil: tu nombre público y, si la subís, tu foto de perfil. Sirven para que los demás sepan con quién hablan.',
+            'Casos y avisos: las fotos, la descripción, el lugar y la fecha de cada animal que publicás o ves, y el contacto que elijas compartir. Sirven para buscar al animal y reunirlo con su familia.',
+            'Mensajes: lo que escribís en las conversaciones. Solo lo ven las dos personas de la conversación.',
+            'Actividad: los casos que seguís, tus avisos, tus denuncias, las personas que bloqueaste y, en el celular, el identificador para mandarte notificaciones.',
+            'Términos: qué versión de los términos y de esta política aceptaste, y cuándo.',
+          ],
+        },
+        {
+          titulo: 'Qué es público',
+          parrafos: [
+            'Las fotos y las ubicaciones de los casos son públicas: las ve cualquiera, con o sin cuenta, y otras personas pueden guardarlas o compartirlas. Junto a cada publicación se ve tu nombre público.',
+            'En los perdidos guardamos la ubicación redondeada a unos 100 metros, porque suele ser cerca de tu casa. El contacto de quien resguarda un animal perdido lo ven solo su familia y esa persona.',
+          ],
+        },
+        {
+          titulo: 'Reconocimiento de imágenes',
+          parrafos: [
+            'Las fotos de los animales se procesan con un servicio de reconocimiento de imágenes para sugerir casos parecidos. Solo se analiza al animal, y las sugerencias las confirma siempre una persona.',
+          ],
+        },
+        {
+          titulo: 'Con quién compartimos datos',
+          parrafos: [
+            'No vendemos tus datos. Los guardan los servicios que usamos para que la app funcione: Supabase (datos y fotos), Vercel (la web), Hugging Face (reconocimiento de imágenes) y Expo (notificaciones en el celular). Algunos de sus servidores están fuera de Uruguay.',
+            'Solo entregamos datos a una autoridad cuando la ley lo exige.',
+          ],
+        },
+        {
+          titulo: 'Cómo borrar tu cuenta',
+          parrafos: [
+            'En Perfil, tocá «Borrar mi cuenta». Se borran tu perfil, tus animales perdidos (aunque sigan abiertos), tus casos cerrados, lo que seguís, tus notificaciones, tus mensajes, tus denuncias, tus bloqueos y cualquier contacto que hayas compartido.',
+            'Con tus encontrados abiertos y lo que aportaste a casos de otros elegís: dejarlos publicados sin tu nombre, para no perjudicar a una familia que busca, o borrarlos. Las fotos de lo que se borra se borran también.',
+            'Mientras tengas la cuenta, guardamos tus datos para que la app funcione.',
+          ],
+        },
+        {
+          titulo: 'Tus derechos',
+          parrafos: [
+            'Tenés derecho a saber qué datos tuyos tenemos (acceso), a corregirlos o completarlos (rectificación, actualización e inclusión) y a que los borremos (supresión).',
+            'Muchos los podés usar desde la app: editar tu perfil o borrar tu cuenta. Para lo demás, escribinos desde el email de tu cuenta a [email de contacto, a completar] y te respondemos dentro de los plazos que fija la ley.',
+            'Si no te respondemos, podés reclamar ante la Unidad Reguladora y de Control de Datos Personales (URCDP).',
+          ],
+        },
+        {
+          titulo: 'Seguridad y cambios',
+          parrafos: [
+            'Usamos conexiones cifradas y permisos en la base de datos para que cada persona vea solo lo que le corresponde. Ningún sistema es infalible: si notás algo raro, avisanos.',
+            'Si cambia esta política, te vamos a pedir que la aceptes de nuevo.',
+          ],
+        },
+      ],
+    },
   },
   fechas: {
     ahora: 'recién',
@@ -431,5 +702,7 @@ export const t = {
     hoyALas: (hora: string) => `Hoy a las ${hora}`,
     ayerALas: (hora: string) => `Ayer a las ${hora}`,
     diaALas: (dia: string, hora: string) => `${dia} a las ${hora}`,
+    /** "19 de octubre de 2026" */
+    fechaLarga: (numero: string, mes: string, anio: string) => `${numero} de ${mes} de ${anio}`,
   },
 } as const;

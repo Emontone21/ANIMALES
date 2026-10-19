@@ -2,8 +2,11 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 
+import { marcarRecuperacion } from '@/features/auth/recuperacion';
+import { VERSION_TERMINOS } from '@/features/legal/terminos';
 import { t } from '@/i18n/es-UY';
 import { supabase } from '@/lib/supabase';
+import { leerParametros, tieneErrorAuth } from '@/lib/urlAuth';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -17,21 +20,12 @@ const esWeb = Platform.OS === 'web';
 const redirectTo = esWeb ? Linking.createURL('/') : Linking.createURL('auth/callback');
 
 /**
- * Supabase devuelve los tokens en el fragmento (#access_token=…) o, si hubo
- * error, en la query (?error_code=…). Leemos los dos.
+ * Adónde vuelve el link para elegir una contraseña nueva. Tiene que estar en
+ * las Redirect URLs de Supabase (ver docs/reportes/2026-10-19-cuenta.md).
  */
-function leerParametros(url: string): Record<string, string> {
-  const resultado: Record<string, string> = {};
-  const [sinFragmento, fragmento] = url.split('#');
-  const query = sinFragmento?.split('?')[1];
-  for (const parte of [query, fragmento]) {
-    if (!parte) continue;
-    for (const [clave, valor] of new URLSearchParams(parte)) {
-      resultado[clave] = valor;
-    }
-  }
-  return resultado;
-}
+const redirectRecuperacion = esWeb
+  ? Linking.createURL('/auth/nueva-contrasena')
+  : Linking.createURL('auth/nueva-contrasena');
 
 export class ErrorAuth extends Error {}
 
@@ -51,6 +45,9 @@ function traducirError(error: { message: string; code?: string }): ErrorAuth {
   }
   if (codigo === 'user_already_exists' || mensaje.includes('already registered')) {
     return new ErrorAuth(t.auth.errores.yaRegistrado);
+  }
+  if (codigo === 'same_password' || mensaje.includes('different from the old')) {
+    return new ErrorAuth(t.auth.nuevaContrasena.igualAnterior);
   }
   if (codigo === 'weak_password' || mensaje.includes('password')) {
     return new ErrorAuth(t.auth.errores.contrasenaCorta);
@@ -79,18 +76,21 @@ export async function registrarse(
   nombrePublico: string,
   email: string,
   contrasena: string,
+  aceptoTerminos: boolean,
 ): Promise<{ requiereConfirmacion: boolean }> {
   const nombre = nombrePublico.trim();
   if (nombre.length < 2) throw new ErrorAuth(t.auth.errores.nombreCorto);
   validarEmailYContrasena(email, contrasena);
+  if (!aceptoTerminos) throw new ErrorAuth(t.auth.errores.debeAceptar);
 
   const { data, error } = await supabase.auth.signUp({
     email: email.trim().toLowerCase(),
     password: contrasena,
     options: {
       emailRedirectTo: redirectTo,
-      // El trigger handle_new_user lo copia a perfiles.nombre_publico.
-      data: { nombre_publico: nombre },
+      // El trigger handle_new_user los copia a perfiles: el nombre público y la
+      // versión de los términos que aceptó con la casilla, con la fecha.
+      data: { nombre_publico: nombre, terminos_version: VERSION_TERMINOS },
     },
   });
   if (error) throw traducirError(error);
@@ -124,11 +124,38 @@ export async function ingresarConGoogle(): Promise<void> {
   await crearSesionDesdeUrl(resultado.url);
 }
 
+/**
+ * Manda el link para elegir una contraseña nueva. Supabase responde igual
+ * exista o no la cuenta, y la app muestra siempre el mismo mensaje.
+ */
+export async function pedirRecuperacion(email: string): Promise<void> {
+  if (!EMAIL_VALIDO.test(email.trim())) throw new ErrorAuth(t.auth.errores.emailInvalido);
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+    redirectTo: redirectRecuperacion,
+  });
+  if (!error) return;
+  if (error.code === 'over_email_send_rate_limit' || error.status === 429) {
+    throw new ErrorAuth(t.auth.recuperar.muchosPedidos);
+  }
+  throw new ErrorAuth(t.auth.recuperar.error);
+}
+
+/** Guarda la contraseña nueva con la sesión que abrió el link de recuperación. */
+export async function cambiarContrasena(nueva: string, repetida: string): Promise<void> {
+  if (nueva.length < MIN_CONTRASENA) throw new ErrorAuth(t.auth.errores.contrasenaCorta);
+  if (nueva !== repetida) throw new ErrorAuth(t.auth.nuevaContrasena.noCoinciden);
+  const { data } = await supabase.auth.getSession();
+  if (!data.session) throw new ErrorAuth(t.auth.nuevaContrasena.linkVencido);
+  const { error } = await supabase.auth.updateUser({ password: nueva });
+  if (error) throw traducirError(error);
+}
+
 /** Lee access_token y refresh_token de una URL de redirección y abre sesión. */
 export async function crearSesionDesdeUrl(url: string): Promise<void> {
   const params = leerParametros(url);
-  const errorCode = params['error_code'] ?? params['error_description'] ?? params['error'];
-  if (errorCode) throw new ErrorAuth(errorCode);
+  if (tieneErrorAuth(params)) {
+    throw new ErrorAuth(params['error_code'] ?? params['error_description'] ?? params['error']);
+  }
 
   const accessToken = params['access_token'];
   const refreshToken = params['refresh_token'];
@@ -139,6 +166,8 @@ export async function crearSesionDesdeUrl(url: string): Promise<void> {
     refresh_token: refreshToken,
   });
   if (error) throw traducirError(error);
+  // En nativo setSession avisa SIGNED_IN, no PASSWORD_RECOVERY.
+  if (params['type'] === 'recovery') marcarRecuperacion();
 }
 
 export async function cerrarSesion(): Promise<void> {

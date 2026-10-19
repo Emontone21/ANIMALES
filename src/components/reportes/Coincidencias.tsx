@@ -9,8 +9,8 @@ import { Texto } from '@/components/ui/Texto';
 import { Espacio, Radio } from '@/constants/tema';
 import { useAuth } from '@/features/auth/AuthProvider';
 import {
-  familiaDelPerdido,
   otroAnimal,
+  perdidoDelPar,
   puedeResolver,
   useCoincidencias,
   useResolverCoincidencia,
@@ -83,6 +83,7 @@ export function Coincidencias({ animalId }: Props) {
         const porcentaje = Math.round(c.similitud * 100);
         const km = c.distancia_m === null ? null : c.distancia_m / 1000;
         const decide = puedeResolver(c, usuario?.id, esModerador);
+        const perdido = perdidoDelPar(c);
         return (
           <View key={c.id} style={estilos.coincidencia}>
             <View style={estilos.encabezado}>
@@ -113,9 +114,11 @@ export function Coincidencias({ animalId }: Props) {
             {decide ? null : (
               <Mensaje
                 texto={
-                  familiaDelPerdido(c)
-                    ? t.coincidencias.esperaFamilia
-                    : t.coincidencias.esperaPublicadores
+                  !perdido.hayPerdido
+                    ? t.coincidencias.esperaPublicadores
+                    : perdido.familia
+                      ? t.coincidencias.esperaFamilia
+                      : t.coincidencias.sinFamilia
                 }
               />
             )}

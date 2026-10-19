@@ -12,13 +12,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { RequiereCuenta } from '@/components/auth/RequiereCuenta';
+import { HojaTerminos } from '@/components/legal/AceptarTerminos';
+import { Boton } from '@/components/ui/Boton';
 import { Cargando } from '@/components/ui/Cargando';
 import { Mensaje } from '@/components/ui/Mensaje';
+import { MenuOpciones } from '@/components/ui/MenuOpciones';
 import { Pantalla } from '@/components/ui/Pantalla';
 import { Texto } from '@/components/ui/Texto';
 import { estaActivo } from '@/components/ui/interaccion';
 import { AnchoMaximo, Espacio, Fuentes, Medida, Radio } from '@/constants/tema';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { useAlternarBloqueo } from '@/features/bloqueos/api';
+import { useTerminos } from '@/features/legal/terminos';
 import {
   clavesMensajes,
   marcarLeidos,
@@ -54,8 +59,13 @@ function Chat({ conversacionId, miId }: { conversacionId: string; miId: string }
   const conversacion = useConversacion(conversacionId);
   const mensajes = useMensajes(conversacionId);
   const enviar = useEnviarMensaje(conversacionId, miId);
+  const terminos = useTerminos(miId);
+  const alternarBloqueo = useAlternarBloqueo(miId);
   const [texto, setTexto] = useState('');
   const [enfocado, setEnfocado] = useState(false);
+  const [menu, setMenu] = useState<'opciones' | 'bloquear' | 'terminos' | null>(null);
+  const otro = conversacion.data;
+  const nombreOtro = otro?.otro_nombre ?? t.mensajes.titulo;
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
 
   // Al ver mensajes ajenos sin leer, marcarlos.
@@ -78,22 +88,112 @@ function Chat({ conversacionId, miId }: { conversacionId: string; miId: string }
     enviar.mutate(cuerpo, { onSuccess: () => setTexto('') });
   };
 
+  const alternar = () => {
+    if (!otro) return;
+    alternarBloqueo.mutate(
+      { otroId: otro.otro_id, bloqueado: otro.bloqueaste },
+      { onSuccess: () => setMenu(null) },
+    );
+  };
+
+  // Qué va abajo en lugar de la entrada de texto, si no se puede escribir.
+  const sinEntrada = otro?.bloqueaste ? (
+    <View style={estilos.estadoEntrada}>
+      <Mensaje texto={t.bloqueos.bloqueaste(nombreOtro)} />
+      <Boton
+        titulo={t.bloqueos.desbloquear(nombreOtro)}
+        variante="secundario"
+        cargando={alternarBloqueo.isPending}
+        onPress={alternar}
+      />
+    </View>
+  ) : otro?.bloqueada ? (
+    <View style={estilos.estadoEntrada}>
+      <Mensaje texto={t.bloqueos.noPodes} />
+    </View>
+  ) : !terminos.cargando && !terminos.aceptados ? (
+    <View style={estilos.estadoEntrada}>
+      <Mensaje texto={t.mensajes.aceptarParaEscribir} />
+      <Boton
+        titulo={t.mensajes.verYAceptar}
+        variante="secundario"
+        onPress={() => setMenu('terminos')}
+      />
+    </View>
+  ) : null;
+
   return (
     <SafeAreaView style={estilos.raiz} edges={['left', 'right', 'bottom']}>
       <Stack.Screen
         options={{
-          title: conversacion.data?.otro_nombre ?? t.mensajes.titulo,
+          title: nombreOtro,
           headerRight: () =>
-            conversacion.data ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t.mensajes.verReporte}
-                onPress={() => router.push(`/animal/${conversacion.data?.animal_id}`)}
-                style={estilos.verReporte}>
-                <Ionicons name="paw-outline" size={22} color={c.primario} />
-              </Pressable>
+            otro ? (
+              <View style={estilos.accionesCabecera}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t.mensajes.verReporte}
+                  onPress={() => router.push(`/animal/${otro.animal_id}`)}
+                  style={(estado) => [estilos.verReporte, estaActivo(estado) && estilos.activo]}>
+                  <Ionicons name="paw-outline" size={22} color={c.primario} />
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t.mensajes.masOpciones}
+                  onPress={() => setMenu('opciones')}
+                  style={(estado) => [estilos.verReporte, estaActivo(estado) && estilos.activo]}>
+                  <Ionicons name="ellipsis-horizontal" size={22} color={c.texto} />
+                </Pressable>
+              </View>
             ) : null,
         }}
+      />
+      {otro ? (
+        <>
+          <MenuOpciones
+            visible={menu === 'opciones'}
+            titulo={t.mensajes.masOpciones}
+            error={alternarBloqueo.isError ? alternarBloqueo.error.message : null}
+            onCerrar={() => setMenu(null)}
+            opciones={[
+              otro.bloqueaste
+                ? {
+                    titulo: t.bloqueos.desbloquear(nombreOtro),
+                    icono: 'person-add-outline',
+                    cargando: alternarBloqueo.isPending,
+                    onPress: alternar,
+                  }
+                : {
+                    titulo: t.bloqueos.bloquear(nombreOtro),
+                    icono: 'ban-outline',
+                    variante: 'peligro',
+                    onPress: () => setMenu('bloquear'),
+                  },
+            ]}
+          />
+          <MenuOpciones
+            visible={menu === 'bloquear'}
+            titulo={t.bloqueos.confirmarTitulo(nombreOtro)}
+            descripcion={t.bloqueos.confirmarDetalle}
+            error={alternarBloqueo.isError ? alternarBloqueo.error.message : null}
+            onCerrar={() => setMenu(null)}
+            opciones={[
+              {
+                titulo: t.bloqueos.confirmar,
+                icono: 'ban-outline',
+                variante: 'peligro',
+                cargando: alternarBloqueo.isPending,
+                onPress: alternar,
+              },
+            ]}
+          />
+        </>
+      ) : null}
+      <HojaTerminos
+        visible={menu === 'terminos'}
+        usuarioId={miId}
+        onCerrar={() => setMenu(null)}
+        onAceptado={() => setMenu(null)}
       />
       <KeyboardAvoidingView
         style={estilos.raiz}
@@ -145,38 +245,40 @@ function Chat({ conversacionId, miId }: { conversacionId: string; miId: string }
         ) : null}
 
         <View style={estilos.barraEntrada}>
-          <View style={estilos.entrada}>
-            <TextInput
-              style={[estilos.input, enfocado && estilos.inputFoco]}
-              placeholder={t.mensajes.placeholder}
-              placeholderTextColor={c.textoSecundario}
-              accessibilityLabel={t.mensajes.placeholder}
-              value={texto}
-              onChangeText={setTexto}
-              onFocus={() => setEnfocado(true)}
-              onBlur={() => setEnfocado(false)}
-              multiline
-              // En web un textarea arranca con dos filas: la cápsula es de una (52 de alto).
-              rows={Platform.OS === 'web' ? 1 : undefined}
-              maxLength={2000}
-              onSubmitEditing={mandar}
-              submitBehavior="blurAndSubmit"
-              cursorColor={c.primario}
-              selectionColor={c.primario}
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t.mensajes.enviar}
-              onPress={mandar}
-              disabled={enviar.isPending || texto.trim() === ''}
-              style={(estado) => [
-                estilos.botonEnviar,
-                estaActivo(estado) && estilos.botonEnviarActivo,
-                (enviar.isPending || texto.trim() === '') && estilos.botonEnviarInactivo,
-              ]}>
-              <Ionicons name="send-outline" size={20} color={c.textoSobrePrimario} />
-            </Pressable>
-          </View>
+          {sinEntrada ?? (
+            <View style={estilos.entrada}>
+              <TextInput
+                style={[estilos.input, enfocado && estilos.inputFoco]}
+                placeholder={t.mensajes.placeholder}
+                placeholderTextColor={c.textoSecundario}
+                accessibilityLabel={t.mensajes.placeholder}
+                value={texto}
+                onChangeText={setTexto}
+                onFocus={() => setEnfocado(true)}
+                onBlur={() => setEnfocado(false)}
+                multiline
+                // En web un textarea arranca con dos filas: la cápsula es de una (52 de alto).
+                rows={Platform.OS === 'web' ? 1 : undefined}
+                maxLength={2000}
+                onSubmitEditing={mandar}
+                submitBehavior="blurAndSubmit"
+                cursorColor={c.primario}
+                selectionColor={c.primario}
+              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t.mensajes.enviar}
+                onPress={mandar}
+                disabled={enviar.isPending || texto.trim() === ''}
+                style={(estado) => [
+                  estilos.botonEnviar,
+                  estaActivo(estado) && estilos.botonEnviarActivo,
+                  (enviar.isPending || texto.trim() === '') && estilos.botonEnviarInactivo,
+                ]}>
+                <Ionicons name="send-outline" size={20} color={c.textoSobrePrimario} />
+              </Pressable>
+            </View>
+          )}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -252,5 +354,14 @@ const crear = crearEstilos((c) => ({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radio.redondo,
+  },
+  activo: { backgroundColor: c.superficieSuave },
+  accionesCabecera: { flexDirection: 'row', alignItems: 'center' },
+  estadoEntrada: {
+    gap: Espacio.s,
+    padding: Espacio.sm,
+    width: '100%',
+    maxWidth: AnchoMaximo.lista,
+    alignSelf: 'center',
   },
 }));

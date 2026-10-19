@@ -126,3 +126,46 @@ Postgres no deja usar un valor de enum en la misma transacción en que se agrega
 ## 2026-10-19 · Operador de pgvector calificado en guardar_embedding
 
 `guardar_embedding` corre con `search_path = ''`, y el operador de distancia coseno `<=>` vive en el esquema `extensions`, donde se instaló pgvector. Sin calificarlo, la función fallaba siempre con "operator does not exist", así que el reconocimiento nunca llegó a guardar un embedding; no se notó porque el servicio de visión todavía no estaba conectado. La 0010 lo escribe `operator(extensions.<=>)`. Se eligió calificar el operador en vez de sumar `extensions` al `search_path`: con `search_path` vacío, otra función u operador con el mismo nombre no puede colarse.
+
+## 2026-10-19 · Lo que queda de una cuenta borrada, sin autor (usuario null)
+
+Antes, borrar un usuario borraba en cascada todos sus casos, incluso los abiertos que una familia podía estar mirando. Para que puedan quedar publicados sin autor, `animales.creado_por`, `avistamientos.usuario_id` y `cambios_estado.usuario_id` aceptan null y su clave pasa a `on delete set null`. Se descartó un perfil fijo "Usuario eliminado": `perfiles.id` apunta a `auth.users`, así que habría hecho falta un usuario de Auth inventado, y todos los casos huérfanos parecerían de la misma persona. Con null, las vistas usan `left join` a `perfiles` y la app muestra "una cuenta eliminada". Lo que no cambia: seguimientos, denuncias, tokens, notificaciones, conversaciones, mensajes y bloqueos siguen en cascada; `coincidencias.resuelta_por` sigue en set null. Revisar todas las claves una por una dejó a la vista otro riesgo: con un usuario null, comparaciones como `v_uid <> v_creador` dan null y la validación se saltea. Desde la 0011, esas comparaciones usan `is distinct from`, y las pruebas de la Fase 7 lo cubren.
+
+## 2026-10-19 · Qué se borra y qué queda al borrar la cuenta
+
+Una sola elección para los encontrados abiertos y para lo aportado a casos abiertos de otros: quedan publicados sin autor (por defecto, para no perjudicar a una familia que busca) o se borran. "Abierto" es que el caso principal, siguiendo `vinculado_a`, esté avistado o resguardado: un reporte propio unido a un caso abierto de otro se trata como abierto. Todo lo demás se borra:
+- **Perdidos propios, aunque estén abiertos.** Un perdido sin familia no lo puede cerrar ni reabrir nadie, y nadie puede confirmar sus coincidencias, porque solo la familia reconoce a su animal: quedaría en el mapa para siempre. Ajuste pedido en la revisión de la Fase 7; la pantalla de borrar la cuenta lo avisa antes de confirmar.
+- **Casos cerrados propios, con todo lo que tienen**, aunque incluyan avistamientos de otras personas y los reportes de otros que se unieron a ellos (`vinculado_a` pasa a `on delete cascade`). También se borran las conversaciones sobre esos casos, como cualquier caso borrado.
+- **Avistamientos y cambios de estado propios en casos cerrados de otros.** Se recalcula `ultimo_avistamiento_en` del caso.
+- **Siempre:** el contacto de resguardo y el `contacto_familia`, aunque el caso quede publicado.
+- **Por cascada al borrar el perfil:** seguimientos, notificaciones (las propias y las que causó), tokens, denuncias hechas, bloqueos, conversaciones y mensajes. Las conversaciones se borran enteras: sin la otra persona no hay con quién hablar.
+
+La lógica vive en `limpiar_cuenta`, que usan `borrar_mi_cuenta` (con la elección) y un trigger `before delete` en `perfiles` (con la opción por defecto), para que borrar desde el panel de Supabase deje la base igual de prolija. Así, lo único que puede quedar sin autor son encontrados y aportes a casos de otros. Un encontrado anónimo lo puede cerrar quien lo resguarda, y si no lo resguarda nadie, un moderador lo puede ocultar.
+
+## 2026-10-19 · Fotos de una cuenta borrada: primero Storage, después la base
+
+Supabase no deja borrar filas de `storage.objects` por SQL, así que las fotos las borra la app con la API de Storage y la sesión del usuario (la política ya permite borrar lo propio). El orden es: `fotos_para_borrar` devuelve las fotos de la carpeta del usuario menos las de lo que queda publicado, la app las borra, y recién después llama a `borrar_mi_cuenta`. Así, si falla una foto, la cuenta sigue entera y se puede reintentar; al revés, con el usuario ya borrado, Storage podría rechazar el token y quedarían fotos huérfanas en un bucket público. La lista sale de `storage.objects`, así que incluye la foto de perfil y las subidas que nunca llegaron a publicarse. Si alguien cierra o reabre un caso entre los dos pasos, puede quedar una foto de más o faltar una; es una ventana de segundos.
+
+## 2026-10-19 · Contacto de resguardo en una tabla con RLS
+
+En un perdido, el contacto de quien lo resguarda lo ven solo la familia y esa persona. `cambios_estado` es de lectura pública, así que no alcanzaba con ocultarlo en la app. Se movió a `contactos_resguardo`, con una política de lectura según el caso: en un encontrado lo ve cualquiera, como antes; en un perdido, o en un encontrado unido a un perdido, solo la familia, quien lo resguarda y quien publicó el encontrado. `cambios_estado_detalle` lo une con `left join`, así que la app sigue leyendo `contacto_compartido` y le llega null cuando no corresponde. Se descartaron los permisos por columna (la vista con `security_invoker` dejaba de poder leerse entera) y una vista `security definer` (esquiva RLS y Supabase la marca como riesgo).
+
+## 2026-10-19 · Resguardar un perdido pide una foto actual
+
+La estafa típica es decir que se tiene al animal y pedir plata. Para pasar un perdido a resguardado, `cambiar_estado_animal` exige ahora una foto subida desde la app (`es_foto_propia`), que se guarda en el avistamiento de resguardo y entra a la cola de reconocimiento. En un encontrado la foto es opcional en la base y la app no la pide. La nota del resguardo sigue siendo pública: el formulario avisa que no se ponga el contacto ahí. Además, en un encontrado, "se volvió a escapar" (resguardado a avistado) queda para quien lo publicó o quien lo resguarda: antes podía decirlo cualquiera.
+
+## 2026-10-19 · Términos: versión en la base, casilla al registrarse
+
+La versión vigente está en `config_app.terminos_version` y, para los textos, en `VERSION_TERMINOS` de la app. Al registrarse con email, la versión aceptada viaja en `user_metadata` y la guarda `handle_new_user`, porque con confirmación de email todavía no hay sesión para llamar a una RPC. Quien entra con Google, o aceptó una versión anterior, acepta con `aceptar_terminos`, que rechaza una versión que no sea la vigente. Se exigen en la base para publicar, avisar que lo viste, cambiar el estado, escribir y denunciar; no para seguir un caso, confirmar coincidencias, editar el perfil, bloquear ni borrar la cuenta, que no publican nada o protegen al usuario. `perfiles` pasó a leerse por columna para que nadie vea cuándo aceptó otra persona; la app ya no hace `select *` sobre `perfiles`. Los textos son un borrador para que los revise el dueño del proyecto.
+
+## 2026-10-19 · Bloqueos en los dos sentidos y avisos con actor
+
+Un bloqueo corta los mensajes en los dos sentidos: quien está bloqueado no puede escribir, y quien bloquea tampoco hasta desbloquear, para que no haya conversaciones donde solo uno puede hablar. A quien bloquean no se le avisa; si intenta escribir, ve "No podés escribir en esta conversación". Para que quien bloquea deje de recibir avisos de esa persona, `notificaciones` guarda quién causó cada aviso (`actor_id`, en cascada con su perfil) y `notificar` lo recibe. El mismo dato hace que, al borrar una cuenta, desaparezcan los avisos que llevaban su nombre o el texto de sus mensajes.
+
+## 2026-10-19 · Denuncias: la edad de la cuenta al denunciar
+
+Para ocultar sola una publicación cuentan las denuncias de cuentas que tenían al menos 7 días cuando denunciaron (`perfiles.created_at` contra `denuncias.created_at`). Contar la edad actual habría hecho valer, una semana después, las denuncias de cuentas creadas para tirar una publicación. Los moderadores siguen viendo todas, con la marca "Cuenta nueva" en las que no cuentan.
+
+## 2026-10-19 · Recuperar la contraseña en web
+
+`resetPasswordForEmail` manda un link que vuelve a `/auth/nueva-contrasena`. En web, el cliente de Supabase procesa el link al crearse y emite `PASSWORD_RECOVERY` antes de que la app termine de montar (espera las fuentes). Por eso la suscripción va al cargar el módulo (`src/features/auth/recuperacion.ts`) y no en un efecto de React. El mismo módulo lee la URL antes de que el cliente la limpie: así detecta un link vencido, que no emite ningún evento, y si Supabase manda el link a la raíz, la app igual lleva a elegir la contraseña nueva. En nativo, el deep link pasa por `crearSesionDesdeUrl`, que marca la recuperación cuando trae `type=recovery`.

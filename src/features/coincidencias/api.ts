@@ -69,11 +69,20 @@ export function otroAnimal(c: CoincidenciaDetalle, animalId: string) {
   };
 }
 
-/** Si el par incluye un perdido (nunca hay dos), quién es su familia. */
-export function familiaDelPerdido(c: CoincidenciaDetalle): string | null {
-  if (c.origen_tipo_reporte === 'perdido') return c.origen_creado_por;
-  if (c.candidato_tipo_reporte === 'perdido') return c.candidato_creado_por;
-  return null;
+/**
+ * Si el par incluye un perdido (nunca hay dos), quién es su familia. Al borrar
+ * la cuenta los perdidos se borran, así que familia no debería ser null; si lo
+ * fuera, no decide nadie, como en la base.
+ */
+export function perdidoDelPar(
+  c: CoincidenciaDetalle,
+): { hayPerdido: false } | { hayPerdido: true; familia: string | null } {
+  if (c.origen_tipo_reporte === 'perdido')
+    return { hayPerdido: true, familia: c.origen_creado_por };
+  if (c.candidato_tipo_reporte === 'perdido') {
+    return { hayPerdido: true, familia: c.candidato_creado_por };
+  }
+  return { hayPerdido: false };
 }
 
 /**
@@ -86,7 +95,7 @@ export function puedeResolver(
   esModerador: boolean,
 ): boolean {
   if (!usuarioId) return false;
-  const familia = familiaDelPerdido(c);
-  if (familia) return usuarioId === familia;
+  const perdido = perdidoDelPar(c);
+  if (perdido.hayPerdido) return usuarioId === perdido.familia;
   return usuarioId === c.origen_creado_por || usuarioId === c.candidato_creado_por || esModerador;
 }

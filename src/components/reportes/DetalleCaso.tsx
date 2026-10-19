@@ -75,6 +75,14 @@ export function DetalleCaso({ animal: a, avistamientos, cambios, historial, onVo
   const esPerdido = a.tipo_reporte === 'perdido';
   // El dato que la familia eligió mostrar, siempre junto al aviso contra estafas.
   const contactoFamilia = esPerdido && abierto ? a.contacto_familia : null;
+  // En un perdido, el contacto de quien lo resguarda lo ven solo su familia y
+  // esa persona (lo filtra la base). El resto ve que alguien lo tiene.
+  const yo = acciones.usuario?.id;
+  const contactoOculto =
+    esPerdido &&
+    !!resguardo &&
+    !contacto &&
+    (!yo || (yo !== a.creado_por && yo !== resguardo.usuario_id));
 
   // Si tiene nombre, va primero ("Toby"); debajo, la descripción corta.
   const titulo = t.animal.tituloCaso(a.nombre, a.especie, a.color, a.tamanio);
@@ -171,6 +179,7 @@ export function DetalleCaso({ animal: a, avistamientos, cambios, historial, onVo
           </Texto>
         </View>
       ) : null}
+      {contactoOculto ? <Mensaje texto={t.animal.contactoPrivado} /> : null}
       {/* En computadora el contacto de la familia va en la columna izquierda, con el aviso. */}
       {contactoFamilia && !amplio ? avisoEstafa : null}
       <NovedadesCaso acciones={acciones} />

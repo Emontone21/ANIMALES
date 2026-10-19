@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { RequiereCuenta } from '@/components/auth/RequiereCuenta';
+import { RequiereTerminos } from '@/components/legal/RequiereTerminos';
 import { CampoUbicacion } from '@/components/reportes/CampoUbicacion';
 import { ElegirTipoReporte } from '@/components/reportes/ElegirTipoReporte';
 import {
@@ -55,7 +56,11 @@ export default function PantallaPublicar() {
       </Pantalla>
     );
   }
-  return <FormularioPublicar usuarioId={usuario.id} />;
+  return (
+    <RequiereTerminos usuarioId={usuario.id} titulo={t.publicar.titulo}>
+      <FormularioPublicar usuarioId={usuario.id} />
+    </RequiereTerminos>
+  );
 }
 
 function FormularioPublicar({ usuarioId }: { usuarioId: string }) {

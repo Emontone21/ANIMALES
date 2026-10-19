@@ -20,6 +20,9 @@ export type Database = {
           nombre_publico: string;
           avatar_path: string | null;
           es_moderador: boolean;
+          /** Solo los lee su dueño, con mis_terminos(): la API no expone estas columnas. */
+          terminos_version: string | null;
+          terminos_aceptados_en: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -28,6 +31,8 @@ export type Database = {
           nombre_publico: string;
           avatar_path?: string | null;
           es_moderador?: boolean;
+          terminos_version?: string | null;
+          terminos_aceptados_en?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -36,6 +41,8 @@ export type Database = {
           nombre_publico?: string;
           avatar_path?: string | null;
           es_moderador?: boolean;
+          terminos_version?: string | null;
+          terminos_aceptados_en?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -52,7 +59,8 @@ export type Database = {
           estado: Database['public']['Enums']['estado_animal'];
           vinculado_a: string | null;
           foto_principal_path: string;
-          creado_por: string;
+          /** null: quien lo publicó borró su cuenta y lo dejó publicado sin su nombre. */
+          creado_por: string | null;
           ultimo_avistamiento_en: string | null;
           oculto: boolean;
           tipo_reporte: Database['public']['Enums']['tipo_reporte'];
@@ -71,7 +79,7 @@ export type Database = {
           estado?: Database['public']['Enums']['estado_animal'];
           vinculado_a?: string | null;
           foto_principal_path: string;
-          creado_por: string;
+          creado_por?: string | null;
           ultimo_avistamiento_en?: string | null;
           oculto?: boolean;
           tipo_reporte?: Database['public']['Enums']['tipo_reporte'];
@@ -90,7 +98,7 @@ export type Database = {
           estado?: Database['public']['Enums']['estado_animal'];
           vinculado_a?: string | null;
           foto_principal_path?: string;
-          creado_por?: string;
+          creado_por?: string | null;
           ultimo_avistamiento_en?: string | null;
           oculto?: boolean;
           tipo_reporte?: Database['public']['Enums']['tipo_reporte'];
@@ -105,7 +113,7 @@ export type Database = {
         Row: {
           id: string;
           animal_id: string;
-          usuario_id: string;
+          usuario_id: string | null;
           tipo: Database['public']['Enums']['tipo_avistamiento'];
           foto_path: string | null;
           ubicacion: unknown;
@@ -120,7 +128,7 @@ export type Database = {
         Insert: {
           id?: string;
           animal_id: string;
-          usuario_id: string;
+          usuario_id?: string | null;
           tipo?: Database['public']['Enums']['tipo_avistamiento'];
           foto_path?: string | null;
           ubicacion: unknown;
@@ -135,7 +143,7 @@ export type Database = {
         Update: {
           id?: string;
           animal_id?: string;
-          usuario_id?: string;
+          usuario_id?: string | null;
           tipo?: Database['public']['Enums']['tipo_avistamiento'];
           foto_path?: string | null;
           ubicacion?: unknown;
@@ -149,31 +157,70 @@ export type Database = {
         Row: {
           id: string;
           animal_id: string;
-          usuario_id: string;
+          usuario_id: string | null;
           estado_anterior: Database['public']['Enums']['estado_animal'];
           estado_nuevo: Database['public']['Enums']['estado_animal'];
-          contacto_compartido: string | null;
           nota: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
           animal_id: string;
-          usuario_id: string;
+          usuario_id?: string | null;
           estado_anterior: Database['public']['Enums']['estado_animal'];
           estado_nuevo: Database['public']['Enums']['estado_animal'];
-          contacto_compartido?: string | null;
           nota?: string | null;
           created_at?: string;
         };
         Update: {
           id?: string;
           animal_id?: string;
-          usuario_id?: string;
+          usuario_id?: string | null;
           estado_anterior?: Database['public']['Enums']['estado_animal'];
           estado_nuevo?: Database['public']['Enums']['estado_animal'];
-          contacto_compartido?: string | null;
           nota?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      contactos_resguardo: {
+        Row: {
+          cambio_id: string;
+          animal_id: string;
+          usuario_id: string | null;
+          contacto: string;
+          created_at: string;
+        };
+        Insert: {
+          cambio_id: string;
+          animal_id: string;
+          usuario_id?: string | null;
+          contacto: string;
+          created_at?: string;
+        };
+        Update: {
+          cambio_id?: string;
+          animal_id?: string;
+          usuario_id?: string | null;
+          contacto?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      bloqueos: {
+        Row: {
+          bloqueador_id: string;
+          bloqueado_id: string;
+          created_at: string;
+        };
+        Insert: {
+          bloqueador_id: string;
+          bloqueado_id: string;
+          created_at?: string;
+        };
+        Update: {
+          bloqueador_id?: string;
+          bloqueado_id?: string;
           created_at?: string;
         };
         Relationships: [];
@@ -310,6 +357,8 @@ export type Database = {
           cuerpo: string;
           datos: Json;
           leida_en: string | null;
+          /** Quién causó el aviso; null si lo generó el sistema. */
+          actor_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -320,6 +369,7 @@ export type Database = {
           cuerpo: string;
           datos?: Json;
           leida_en?: string | null;
+          actor_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -330,6 +380,7 @@ export type Database = {
           cuerpo?: string;
           datos?: Json;
           leida_en?: string | null;
+          actor_id?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -402,6 +453,10 @@ export type Database = {
           ultimo_mensaje_en: string | null;
           no_leidos: number;
           updated_at: string;
+          /** Hay un bloqueo entre las dos personas, en cualquier sentido. */
+          bloqueada: boolean;
+          /** Vos bloqueaste a la otra persona. */
+          bloqueaste: boolean;
         };
         Relationships: [];
       };
@@ -433,6 +488,8 @@ export type Database = {
           animal_descripcion: string | null;
           animal_oculto: boolean;
           animal_estado: Database['public']['Enums']['estado_animal'];
+          /** La cuenta tenía menos de 7 días al denunciar: no cuenta para ocultar. */
+          cuenta_nueva: boolean;
         };
         Relationships: [];
       };
@@ -458,10 +515,10 @@ export type Database = {
           candidato_descripcion: string | null;
           origen_tipo_reporte: Database['public']['Enums']['tipo_reporte'];
           origen_nombre: string | null;
-          origen_creado_por: string;
+          origen_creado_por: string | null;
           candidato_tipo_reporte: Database['public']['Enums']['tipo_reporte'];
           candidato_nombre: string | null;
-          candidato_creado_por: string;
+          candidato_creado_por: string | null;
         };
         Relationships: [];
       };
@@ -476,8 +533,8 @@ export type Database = {
           estado: Database['public']['Enums']['estado_animal'];
           vinculado_a: string | null;
           foto_principal_path: string;
-          creado_por: string;
-          creador_nombre: string;
+          creado_por: string | null;
+          creador_nombre: string | null;
           created_at: string;
           ultimo_avistamiento_en: string | null;
           lat: number | null;
@@ -497,12 +554,22 @@ export type Database = {
         Row: {
           id: string;
           animal_id: string;
-          usuario_id: string;
-          usuario_nombre: string;
+          usuario_id: string | null;
+          usuario_nombre: string | null;
           estado_anterior: Database['public']['Enums']['estado_animal'];
           estado_nuevo: Database['public']['Enums']['estado_animal'];
+          /** Lo filtra RLS: en un perdido solo lo ven su familia y quien lo resguarda. */
           contacto_compartido: string | null;
           nota: string | null;
+          created_at: string;
+        };
+        Relationships: [];
+      };
+      bloqueos_detalle: {
+        Row: {
+          bloqueado_id: string;
+          bloqueado_nombre: string;
+          bloqueado_avatar_path: string | null;
           created_at: string;
         };
         Relationships: [];
@@ -517,7 +584,7 @@ export type Database = {
           descripcion: string | null;
           estado: Database['public']['Enums']['estado_animal'];
           foto_principal_path: string;
-          creado_por: string;
+          creado_por: string | null;
           created_at: string;
           ultimo_avistamiento_en: string | null;
           lat: number;
@@ -534,8 +601,8 @@ export type Database = {
         Row: {
           id: string;
           animal_id: string;
-          usuario_id: string;
-          usuario_nombre: string;
+          usuario_id: string | null;
+          usuario_nombre: string | null;
           tipo: Database['public']['Enums']['tipo_avistamiento'];
           foto_path: string | null;
           lat: number;
@@ -551,6 +618,26 @@ export type Database = {
       abrir_conversacion: {
         Args: { p_animal_id: string; p_otro_usuario: string };
         Returns: string;
+      };
+      aceptar_terminos: {
+        Args: { p_version: string };
+        Returns: undefined;
+      };
+      mis_terminos: {
+        Args: Record<string, never>;
+        Returns: { version: string | null; aceptados_en: string | null; vigente: string | null }[];
+      };
+      fotos_para_borrar: {
+        Args: { p_conservar_abiertos?: boolean };
+        Returns: string[];
+      };
+      borrar_mi_cuenta: {
+        Args: { p_conservar_abiertos?: boolean };
+        Returns: undefined;
+      };
+      hay_bloqueo_con: {
+        Args: { p_otro: string };
+        Returns: boolean;
       };
       es_moderador: {
         Args: Record<string, never>;
@@ -583,6 +670,7 @@ export type Database = {
           p_nota?: string | null;
           p_lat?: number | null;
           p_lng?: number | null;
+          p_foto_path?: string | null;
         };
         Returns: undefined;
       };

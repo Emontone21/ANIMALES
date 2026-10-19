@@ -79,6 +79,16 @@ function minuscula(texto: string): string {
   return texto.toLocaleLowerCase('es-UY');
 }
 
+const formatoMesUtc = new Intl.DateTimeFormat('es-UY', { month: 'long', timeZone: 'UTC' });
+
+/** "2026-10-19" → "19 de octubre de 2026" (para versiones de documentos, sin hora). */
+export function fechaLarga(isoDia: string): string {
+  const [anio, mes, dia] = isoDia.split('-').map(Number);
+  if (!anio || !mes || !dia) return isoDia;
+  const momento = new Date(Date.UTC(anio, mes - 1, dia));
+  return t.fechas.fechaLarga(String(dia), minuscula(formatoMesUtc.format(momento)), String(anio));
+}
+
 /** Fecha N horas antes de ahora. */
 export function hace(horas: number, ahora: Date = new Date()): Date {
   return new Date(ahora.getTime() - horas * HORA);

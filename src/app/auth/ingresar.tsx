@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
@@ -13,6 +14,7 @@ import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 
 export default function PantallaIngresar() {
+  const router = useRouter();
   const estilos = useEstilos(crear);
   const [email, setEmail] = useState('');
   const [contrasena, setContrasena] = useState('');
@@ -64,6 +66,11 @@ export default function PantallaIngresar() {
         cargando={cargando === 'email'}
         deshabilitado={cargando !== null}
         onPress={() => void ejecutar('email', () => ingresarConEmail(email, contrasena))}
+      />
+      <Boton
+        titulo={t.auth.olvidaste}
+        variante="fantasma"
+        onPress={() => router.push('/auth/recuperar')}
       />
 
       <View style={estilos.separador}>

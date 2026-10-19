@@ -2,8 +2,10 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 
 import { CambiarAcceso, MarcaAcceso } from '@/components/auth/Acceso';
+import { EnlacesLegales } from '@/components/legal/EnlacesLegales';
 import { Boton } from '@/components/ui/Boton';
 import { CampoTexto } from '@/components/ui/CampoTexto';
+import { Casilla } from '@/components/ui/Casilla';
 import { Mensaje } from '@/components/ui/Mensaje';
 import { Pantalla } from '@/components/ui/Pantalla';
 import { AnchoMaximo } from '@/constants/tema';
@@ -15,15 +17,18 @@ export default function PantallaRegistrarse() {
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [contrasena, setContrasena] = useState('');
+  const [acepta, setAcepta] = useState(false);
+  const [intentado, setIntentado] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState(false);
 
   const enviar = async () => {
+    setIntentado(true);
     setCargando(true);
     setError(null);
     try {
-      const { requiereConfirmacion } = await registrarse(nombre, email, contrasena);
+      const { requiereConfirmacion } = await registrarse(nombre, email, contrasena, acepta);
       if (requiereConfirmacion) {
         // Sin sesión todavía: la pantalla sigue visible, avisamos y volvemos.
         setExito(true);
@@ -70,6 +75,14 @@ export default function PantallaRegistrarse() {
         textContentType="newPassword"
         onSubmitEditing={() => void enviar()}
       />
+
+      <Casilla
+        etiqueta={t.auth.aceptoTerminos}
+        valor={acepta}
+        onCambio={setAcepta}
+        error={intentado && !acepta ? t.legal.aceptar.falta : null}
+      />
+      <EnlacesLegales />
 
       {error ? <Mensaje texto={error} tipo="error" /> : null}
       {exito ? <Mensaje texto={t.auth.registroExito} tipo="exito" /> : null}

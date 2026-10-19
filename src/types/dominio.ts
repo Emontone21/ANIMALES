@@ -9,7 +9,11 @@ export type TipoAvistamiento = Database['public']['Enums']['tipo_avistamiento'];
 /** perdido: lo publica su familia · encontrado: lo publica quien lo encontró. */
 export type TipoReporte = Database['public']['Enums']['tipo_reporte'];
 
-export type Perfil = Database['public']['Tables']['perfiles']['Row'];
+/** Lo que la API deja leer de un perfil: los datos de términos no (ver mis_terminos). */
+export type Perfil = Pick<
+  Database['public']['Tables']['perfiles']['Row'],
+  'id' | 'nombre_publico' | 'avatar_path' | 'es_moderador' | 'created_at' | 'updated_at'
+>;
 export type AnimalEnMapa = Database['public']['Views']['animales_mapa']['Row'];
 export type AvistamientoDetalle = Database['public']['Views']['avistamientos_detalle']['Row'];
 export type AnimalDetalle = Database['public']['Views']['animales_detalle']['Row'];
@@ -22,6 +26,7 @@ export type TipoNotificacion = Database['public']['Enums']['tipo_notificacion'];
 export type ConversacionDetalle = Database['public']['Views']['conversaciones_detalle']['Row'];
 export type MensajeDetalle = Database['public']['Views']['mensajes_detalle']['Row'];
 export type DenunciaDetalle = Database['public']['Views']['denuncias_detalle']['Row'];
+export type BloqueoDetalle = Database['public']['Views']['bloqueos_detalle']['Row'];
 export type EstadoDenuncia = Database['public']['Enums']['estado_denuncia'];
 
 /** Datos que viajan dentro de una notificación (jsonb `datos`). */
@@ -77,7 +82,13 @@ export type CambioEstado = {
   contactoCompartido?: string;
   nota?: string;
   ubicacion?: LngLat | null;
+  /** Foto actual al resguardar (obligatoria en un perdido): URI local y ancho. */
+  fotoUri?: string | null;
+  fotoAncho?: number;
 };
+
+/** Qué pasa con los casos abiertos y lo aportado a casos de otros al borrar la cuenta. */
+export type AlBorrarCuenta = 'conservar' | 'borrar';
 
 /** Un renglón del historial del detalle: avistamiento o cambio de estado. */
 export type EventoHistorial =
