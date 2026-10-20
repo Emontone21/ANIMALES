@@ -21,7 +21,8 @@ export function Casilla({ etiqueta, valor, onCambio, error }: Props) {
     <View style={estilos.contenedor}>
       <Pressable
         accessibilityRole="checkbox"
-        accessibilityState={{ checked: valor }}
+        // react-native-web no traduce accessibilityState: los aria-* andan en web y en nativo.
+        aria-checked={valor}
         accessibilityLabel={etiqueta}
         onPress={() => onCambio(!valor)}
         style={(estado) => [estilos.fila, estaActivo(estado) && estilos.filaActiva]}>

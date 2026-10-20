@@ -130,7 +130,10 @@ Cualquier combinación nueva de colores se verifica antes de usarla.
 | Fredoka | Títulos y nombres de animales | 600 |
 | Figtree | Todo el resto | 400, 600 y 700 |
 
-**Instalación.** Con `npx expo install @expo-google-fonts/fredoka @expo-google-fonts/figtree`. Se cargan con `useFonts` en `src/app/_layout.tsx`, manteniendo la pantalla de carga (`expo-splash-screen`) hasta que estén listas. Si fallan, se usa la fuente del sistema.
+**Instalación.** Con `npx expo install @expo-google-fonts/fredoka @expo-google-fonts/figtree`.
+
+- **Nativo:** se cargan con `useFonts` (`src/hooks/useFuentes.ts`), manteniendo la pantalla de carga (`expo-splash-screen`) hasta que estén listas. Si fallan, se usa la fuente del sistema.
+- **Web:** nada las espera. `public/index.html` las declara con `@font-face` y `font-display: swap` (los archivos los copia `scripts/copiar-a-public.js` a `public/fuentes/`). Arrancan apagadas y la app las activa después de las fotos que se ven al abrir (`src/lib/fuentesWeb.ts`). Hasta entonces el texto usa la pila del sistema de `Fuentes` (`system-ui`, `-apple-system`, `Segoe UI`, `Roboto`) y después cambia solo. Cada `@font-face` declara su peso (600, 400, 600 y 700), así el navegador no engrosa de más una fuente que ya es seminegrita.
 
 **Licencia.** Los paquetes son MIT (código) y SIL OFL 1.1 (fuentes). OFL permite incluir las fuentes en apps, pero no está en la lista de licencias de `AGENTS.md`. El dueño aprobó esta excepción para fuentes tipográficas: anotala en `docs/DECISIONES.md` y en la regla de licencias de `AGENTS.md`.
 
@@ -281,6 +284,8 @@ De 44 a 52, fondo `superficie` con sombra y ícono en `texto`. El de mi ubicaci�
 3. Si no hay color, especie más tamaño.
 
 **Línea secundaria.** Distancia y tiempo, por ejemplo "A 600 m, hace 40 min". El nombre del barrio queda pendiente (sección 10).
+
+**Foto.** Las que se ven al abrir sin desplazar (dos en "Cerca tuyo", cuatro en las filas) aparecen apenas llegan, sin fundido; el resto entra con un fundido de 150 ms. Su texto alternativo es el título del caso.
 
 ### 6.9 Visto por última vez
 
@@ -462,6 +467,15 @@ Contenido centrado, de 420 de ancho como máximo:
 
 - **Moderación:** misma lista que Actividad. La marca "Oculta" usa una etiqueta con `peligroSuave` y `peligro`.
 - **No encontrado:** mensaje centrado con un botón para volver al mapa.
+
+### 7.9 Pantalla de carga (web)
+
+Lo que se ve desde el primer instante, antes de que llegue el JS: es solo HTML y CSS en `public/index.html` (`#carga`).
+
+- Fondo `fondo`, el nombre "Encontrados" con la variante `titulo` (28/32) en `texto` y, debajo, un indicador circular de 28 con borde de 3: la vía en `borde` y el arco en `primario`, girando. Con movimiento reducido no gira.
+- Sigue el esquema elegido en Perfil (lo lee el script de `index.html`) o, si es Automático, el del sistema. Nunca hay destello blanco ni negro: el fondo del documento ya es el de la paleta.
+- Se va cuando la app dibuja su primera pantalla con contenido (`src/lib/pantallaCarga.ts`), no apenas monta el marco, para que no quede un fondo vacío en el medio.
+- Es la única excepción a `tema.ts` y `es-UY.ts`: cada color lleva un comentario con su token y una prueba comprueba que coincidan (`__tests__/indexHtml.test.ts`).
 
 ## 8. Adaptación a cualquier celular y computadora
 

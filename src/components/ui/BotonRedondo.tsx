@@ -42,11 +42,13 @@ export function BotonRedondo({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
+      // "Seleccionado" queda para nativo: en web ARIA no lo permite en un botón y el
+      // nombre ya lo dice ("Siguiendo"). Ocupado va como aria-busy, que sí llega a la web.
       accessibilityState={{
         disabled: deshabilitado || cargando,
-        busy: cargando,
         ...(seleccionado === undefined ? null : { selected: seleccionado }),
       }}
+      aria-busy={cargando}
       onPress={onPress}
       disabled={deshabilitado || cargando}
       hitSlop={Math.max(0, (Medida.areaTactil - tamanio) / 2)}

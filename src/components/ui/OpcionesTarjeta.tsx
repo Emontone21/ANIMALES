@@ -38,7 +38,8 @@ export function OpcionesTarjeta<T extends string>({
           <Pressable
             key={opcion.valor}
             accessibilityRole="radio"
-            accessibilityState={{ checked: elegida }}
+            // react-native-web no traduce accessibilityState: los aria-* andan en web y en nativo.
+            aria-checked={elegida}
             accessibilityLabel={`${opcion.titulo}. ${opcion.detalle}`}
             onPress={() => onCambio(opcion.valor)}
             style={(estado) => [

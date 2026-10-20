@@ -23,6 +23,7 @@ import { Pantalla } from '@/components/ui/Pantalla';
 import { Texto } from '@/components/ui/Texto';
 import { AnchoMaximo, Espacio, Margen, Radio } from '@/constants/tema';
 import { useDisposicion } from '@/hooks/useDisposicion';
+import { useFotoPrioritaria } from '@/hooks/useFotoPrioritaria';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 import { desdeCuando, haceCuanto } from '@/lib/fechas';
@@ -86,6 +87,7 @@ export function DetalleCaso({ animal: a, avistamientos, cambios, historial, onVo
 
   // Si tiene nombre, va primero ("Toby"); debajo, la descripción corta.
   const titulo = t.animal.tituloCaso(a.nombre, a.especie, a.color, a.tamanio);
+  const fotoCargada = useFotoPrioritaria(true, a.foto_principal_path);
   const tituloCorto = t.animal.tituloCorto(a.especie, a.color, a.tamanio);
   const fecha = esPerdido
     ? t.animal.perdidoDesde(desdeCuando(a.perdido_desde ?? a.created_at))
@@ -114,10 +116,15 @@ export function DetalleCaso({ animal: a, avistamientos, cambios, historial, onVo
 
   const foto = (estilo: StyleProp<ImageStyle>) => (
     // La foto nunca se oscurece ni se filtra, tampoco en modo oscuro.
+    // Es lo más grande al abrir el link: se pide enseguida y antes que el resto.
     <Image
       source={{ uri: urlFoto(a.foto_principal_path) }}
       style={[estilos.foto, estilo]}
       contentFit="cover"
+      priority="high"
+      loading="eager"
+      onLoad={fotoCargada}
+      onError={fotoCargada}
       accessible
       accessibilityLabel={titulo}
       accessibilityIgnoresInvertColors
@@ -205,6 +212,7 @@ export function DetalleCaso({ animal: a, avistamientos, cambios, historial, onVo
             eventos={historial.eventos}
             estado={a.estado}
             tipo={a.tipo_reporte}
+            tituloCaso={titulo}
             escribir={acciones.historial}
           />
         )}

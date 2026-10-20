@@ -1,6 +1,3 @@
-import * as Crypto from 'expo-crypto';
-import { File } from 'expo-file-system';
-import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { Platform } from 'react-native';
 
 import { BUCKET_FOTOS, LADO_MINIATURA, rutaMiniatura } from '@/lib/imagenes';
@@ -9,6 +6,10 @@ import { supabase } from '@/lib/supabase';
 /**
  * Comprimir, subir y borrar fotos del bucket "fotos". La convención de los
  * nombres (y la de las miniaturas) está en imagenes.ts.
+ *
+ * expo-image-manipulator, expo-crypto y expo-file-system se importan al
+ * usarlos (import dinámico): en web quedan fuera de la carga inicial, porque
+ * solo hacen falta al subir una foto.
  */
 
 const ANCHO_MAXIMO = 1280;
@@ -22,6 +23,7 @@ export type FotoComprimida = { uri: string; width: number; height: number };
  * Una foto de celular de 4-6 MB queda en ~150-300 KB.
  */
 export async function comprimirFoto(uri: string, anchoOriginal?: number): Promise<FotoComprimida> {
+  const { ImageManipulator, SaveFormat } = await import('expo-image-manipulator');
   const contexto = ImageManipulator.manipulate(uri, { maxWidth: ANCHO_MAXIMO * 2 });
   if (!anchoOriginal || anchoOriginal > ANCHO_MAXIMO) {
     contexto.resize({ width: ANCHO_MAXIMO });
@@ -33,6 +35,7 @@ export async function comprimirFoto(uri: string, anchoOriginal?: number): Promis
 
 /** Miniatura cuadrada de 320: el centro de la foto ya comprimida, unos 20 KB. */
 async function miniaturaDe(foto: FotoComprimida): Promise<string> {
+  const { ImageManipulator, SaveFormat } = await import('expo-image-manipulator');
   const lado = Math.min(foto.width, foto.height);
   const render = await ImageManipulator.manipulate(foto.uri)
     .crop({
@@ -56,6 +59,7 @@ async function leerBytes(uriLocal: string): Promise<ArrayBuffer | Blob> {
     const respuesta = await fetch(uriLocal);
     return respuesta.blob();
   }
+  const { File } = await import('expo-file-system');
   return new File(uriLocal).arrayBuffer();
 }
 
@@ -76,6 +80,7 @@ async function subir(uriLocal: string, ruta: string): Promise<void> {
  * Devuelve la ruta de la original, que es la que se guarda en la base.
  */
 export async function subirFoto(foto: FotoComprimida, usuarioId: string): Promise<string> {
+  const Crypto = await import('expo-crypto');
   const ruta = `${usuarioId}/${Crypto.randomUUID()}.jpg`;
   const miniatura = rutaMiniatura(ruta) as string;
   const uriMiniatura = await miniaturaDe(foto);

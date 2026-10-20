@@ -1,4 +1,4 @@
-import 'react-native-url-polyfill/auto';
+import '@/lib/polyfills';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';

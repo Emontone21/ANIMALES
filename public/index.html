@@ -6,18 +6,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <meta name="color-scheme" content="light dark" />
     <title>%WEB_TITLE%</title>
+    <!-- La misma descripción que la vista previa genérica del link (t.compartir.vistaPrevia). -->
+    <meta name="description" content="Animales perdidos y encontrados en Montevideo. Si viste uno, avisá: así vuelve a casa." />
+    <!--
+      Conexiones abiertas de antemano: Supabase (API con CORS y fotos de Storage sin CORS,
+      que van por conexiones distintas) y OpenFreeMap (estilo, teselas y letras del mapa).
+      La URL de Supabase es la de producción (EXPO_PUBLIC_SUPABASE_URL): si cambia el
+      proyecto, cambiala acá también.
+    -->
+    <link rel="preconnect" href="https://bwqvuttuodwypwxckxgf.supabase.co" crossorigin />
+    <link rel="preconnect" href="https://bwqvuttuodwypwxckxgf.supabase.co" />
+    <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
     <!--
       Primer pintado según la apariencia elegida en Perfil (clave "encontrados-apariencia",
-      ver src/features/apariencia/preferencia.ts). No hay colores escritos acá: el navegador
-      pinta su fondo claro u oscuro y la app aplica el color exacto de src/constants/tema.ts
-      apenas monta.
+      ver src/features/apariencia/preferencia.ts): data-esquema elige los colores de la
+      pantalla de carga y color-scheme los del navegador. La app aplica la paleta de
+      src/constants/tema.ts apenas monta.
     -->
     <script>
       try {
         var guardada = JSON.parse(localStorage.getItem('encontrados-apariencia') || 'null');
         var preferencia = guardada && guardada.state && guardada.state.preferencia;
-        if (preferencia === 'claro') document.documentElement.style.colorScheme = 'light';
-        if (preferencia === 'oscuro') document.documentElement.style.colorScheme = 'dark';
+        if (preferencia === 'claro' || preferencia === 'oscuro') {
+          document.documentElement.setAttribute('data-esquema', preferencia);
+          document.documentElement.style.colorScheme = preferencia === 'claro' ? 'light' : 'dark';
+        }
       } catch (e) {}
     </script>
     <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
@@ -39,6 +52,118 @@
         display: flex;
         height: 100%;
         flex: 1;
+      }
+    </style>
+    <!--
+      Fuentes de la app (src/constants/tema.ts, FAMILIAS), copiadas a public/fuentes por
+      scripts/copiar-a-public.js. Arrancan apagadas (media="not all": no se baja nada) y la
+      app las activa después de las fotos que se ven al abrir (src/lib/fuentesWeb.ts). Con
+      font-display: swap nada las espera: la app se ve con la fuente del sistema y cambia
+      cuando llegan.
+    -->
+    <style id="encontrados-fuentes" media="not all">
+      @font-face {
+        font-family: 'Fredoka_600SemiBold';
+        src: url('/fuentes/Fredoka_600SemiBold.ttf') format('truetype');
+        font-weight: 600;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Figtree_400Regular';
+        src: url('/fuentes/Figtree_400Regular.ttf') format('truetype');
+        font-weight: 400;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Figtree_600SemiBold';
+        src: url('/fuentes/Figtree_600SemiBold.ttf') format('truetype');
+        font-weight: 600;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Figtree_700Bold';
+        src: url('/fuentes/Figtree_700Bold.ttf') format('truetype');
+        font-weight: 700;
+        font-display: swap;
+      }
+    </style>
+    <!--
+      Pantalla de carga (#carga): se ve desde el primer instante, sin esperar al JS, y la
+      app la saca al montar (src/app/_layout.tsx). Es la única excepción a las reglas de
+      tema.ts y es-UY.ts (AGENTS.md, "Pantalla de carga"): cada color es un token de la
+      paleta y __tests__/indexHtml.test.ts comprueba que coincidan.
+    -->
+    <style id="encontrados-carga">
+      :root {
+        --carga-fondo: #F6F6F2; /* claro.fondo */
+        --carga-texto: #151613; /* claro.texto */
+        --carga-primario: #556B2F; /* claro.primario */
+        --carga-borde: #E2E3DA; /* claro.borde */
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-esquema='claro']) {
+          --carga-fondo: #121410; /* oscuro.fondo */
+          --carga-texto: #EDEEE6; /* oscuro.texto */
+          --carga-primario: #8FA357; /* oscuro.primario */
+          --carga-borde: #2E3128; /* oscuro.borde */
+        }
+      }
+      :root[data-esquema='oscuro'] {
+        --carga-fondo: #121410; /* oscuro.fondo */
+        --carga-texto: #EDEEE6; /* oscuro.texto */
+        --carga-primario: #8FA357; /* oscuro.primario */
+        --carga-borde: #2E3128; /* oscuro.borde */
+      }
+      /* Sin destello blanco ni negro: el fondo de la app desde el primer pintado. */
+      html,
+      body {
+        margin: 0;
+        background-color: var(--carga-fondo);
+      }
+      #carga {
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        background-color: var(--carga-fondo);
+        color: var(--carga-texto);
+      }
+      /* El nombre con la variante titulo (Fredoka 600, 28/32). */
+      .carga-nombre {
+        margin: 0;
+        font:
+          600 28px/32px 'Fredoka_600SemiBold',
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+      }
+      .carga-indicador {
+        width: 28px;
+        height: 28px;
+        box-sizing: border-box;
+        border: 3px solid var(--carga-borde);
+        border-top-color: var(--carga-primario);
+        border-radius: 50%;
+        animation: carga-giro 0.9s linear infinite;
+      }
+      @keyframes carga-giro {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .carga-texto {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
       }
     </style>
     <style id="encontrados-web">
@@ -85,5 +210,10 @@
   <body>
     <noscript>Necesitás activar JavaScript para usar Encontrados.</noscript>
     <div id="root"></div>
+    <div id="carga" role="status">
+      <p class="carga-nombre">Encontrados</p>
+      <div class="carga-indicador" aria-hidden="true"></div>
+      <span class="carga-texto">Cargando…</span>
+    </div>
   </body>
 </html>

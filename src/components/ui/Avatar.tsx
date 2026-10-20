@@ -28,13 +28,15 @@ export function Avatar({ nombre, fotoPath, fotoUri, tamanio = 56 }: Props) {
     style: [estilos.circulo, medida],
     contentFit: 'cover' as const,
     accessible: true,
-    accessibilityLabel: nombre ? t.perfil.fotoDe(nombre) : undefined,
     accessibilityIgnoresInvertColors: true,
   };
+  // Sin nombre, la foto es decorativa (alt vacío).
+  const descripcion = nombre ? t.perfil.fotoDe(nombre) : '';
 
   // La foto recién elegida (local) se ve tal cual; la guardada, en miniatura.
-  if (fotoUri) return <Image source={{ uri: fotoUri }} {...comunes} />;
-  if (fotoPath) return <FotoMiniatura ruta={fotoPath} {...comunes} />;
+  if (fotoUri)
+    return <Image source={{ uri: fotoUri }} accessibilityLabel={descripcion} {...comunes} />;
+  if (fotoPath) return <FotoMiniatura ruta={fotoPath} descripcion={descripcion} {...comunes} />;
   return (
     <View style={[estilos.circulo, medida]}>
       {inicial ? (

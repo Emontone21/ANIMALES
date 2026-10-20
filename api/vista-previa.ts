@@ -164,7 +164,10 @@ function escapar(texto: string): string {
     .replace(/'/g, '&#39;');
 }
 
-/** Reemplaza el <title> de la app por el del caso y suma las etiquetas en el <head>. */
+/**
+ * Reemplaza el <title> y la descripción genérica de la app por los del caso y
+ * suma las etiquetas en el <head>.
+ */
 function insertarEtiquetas(html: string, e: Etiquetas): string {
   const meta = (atributo: 'name' | 'property', clave: string, valor: string) =>
     `<meta ${atributo}="${clave}" content="${escapar(valor)}" />`;
@@ -198,8 +201,10 @@ function insertarEtiquetas(html: string, e: Etiquetas): string {
     ...(e.imagen ? [meta('name', 'twitter:image', e.imagen.url)] : []),
   ].join('\n    ');
 
-  const sinTitulo = html.replace(/<title>[\s\S]*?<\/title>/i, '');
-  return sinTitulo.replace('</head>', `\n    ${etiquetas}\n  </head>`);
+  const sinGenericas = html
+    .replace(/<title>[\s\S]*?<\/title>/i, '')
+    .replace(/<meta\s+name="description"[^>]*>/gi, '');
+  return sinGenericas.replace('</head>', `\n    ${etiquetas}\n  </head>`);
 }
 
 /** Si no se pudo leer el index.html de la app: lo justo para la vista previa. */

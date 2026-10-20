@@ -211,6 +211,7 @@ Esperado:
 - **En la computadora:** aparecen **Mandar por WhatsApp** y **Copiar el link**, con el link a la vista.
 - **Vista previa:** la tarjeta dice "Se perdió Prueba Toby", tiene una descripción corta y la foto. No muestra el contacto ni la dirección.
 - El link abre la app en el caso.
+- **Primera carga** (abrilo desde WhatsApp en el celular, que no comparte la caché del navegador): desde el primer instante se ve "Encontrados" con un indicador sobre el fondo de la app, nunca una pantalla blanca ni negra. Después aparecen la foto, los datos y las acciones del caso. El mini mapa llega al final, y la tipografía puede cambiar un momento después (antes se ve con la del sistema).
 - Solo funciona con la URL de producción: las previews piden login de Vercel y los bots no entran.
 
 - [ ] Android · Chrome

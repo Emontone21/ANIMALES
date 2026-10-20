@@ -9,6 +9,9 @@ import type { AnimalEnMapa, AvistamientoDetalle, EstadoAnimal, LngLat } from '@/
 /** Píxeles tapados por la hoja, el panel o los controles, para centrar en lo visible. */
 export type MargenesMapa = { top: number; right: number; bottom: number; left: number };
 
+/** Alto del mini mapa del recorrido en el detalle (6.9). */
+export const ALTO_MAPA_RECORRIDO = 140;
+
 export type MapaReportesRef = {
   /** Vuela la cámara a un punto, centrándolo en la parte visible del mapa. */
   irA: (centro: LngLat, zoom: number) => void;

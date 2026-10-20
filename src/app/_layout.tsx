@@ -1,28 +1,24 @@
-import { Figtree_400Regular } from '@expo-google-fonts/figtree/400Regular';
-import { Figtree_600SemiBold } from '@expo-google-fonts/figtree/600SemiBold';
-import { Figtree_700Bold } from '@expo-google-fonts/figtree/700Bold';
-import { Fredoka_600SemiBold } from '@expo-google-fonts/fredoka/600SemiBold';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, usePathname, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo } from 'react';
 import { Platform, View } from 'react-native';
 
-// Solo aplica en web (Metro lo ignora en nativo): estilos del mapa MapLibre GL.
-import 'maplibre-gl/dist/maplibre-gl.css';
-
 import { RielNavegacion } from '@/components/ui/BarraNavegacion';
 import { BotonVolver } from '@/components/ui/BotonVolver';
-import { FAMILIAS, Fuentes } from '@/constants/tema';
+import { Fuentes } from '@/constants/tema';
 import { useAparienciaHidratada } from '@/features/apariencia/preferencia';
 import { AuthProvider, useAuth } from '@/features/auth/AuthProvider';
 import { useRecuperacion } from '@/features/auth/recuperacion';
 import { usePush } from '@/features/notificaciones/push';
+import { precargarRutaInicial } from '@/features/reportes/precarga';
 import { useDisposicion } from '@/hooks/useDisposicion';
+import { useFuentes } from '@/hooks/useFuentes';
 import { useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
+import { activarFuentesWeb } from '@/lib/fuentesWeb';
+import { ocultarPantallaCarga } from '@/lib/pantallaCarga';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -32,17 +28,23 @@ const queryClient = new QueryClient({
   },
 });
 
+// En web, lo que muestra la ruta de entrada se pide ya: no espera a que carguen
+// sus pantallas ni el mapa.
+if (Platform.OS === 'web' && typeof window !== 'undefined') {
+  precargarRutaInicial(queryClient, window.location.pathname);
+}
+
+/**
+ * En web, las fuentes se activan después de las fotos que se ven al abrir
+ * (useCargarMapa); en las pantallas sin mapa, pasado este plazo.
+ */
+const PLAZO_FUENTES_MS = 4000;
+
 export default function RootLayout() {
-  const [fuentesListas, errorFuentes] = useFonts({
-    [FAMILIAS.titulo]: Fredoka_600SemiBold,
-    [FAMILIAS.regular]: Figtree_400Regular,
-    [FAMILIAS.seminegrita]: Figtree_600SemiBold,
-    [FAMILIAS.negrita]: Figtree_700Bold,
-  });
+  const fuentesListas = useFuentes();
   const aparienciaLista = useAparienciaHidratada();
 
-  // Si las fuentes fallan se sigue con la del sistema.
-  if ((!fuentesListas && !errorFuentes) || !aparienciaLista) return null;
+  if (!fuentesListas || !aparienciaLista) return null;
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -86,7 +88,14 @@ function TemaNavegacion({ children }: { children: React.ReactNode }) {
     raiz.style.setProperty('--color-foco', c.primario);
     document.body.style.backgroundColor = c.fondo;
     document.title = t.app.tituloWeb;
+    ocultarPantallaCarga();
   }, [c, oscuro]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const plazo = setTimeout(activarFuentesWeb, PLAZO_FUENTES_MS);
+    return () => clearTimeout(plazo);
+  }, []);
 
   return (
     <ThemeProvider value={tema}>

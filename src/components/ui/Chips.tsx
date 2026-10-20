@@ -51,7 +51,8 @@ export function Chips<T extends string>({
       <Pressable
         key={opcion.valor}
         accessibilityRole="radio"
-        accessibilityState={{ selected: activo, checked: activo }}
+        // react-native-web no traduce accessibilityState: los aria-* andan en web y en nativo.
+        aria-checked={activo}
         onPress={() => onCambio(opcion.valor)}
         style={(estado) => [
           estilos.chip,

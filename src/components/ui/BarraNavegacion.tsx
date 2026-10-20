@@ -137,7 +137,8 @@ function ItemNavegacion({ destino, enfocada, conPunto, enRiel = false, onPress }
   return (
     <Pressable
       accessibilityRole="tab"
-      accessibilityState={{ selected: enfocada }}
+      // react-native-web no traduce accessibilityState: los aria-* andan en web y en nativo.
+      aria-selected={enfocada}
       accessibilityLabel={conPunto ? t.tabs.conNovedades(destino.titulo) : destino.titulo}
       onPress={onPress}
       style={(estado) => [

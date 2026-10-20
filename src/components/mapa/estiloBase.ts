@@ -33,6 +33,14 @@ function descargar(url: string): Promise<StyleSpecification | null> {
   return promesa;
 }
 
+/**
+ * Empieza a bajar el estilo antes de que llegue MapLibre (que va en un bloque
+ * aparte): cuando el mapa se crea, ya está o está en camino.
+ */
+export function precargarEstiloMapa(): void {
+  void descargar(ENV.mapStyleUrl);
+}
+
 function recoloreadoMemorizado(url: string, base: StyleSpecification, c: Paleta, esquema: Esquema) {
   const clave = `${esquema}|${url}`;
   let estilo = recoloreados.get(clave);

@@ -6,7 +6,7 @@
 const ID = 'b0000000-0000-4000-8000-000000000004';
 const SITIO = 'https://animales.test';
 const PLANTILLA =
-  '<!doctype html><html><head><title>Encontrados</title></head><body><div id="root"></div></body></html>';
+  '<!doctype html><html><head><title>Encontrados</title><meta name="description" content="La genérica de index.html." /></head><body><div id="root"></div></body></html>';
 const FOTO = '00000000-0000-4000-8000-0000000000f1/abc.jpg';
 
 type Caso = Record<string, unknown>;
@@ -81,6 +81,9 @@ describe('vista previa del link de un caso', () => {
     expect(html).toContain('abc.miniatura.jpg');
     expect(html).toContain('<meta property="og:image:width" content="320" />');
     expect(html.match(/<title>/g)).toHaveLength(1);
+    // La descripción genérica de index.html se reemplaza: queda una sola, la del caso.
+    expect(html.match(/name="description"/g)).toHaveLength(1);
+    expect(html).not.toContain('La genérica de index.html.');
   });
 
   test('a la base solo le pide columnas sin datos personales', async () => {

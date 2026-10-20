@@ -68,7 +68,7 @@
     "db:types": "node scripts/tipos-db.js",
     "db:push": "npx supabase db push",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
-    "postinstall": "node scripts/copiar-worker-maplibre.js"
+    "postinstall": "node scripts/copiar-a-public.js"
   },
   "private": true,
   "jest": {

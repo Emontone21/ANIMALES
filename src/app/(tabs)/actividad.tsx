@@ -172,6 +172,7 @@ function Conversaciones() {
           {casoDisponible(c) && c.animal_foto_path ? (
             <FotoMiniatura
               ruta={c.animal_foto_path}
+              descripcion={c.animal_especie ? t.especie[c.animal_especie] : ''}
               style={estilos.foto}
               contentFit="cover"
               accessibilityIgnoresInvertColors
