@@ -1,4 +1,4 @@
-import type { Ionicons } from '@expo/vector-icons';
+import type Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { type ComponentProps, type ReactNode, useEffect, useState } from 'react';
 import { View } from 'react-native';
@@ -18,6 +18,7 @@ import { useTerminos } from '@/features/legal/terminos';
 import { useAbrirConversacion } from '@/features/mensajes/api';
 import { useBorrarReporte } from '@/features/reportes/api';
 import {
+  aQuienesLoVieron,
   avisosDeOtros,
   type CambioDisponible,
   cambiosDisponibles,
@@ -72,6 +73,11 @@ export function useAccionesCaso(
   const [modal, setModal] = useState<ModalCaso>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [errorEscribir, setErrorEscribir] = useState<string | null>(null);
+  // Escribir desde el historial: el indicador y el error van en la fila de esa persona.
+  const [desdeHistorial, setDesdeHistorial] = useState(false);
+  const [errorHistorial, setErrorHistorial] = useState<{ usuarioId: string; texto: string } | null>(
+    null,
+  );
   // Sin cuenta: el motivo que se muestra depende de la acción que se tocó.
   const [motivoCuenta, setMotivoCuenta] = useState<string>(t.animal.requiereCuentaAcciones);
   const seguimiento = useSeguimiento(usuario?.id, animal.id);
@@ -103,6 +109,8 @@ export function useAccionesCaso(
     : [];
 
   const destinatarios = destinatariosDelCaso(animal, resguardo?.usuario_id, usuario?.id);
+  // Quien publicó el caso (o un reporte unido) le escribe a quien lo vio.
+  const quienesLoVieron = aQuienesLoVieron(animal, avistamientos, usuario?.id);
 
   /** Sin cuenta, toda acción lleva a ingresar o crear una cuenta. */
   const pedirCuenta = (motivo: string = t.animal.requiereCuentaAcciones) => {
@@ -124,8 +132,10 @@ export function useAccionesCaso(
   const pedir = (siguiente: Exclude<ModalCaso, null>) =>
     usuario ? conTerminos(() => setModal(siguiente)) : pedirCuenta();
 
-  const escribirA = (otroUsuarioId: string) => {
+  const escribirA = (otroUsuarioId: string, historial = false) => {
     setErrorEscribir(null);
+    setErrorHistorial(null);
+    setDesdeHistorial(historial);
     conversacion.mutate(
       { animalId: animal.id, otroUsuarioId },
       {
@@ -133,10 +143,17 @@ export function useAccionesCaso(
           setModal(null);
           router.push({ pathname: '/conversacion/[id]', params: { id } });
         },
-        onError: (e) => setErrorEscribir(mensajeDeError(e)),
+        onError: (e) =>
+          historial
+            ? setErrorHistorial({ usuarioId: otroUsuarioId, texto: mensajeDeError(e) })
+            : setErrorEscribir(mensajeDeError(e)),
       },
     );
   };
+
+  /** "Escribirle" en el historial, junto al aviso de alguien que lo vio. */
+  const escribirleAQuienLoVio = (otroUsuarioId: string) =>
+    conTerminos(() => escribirA(otroUsuarioId, true));
 
   const escribir = () => {
     if (!usuario) return pedirCuenta(t.mensajes.requiereCuenta);
@@ -349,7 +366,7 @@ export function useAccionesCaso(
     puedeVerlo: abierto,
     /** Sin cuenta se muestra igual y lleva a ingresar. */
     puedeEscribir: !usuario || destinatarios.length > 0,
-    escribiendo: conversacion.isPending && modal !== 'destinatario',
+    escribiendo: conversacion.isPending && modal !== 'destinatario' && !desdeHistorial,
     errorEscribir: modal === 'destinatario' ? null : errorEscribir,
     aviso,
     novedades,
@@ -363,6 +380,16 @@ export function useAccionesCaso(
     escribir,
     seguir,
     modales,
+    /** Para el historial: a quiénes de los que lo vieron se les puede escribir. */
+    historial: {
+      escribibles: quienesLoVieron,
+      escribir: escribirleAQuienLoVio,
+      escribiendoA:
+        conversacion.isPending && desdeHistorial
+          ? (conversacion.variables?.otroUsuarioId ?? null)
+          : null,
+      error: errorHistorial,
+    },
   };
 }
 

@@ -201,7 +201,12 @@ export function DetalleCaso({ animal: a, avistamientos, cambios, historial, onVo
         ) : historial.error ? (
           <Mensaje texto={historial.error} tipo="error" onReintentar={historial.onReintentar} />
         ) : (
-          <Historial eventos={historial.eventos} estado={a.estado} tipo={a.tipo_reporte} />
+          <Historial
+            eventos={historial.eventos}
+            estado={a.estado}
+            tipo={a.tipo_reporte}
+            escribir={acciones.historial}
+          />
         )}
       </View>
     </>

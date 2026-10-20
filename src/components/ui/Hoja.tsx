@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { estaActivo } from '@/components/ui/interaccion';
 import { Texto } from '@/components/ui/Texto';
 import { AnchoMaximo, Espacio, Margen, Medida, Radio, sombraFlotante } from '@/constants/tema';
+import { useCerrarConAtras } from '@/hooks/useCerrarConAtras';
 import { useDisposicion } from '@/hooks/useDisposicion';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
@@ -28,6 +29,7 @@ export function Hoja({ visible, titulo, intro, onCerrar, children, pie }: HojaPr
   const { c } = useTema();
   const estilos = useEstilos(crear);
   const compacto = useDisposicion() === 'compacto';
+  useCerrarConAtras(visible, onCerrar);
 
   const contenido = (
     <KeyboardAvoidingView

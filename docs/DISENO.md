@@ -45,6 +45,7 @@ Los nombres son las claves del objeto de paleta en `tema.ts`. Las dos paletas ti
 | `superficie` | `#FFFFFF` | `#1B1D18` | Tarjetas, hojas, barras, campos |
 | `superficieSuave` | `#EEEFE8` | `#24271F` | Chips de datos, avisos, avatar |
 | `borde` | `#E2E3DA` | `#2E3128` | Líneas, contornos, separadores, línea de tiempo |
+| `bordeCampo` | `#8A8D81` | `#686C5F` | Contorno de campos de texto y del recuadro de la foto (3:1, ver 2.4) |
 | `texto` | `#151613` | `#EDEEE6` | Texto principal |
 | `textoCuerpo` | `#383A33` | `#CFD2C6` | Párrafos largos y notas |
 | `textoSecundario` | `#5C5F55` | `#A3A797` | Horarios, distancias, ayudas, íconos inactivos |
@@ -108,6 +109,15 @@ Todo texto supera 4,5:1.
 | Botón primario | 5,9:1 | 6,7:1 |
 | Etiqueta perdido | 5,5:1 | 7,9:1 |
 | Etiqueta encontrado | 7,5:1 | 8,1:1 |
+
+Lo que no es texto pero hay que ver para usarlo (el contorno de un campo) supera 3:1 contra lo que lo rodea:
+
+| Par | Claro | Oscuro |
+| --- | --- | --- |
+| `bordeCampo` sobre superficie | 3,4:1 | 3,2:1 |
+| `bordeCampo` sobre fondo | 3,1:1 | 3,4:1 |
+
+`borde` (1,3:1) queda para líneas y separadores, que no hace falta distinguir.
 
 Cualquier combinación nueva de colores se verifica antes de usarla.
 
@@ -242,7 +252,7 @@ De 44 a 52, fondo `superficie` con sombra y ícono en `texto`. El de mi ubicaci�
 - Debajo, una colita: un rombo de 12 del mismo color.
 - **Perdido:** además lleva un halo de 9 a 10 px con `perdido` al 22 % de opacidad.
 
-**Clusters.** Círculo `inverso` con el número en `textoInverso` y borde de 3 en `superficie`. Reemplaza al cluster verde actual.
+**Clusters.** Círculo `inverso` con el número en `textoInverso` y borde de 3 en `superficie`, de 44 de diámetro como mínimo (56 desde 50 puntos), porque se tocan. Reemplaza al cluster verde actual.
 
 **Mi ubicación.** Punto de 16 en `texto`, con borde de 3 en `superficie` y halo de 44 en `texto` al 10 % (12 % en oscuro).
 
@@ -306,6 +316,7 @@ Texto de cada evento:
 
 - quién hizo qué ("Lo vio Carla"), en Figtree 700 15;
 - la nota, en `cuerpo`;
+- para quien publicó el caso, en cada aviso de otra persona, "Escribirle": botón `fantasma` con ícono de globo, de 44 de alto (no 54, porque va dentro de la fila) y alineado con el texto;
 - la fecha, en `pequeno` y `textoSecundario`.
 
 ### 6.12 Aviso contra estafas
@@ -336,13 +347,15 @@ Texto de cada evento:
 
 **Campo de texto:**
 
-- Fondo `superficie`, borde de 1 en `borde`, radio `m` y 52 de alto (más en campos de varias líneas).
+- Fondo `superficie`, borde de 1 en `bordeCampo`, radio `m` y 52 de alto (más en campos de varias líneas). El campo de mensaje de la conversación usa el mismo borde.
 - Etiqueta arriba en `etiquetaCampo`.
 - Con foco, borde de 2 en `primario`; con error, borde y mensaje en `peligro`.
 
 **Interruptor:** con la vía activa en `primario` y la apagada en `textoSecundario` (con `borde` no se distinguía del fondo: 1,2:1; hace falta 3:1). El círculo va en `superficie` en los dos estados. La etiqueta también lo cambia, con 44 de alto. En web mide 56 × 28.
 
-**Selector de foto:** recuadro grande con fondo `superficieSuave`, radio `xl` e ícono de cámara.
+**Selector de foto:** recuadro grande con fondo `superficieSuave`, borde de 1 en `bordeCampo` (con hover o presionado, `textoSecundario`; con error, `peligro`), radio `xl` e ícono de cámara.
+
+**Ubicación:** "Usar mi ubicación" y "Elegir en el mapa" son botones `secundario`, con borde de 1,5 en `texto`: ya superan 3:1 y no cambian.
 
 ### 6.16 Mensajes
 
@@ -422,7 +435,8 @@ Esta sección describe la versión de celular (compacta). La sección 8 indica c
 - **Aviso de privacidad** arriba, en `secundario`.
 - **Burbujas propias:** fondo `primario` y texto `textoSobrePrimario`, radio 20 con la esquina inferior derecha en 6.
 - **Burbujas ajenas:** fondo `superficieSuave` y texto `texto`.
-- **Entrada de texto:** cápsula de 52 de alto, más un botón redondo de 44 en `primario` para enviar.
+- **Entrada de texto:** cápsula de 52 de alto con borde de 1 en `bordeCampo`, más un botón redondo de 44 en `primario` para enviar.
+- **Caso oculto por moderación:** sin el botón del caso en el encabezado; arriba de los mensajes, "Publicación no disponible" en `cuerpoFuerte` y el aviso de error "Esta publicación fue ocultada por moderación. Nunca pagues ni compartas datos de tu tarjeta.". En la lista de Actividad, el ícono de ojo tachado en lugar de la miniatura y "Publicación no disponible" en lugar de la especie.
 
 ### 7.6 Perfil
 

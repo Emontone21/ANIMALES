@@ -131,13 +131,15 @@ begin
   -- hecha (la de F), no por la que seguía pendiente (la de Y).
   perform set_config('request.jwt.claims', json_build_object('sub', f, 'role', 'authenticated')::text, true);
   perform public.editar_reporte(p9, 'gato', 'mediano', 'marrón', true, null, 'Toby', null);
+  -- pg_net guarda el cuerpo como bytea: se lee como JSON.
   if (select count(*) from net.http_request_queue
       where url = 'https://vision.encontrados.test/procesar'
-        and body ->> 'avistamiento_id' = av_p9::text) <> 2 then
+        and convert_from(body, 'UTF8')::jsonb ->> 'avistamiento_id' = av_p9::text) <> 2 then
     raise exception 'FALLA 3b: la foto que volvió a la cola no avisó al servicio';
   end if;
   if (select count(*) from net.http_request_queue
-      where body ->> 'avistamiento_id' = av_y::text) <> 1 then
+      where url = 'https://vision.encontrados.test/procesar'
+        and convert_from(body, 'UTF8')::jsonb ->> 'avistamiento_id' = av_y::text) <> 1 then
     raise exception 'FALLA 3c: una foto que ya estaba pendiente avisó dos veces';
   end if;
   -- Un error no avisa.

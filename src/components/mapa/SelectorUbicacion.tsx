@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
 import { Modal, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,6 +7,7 @@ import { MapaSelector } from '@/components/mapa/MapaSelector';
 import { Boton } from '@/components/ui/Boton';
 import { Texto } from '@/components/ui/Texto';
 import { AnchoMaximo, Espacio, Margen } from '@/constants/tema';
+import { useCerrarConAtras } from '@/hooks/useCerrarConAtras';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 import { MONTEVIDEO, ZOOM_PUNTO } from '@/lib/ubicacion';
@@ -30,6 +31,7 @@ export function SelectorUbicacion({ visible, inicial, onConfirmar, onCancelar }:
   const estilos = useEstilos(crear);
   const centroInicial = inicial ?? MONTEVIDEO;
   const [centro, setCentro] = useState<LngLat>(centroInicial);
+  useCerrarConAtras(visible, onCancelar);
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onCancelar}>

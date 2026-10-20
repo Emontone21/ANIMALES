@@ -14,6 +14,8 @@ type PaletaBase = {
   superficie: string;
   superficieSuave: string;
   borde: string;
+  /** Contorno de campos y del recuadro de la foto: 3:1 contra superficie y fondo. */
+  bordeCampo: string;
   texto: string;
   textoCuerpo: string;
   textoSecundario: string;
@@ -67,6 +69,7 @@ const claro = conEquivalencias({
   superficie: '#FFFFFF',
   superficieSuave: '#EEEFE8',
   borde: '#E2E3DA',
+  bordeCampo: '#8A8D81',
   texto: '#151613',
   textoCuerpo: '#383A33',
   textoSecundario: '#5C5F55',
@@ -100,6 +103,7 @@ const oscuro = conEquivalencias({
   superficie: '#1B1D18',
   superficieSuave: '#24271F',
   borde: '#2E3128',
+  bordeCampo: '#686C5F',
   texto: '#EDEEE6',
   textoCuerpo: '#CFD2C6',
   textoSecundario: '#A3A797',

@@ -14,7 +14,7 @@ Todo corre en la nube: no hace falta Docker ni Android Studio. Solo Node 20+ par
 
 1. Creá un proyecto en [supabase.com](https://supabase.com) (plan gratuito). Guardá la contraseña de la base.
 2. En **Project Settings → API** copiá la **Project URL**, la clave **anon / publishable** y la **service_role** (esta última es secreta: solo va al servicio de visión).
-3. Aplicá las migraciones de `supabase/migrations/` **en orden** (0001 a 0013). Dos formas:
+3. Aplicá las migraciones de `supabase/migrations/` **en orden** (0001 a 0014). Dos formas:
 
    **a) CLI** (sin instalar nada):
 
@@ -149,13 +149,23 @@ Editar y borrar, probados directo en la base: `supabase/tests/fase8_casos.sql`.
 **Fase 9 · revisión integral (parte 1)**
 
 Con la migración 0013 aplicada:
-1. **Escribir:** desde un caso solo se le escribe a quien lo publicó o a quien lo resguarda, como siempre ofreció la app; la base ya no deja abrir una conversación con cualquier otra persona.
+1. **Escribir:** desde un caso solo se le escribe a quien lo publicó o a quien lo resguarda, como siempre ofreció la app; la base ya no deja abrir una conversación con cualquier otra persona. (Desde la parte 2, además, quien publicó le escribe a quien lo vio.)
 2. **Resguardar:** "¿Dónde está ahora?" dice que se muestra aproximada; en el historial, el punto queda redondeado a unos 100 m.
 3. **Bloqueos y coincidencias:** si la familia bloqueó a quien publicó un encontrado parecido, no recibe el aviso de esa coincidencia (la ve igual en el detalle).
 4. **Errores:** sin conexión o con un link roto (`/animal/abc`), los mensajes salen en español.
 5. **En el celular:** "Usar mi ubicación" toma la posición de ese momento; el mapa no gira ni se inclina con dos dedos; tirar hacia abajo no recarga la app en Chrome de Android.
 
 Las reglas nuevas, probadas directo en la base: `supabase/tests/fase9_revision.sql`. La lógica de la app: `npm run test`.
+
+**Fase 9 · revisión integral (parte 2)**
+
+Con la migración 0014 aplicada:
+1. **Escribirle a quien lo vio:** en el Historial de tu caso, cada aviso de otra persona tiene **Escribirle**, que abre o retoma una conversación con ella.
+2. **Casos ocultos:** un caso ocultado desde el panel de moderación deja de verse por su link y por la API (sin cuenta o con otra cuenta: "Esta publicación no está disponible."). Quien lo publicó y moderación lo siguen viendo; las conversaciones que había siguen, con "Publicación no disponible". **Volver a mostrar** restaura todo.
+3. **Atrás en web:** con una hoja abierta ("Lo vi", Más opciones, Denunciar, el selector de ubicación), Atrás la cierra y deja la pantalla como estaba.
+4. **Campos:** el borde de los campos de texto y del recuadro de la foto se distingue del fondo (3:1).
+
+Probado en la base: `supabase/tests/fase9_parte2.sql`. A mano: los pasos 9, 10 y 15 de `docs/PRUEBAS-MANUALES.md`.
 
 **Fase 4 · notificaciones, mensajes, moderación**
 1. Con la demo seguí un animal; con tu cuenta registrá un avistamiento sobre ese animal. En la demo, la pestaña **Actividad → Novedades** muestra "Lo vieron de nuevo".
@@ -175,7 +185,7 @@ src/features/       auth, reportes, seguimientos, denuncias, coincidencias, noti
 src/lib/            supabase, imágenes (convención de miniaturas), fotos (comprimir, subir, borrar), compartir, ubicación, fechas, errores, env
 src/i18n/es-UY.ts   todos los textos
 src/types/          database.ts (esquema), dominio.ts
-supabase/           migrations/ (0001–0013), tests/ (pruebas SQL por fase), seed.sql, config.toml
+supabase/           migrations/ (0001–0014), tests/ (pruebas SQL por fase), seed.sql, config.toml
 api/                función de Vercel: vista previa del link de un caso (Open Graph)
 __tests__/          pruebas de jest-expo (npm run test)
 services/vision/    microservicio Python de reconocimiento (Hugging Face Spaces)

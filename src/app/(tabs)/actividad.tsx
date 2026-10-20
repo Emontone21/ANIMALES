@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useIsFocused, useRouter } from 'expo-router';
 import type { ComponentProps } from 'react';
 import { useState } from 'react';
@@ -16,6 +16,7 @@ import { Texto } from '@/components/ui/Texto';
 import { AnchoMaximo, Espacio, Fuentes, Radio } from '@/constants/tema';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useConversaciones } from '@/features/mensajes/api';
+import { casoDisponible } from '@/features/mensajes/casoDisponible';
 import {
   useMarcarLeida,
   useMarcarTodasLeidas,
@@ -140,6 +141,7 @@ function Novedades({ usuarioId }: { usuarioId: string }) {
 
 function Conversaciones() {
   const router = useRouter();
+  const { c: colores } = useTema();
   const estilos = useEstilos(crear);
   const enFoco = useIsFocused();
   const conversaciones = useConversaciones(true, enFoco);
@@ -166,19 +168,28 @@ function Conversaciones() {
           accessibilityRole="button"
           onPress={() => router.push({ pathname: '/conversacion/[id]', params: { id: c.id } })}
           style={(estado) => [estilos.fila, estaActivo(estado) && estilos.filaActiva]}>
-          <FotoMiniatura
-            ruta={c.animal_foto_path}
-            style={estilos.foto}
-            contentFit="cover"
-            accessibilityIgnoresInvertColors
-          />
+          {/* Caso oculto por moderación: la conversación sigue, sin los datos del caso. */}
+          {casoDisponible(c) && c.animal_foto_path ? (
+            <FotoMiniatura
+              ruta={c.animal_foto_path}
+              style={estilos.foto}
+              contentFit="cover"
+              accessibilityIgnoresInvertColors
+            />
+          ) : (
+            <View style={[estilos.foto, estilos.sinFoto]}>
+              <Ionicons name="eye-off-outline" size={20} color={colores.textoSecundario} />
+            </View>
+          )}
           <View style={estilos.cuerpo}>
             <Texto style={estilos.titulo}>{c.otro_nombre}</Texto>
             <Texto variante="secundario" numberOfLines={1}>
               {c.ultimo_mensaje ?? t.actividad.sinMensajesAun}
             </Texto>
             <Texto variante="pequeno">
-              {t.especie[c.animal_especie]}
+              {casoDisponible(c) && c.animal_especie
+                ? t.especie[c.animal_especie]
+                : t.mensajes.publicacionNoDisponible}
               {c.ultimo_mensaje_en ? ` · ${haceCuanto(c.ultimo_mensaje_en)}` : ''}
             </Texto>
           </View>
@@ -217,6 +228,7 @@ const crear = crearEstilos((c) => ({
     backgroundColor: c.primarioSuave,
   },
   foto: { width: 48, height: 48, borderRadius: Radio.s, backgroundColor: c.superficieSuave },
+  sinFoto: { alignItems: 'center', justifyContent: 'center' },
   cuerpo: { flex: 1, gap: 2, minWidth: 0 },
   titulo: { ...Fuentes.negrita, fontSize: 15, lineHeight: 20, color: c.texto },
   punto: { width: 10, height: 10, borderRadius: 5, backgroundColor: c.primario },

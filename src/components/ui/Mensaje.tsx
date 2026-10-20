@@ -1,9 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { View } from 'react-native';
 
 import { Boton } from '@/components/ui/Boton';
 import { Texto } from '@/components/ui/Texto';
-import { Espacio, type Paleta, Radio, Tipografia } from '@/constants/tema';
+import { Espacio, Medida, type Paleta, Radio, Tipografia } from '@/constants/tema';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 
@@ -64,5 +64,5 @@ const crear = crearEstilos(() => ({
     borderRadius: Radio.l,
   },
   texto: { flex: 1, ...Tipografia.secundario },
-  reintentar: { minHeight: 40, paddingHorizontal: Espacio.sm },
+  reintentar: { minHeight: Medida.areaTactil, paddingHorizontal: Espacio.sm },
 }));

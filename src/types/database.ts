@@ -445,8 +445,9 @@ export type Database = {
         Row: {
           id: string;
           animal_id: string;
-          animal_foto_path: string;
-          animal_especie: Database['public']['Enums']['especie'];
+          /** Null si el caso está oculto por moderación para quien consulta. */
+          animal_foto_path: string | null;
+          animal_especie: Database['public']['Enums']['especie'] | null;
           otro_id: string;
           otro_nombre: string;
           ultimo_mensaje: string | null;
@@ -457,6 +458,8 @@ export type Database = {
           bloqueada: boolean;
           /** Vos bloqueaste a la otra persona. */
           bloqueaste: boolean;
+          /** Quien consulta puede ver el caso (no está oculto por moderación). */
+          animal_disponible: boolean;
         };
         Relationships: [];
       };

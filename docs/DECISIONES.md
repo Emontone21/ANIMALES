@@ -218,7 +218,11 @@ Con la carpeta `api/`, Vercel empieza a construir funciones. Para que nunca vuel
 
 ## 2026-10-19 · Con quién se abre una conversación
 
-La app siempre ofreció escribirle a quien publicó el caso o a quien lo resguarda, pero `abrir_conversacion` aceptaba cualquier usuario: como los perfiles son públicos, cualquiera con cuenta podía escribirle a todos (y mandarles un aviso con el texto). Desde la migración 0013 la otra persona tiene que haber publicado el caso (o un reporte unido a él) o haberlo resguardado alguna vez. Una conversación que ya existe se puede retomar, así quien publicó le contesta a quien le escribió primero. Se descartó sumar a quienes avisaron que lo vieron: la app no lo ofrece y abriría de nuevo la puerta a escribirle a cualquiera que aparezca en un historial.
+> **Nota:** esta entrada reemplaza a la de la Fase 9, parte 1 (migración 0013), que descartaba escribirle a quien avisó que lo vio. La parte 2 (migración 0014) lo suma, solo para quien publicó el caso.
+
+La app siempre ofreció escribirle a quien publicó el caso o a quien lo resguarda, pero `abrir_conversacion` aceptaba cualquier usuario: como los perfiles son públicos, cualquiera con cuenta podía escribirle a todos (y mandarles un aviso con el texto). Desde la 0013 la otra persona tiene que haber publicado el caso (o un reporte unido a él) o haberlo resguardado alguna vez.
+
+Desde la 0014, además, quien publicó el caso o un reporte unido a él le puede escribir a quien avisó que lo vio en cualquier reporte del caso (todo el árbol de reportes unidos, desde el principal). En el Historial, cada aviso de otra persona lleva un botón "Escribirle" que solo ve quien puede usarlo. La familia es quien más necesita preguntar cómo estaba o hacia dónde iba, y antes solo podía esperar a que le escribieran. No se suma el sentido inverso: quien lo vio le escribe a quien publicó, como antes, y un tercero no puede usar el historial para escribirle a cualquiera que aparezca ahí, que era lo que preocupaba en la 0013. Quedan afuera los avisos propios y los de cuentas borradas (sin autor). Valen las mismas condiciones: bloqueos en los dos sentidos, términos aceptados y que el caso no esté oculto. Una conversación que ya existe se puede retomar, así quien publicó le contesta a quien le escribió primero.
 
 ## 2026-10-19 · Coincidencias y bloqueos
 
@@ -251,3 +255,21 @@ En web, `expo-location` pide la posición con antigüedad máxima infinita: con 
 ## 2026-10-19 · Pruebas de la app con jest-expo
 
 `npm run test` corre jest con el preset `jest-expo` del SDK (instalado con `npx expo install`, en la versión que fija `expo`). Se prueba la lógica, no las pantallas: lo que calcula la app pasó a funciones puras (`permisos.ts`, `validaciones.ts`, `errores.ts`) para poder probarlo sin React ni Supabase, y `useAccionesCaso` usa esas funciones. La función de la vista previa se prueba con `fetch` simulado, sin red. Las pantallas se prueban a mano con `docs/PRUEBAS-MANUALES.md`: las pruebas de componentes o de punta a punta quedan para cuando haya una app nativa que probar.
+
+## 2026-10-19 · Un caso oculto deja de verse
+
+Ocultar un caso solo lo sacaba del mapa: por su link y por la API se veía completo, con el contacto de la familia, sus avistamientos y sus coincidencias. Como se oculta por estafa, datos falsos o denuncias, desde la 0014 un caso oculto lo ven solo quien lo publicó y los moderadores, y lo mismo vale para lo que cuelga de él: avistamientos, historial, contactos de resguardo y coincidencias. Las políticas de esas tablas preguntan si quien consulta ve el caso, así que la regla vive en un solo lugar (la política de `animales`) y las vistas, con `security_invoker`, la heredan.
+
+- **Coincidencias:** alcanza con que un lado esté oculto para que terceros no la vean, incluida quien publicó el otro lado: si no, la coincidencia mostraría que el caso oculto existe y su foto.
+- **El mismo texto que un caso inexistente:** quien no puede verlo lee "Esta publicación no está disponible.", igual que con un link roto. No se confirma que existe ni que fue moderado.
+- **Conversaciones:** las que ya había siguen para sus participantes, porque ahí puede estar el pedido de plata y conviene que se lea con el aviso. En lugar de la tarjeta del caso muestran "Publicación no disponible" y el aviso contra estafas. No se abren conversaciones nuevas. Se descartó borrarlas o cerrarlas: se perdería lo escrito y la persona no entendería qué pasó.
+- **Volver a mostrarlo** (`moderar_animal` con `false`) restaura todo: es la misma marca, no se copia ni se borra nada.
+- **Quien lo publicó y moderación** lo siguen viendo como antes, con el aviso de que está oculto. El mapa y la vista previa del link lo tratan como inexistente, como ya hacían.
+
+## 2026-10-19 · Atrás cierra la hoja en web
+
+En web, Atrás con una hoja abierta (por ejemplo "Lo vi", con la foto ya elegida) salía de la pantalla y se perdía lo cargado; solo Escape la cerraba. Ahora cada hoja abierta suma una entrada al historial con la misma URL y una marca en `history.state`, y Atrás cierra la de arriba (`useCerrarConAtras` y `src/lib/historialHojas.ts`, usados por `Hoja`, `MenuOpciones` y `SelectorUbicacion`).
+
+Lo delicado es convivir con Expo Router, que también escribe en el historial. Quitar la entrada de una hoja cerrada desde la interfaz es asincrónico (`history.go`), y si en ese momento la app navega, la entrada nueva quedaría detrás de la vieja. Por eso el módulo envuelve `pushState`, `replaceState` y `go`. Mientras se quita una entrada propia, lo que escribe Expo Router espera. Si la app navega con una hoja abierta, primero se quitan sus entradas. Los `popstate` que solo cierran hojas no le llegan a Expo Router, que sigue en la misma entrada.
+
+Se descartó hacer de cada hoja una ruta: cambiaba todas las pantallas que las abren, un link compartido abriría una hoja suelta y el estado del formulario quedaría atado a la URL. El costo de lo elegido es que depende de cómo usa el historial Expo Router (`browserHistoryAdapter`): al actualizar Expo o Expo Router hay que volver a recorrer los flujos de Atrás de `docs/PRUEBAS-MANUALES.md`. En Android, `Modal` ya cierra la hoja con Atrás (`onRequestClose`); en iOS no hay Atrás.

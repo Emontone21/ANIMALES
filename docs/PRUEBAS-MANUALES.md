@@ -1,6 +1,6 @@
 # Pruebas manuales
 
-Recorrido de toda la app, paso a paso, para hacer en la web publicada (https://animales-blue.vercel.app). Lleva unos 45 minutos en un dispositivo; en los otros dos se repite marcando la casilla de cada uno.
+Recorrido de toda la app, paso a paso, para hacer en la web publicada (https://animales-blue.vercel.app). Lleva unos 55 minutos en un dispositivo; en los otros dos se repite marcando la casilla de cada uno.
 
 - **Dispositivos:** Android con Chrome, iPhone con Safari y una computadora (cualquier navegador). Cada flujo tiene una casilla por dispositivo.
 - **Cuentas:** dos, que en esta lista se llaman **familia** (publica un perro perdido) y **vecina** (lo encuentra y lo ve). Para probar de a una persona: familia en el celular y vecina en la computadora, o una en una ventana privada.
@@ -15,7 +15,7 @@ Tené a mano dos fotos parecidas de un mismo perro (o de dos perros parecidos) e
 
 **Cuentas.** Si no hay SMTP propio, creá las dos cuentas desde Supabase: **Authentication → Users → Add user → Create new user**, con **Auto Confirm User** marcado. Con SMTP propio, creálas desde la app: **Perfil → Crear cuenta** [SMTP].
 
-**Familia, moderadora.** Para el paso 11, en el SQL Editor (reemplazá el email):
+**Familia, moderadora.** Para los pasos 14 y 15, en el SQL Editor (reemplazá el email):
 
 ```sql
 update perfiles set es_moderador = true
@@ -154,7 +154,50 @@ Esperado:
 - [ ] iPhone · Safari
 - [ ] Computadora
 
-## 9. Compartir y la vista previa en WhatsApp · 3 min
+## 9. Escribirle a quien lo vio · 2 min
+
+Cuenta: familia, después vecina.
+
+1. Familia, en Toby: bajá al **Historial**. En el aviso de vecina (el del paso 8) tocá **Escribirle** y mandá un mensaje.
+2. Familia: buscá **Escribirle** en "Se perdió acá" y en tus propios avisos.
+3. Vecina, en Toby: buscá **Escribirle** en el Historial.
+4. Vecina: **Actividad → Mensajes**.
+
+Esperado:
+- **Escribirle** abre una conversación con vecina sobre Toby; si ya había una, la retoma.
+- No aparece en los avisos propios ni en los de una cuenta eliminada.
+- Vecina no ve **Escribirle** en el Historial (solo quien publicó el caso puede usarlo), pero le llega el mensaje y lo puede contestar.
+
+- [ ] Android · Chrome
+- [ ] iPhone · Safari
+- [ ] Computadora
+
+## 10. Atrás con una hoja abierta · 4 min
+
+Cuenta: familia; una ventana privada sin cuenta para el caso 7. Se prueba sobre todo en **Android · Chrome** con el botón Atrás del sistema; en la computadora, con la flecha Atrás del navegador, y en iPhone, deslizando desde el borde izquierdo. Volvé a recorrer estos 8 casos cada vez que se actualice Expo o Expo Router: Atrás depende de cómo Expo Router usa el historial del navegador (`src/lib/historialHojas.ts`).
+
+1. Desde **Ver lista**, abrí un caso de vecina, tocá **Lo vi** y después Atrás. Atrás otra vez.
+2. **Lo vi**, cerrá con la **X** y tocá Atrás una sola vez.
+3. Computadora: **Lo vi** y **Escape**; después Atrás una vez.
+4. **Más opciones → Denunciar** y Atrás.
+5. **Lo vi → Elegir en el mapa** y Atrás. Volvé a **Elegir en el mapa** y **Confirmar ubicación**.
+6. Completá **Lo vi** y tocá **Registrar avistamiento**. Después Atrás una vez.
+7. Sin cuenta, en un caso: **Lo vi → Ingresar**. Atrás, y Atrás otra vez.
+8. Familia, en Toby: **Más opciones → Editar el reporte**. Atrás, y Atrás otra vez.
+
+Esperado:
+- 1: el primer Atrás cierra la hoja y deja el caso a la vista; el segundo vuelve a la lista.
+- 2, 3 y 6: un solo Atrás vuelve a la lista. Ninguna hoja se cierra con Atrás "de más".
+- 4: Atrás cierra Denunciar y no vuelve a aparecer Más opciones; otro Atrás vuelve a la lista.
+- 5: Atrás cierra solo el selector y **Lo vi** sigue abierto con la foto elegida.
+- 7: el primer Atrás vuelve al caso sin ninguna hoja abierta; el segundo, a la lista.
+- 8: el primer Atrás vuelve a Toby; el segundo, a donde estabas antes.
+
+- [ ] Android · Chrome
+- [ ] iPhone · Safari
+- [ ] Computadora
+
+## 11. Compartir y la vista previa en WhatsApp · 3 min
 
 Cuenta: cualquiera.
 
@@ -174,11 +217,11 @@ Esperado:
 - [ ] iPhone · Safari
 - [ ] Computadora
 
-## 10. Mensajes · 4 min
+## 12. Mensajes · 4 min
 
 Cuenta: vecina y familia.
 
-1. Vecina, en Toby: **Escribirle a su familia**. Mandá un mensaje con el teclado abierto.
+1. Vecina, en Toby: **Escribirle a su familia** (retoma la conversación del paso 9). Mandá un mensaje con el teclado abierto.
 2. Familia: **Actividad → Mensajes**, abrí la conversación y contestá.
 3. Vecina: tocá la pata del encabezado (abre el caso) y volvé con **Volver**.
 
@@ -192,7 +235,7 @@ Esperado:
 - [ ] iPhone · Safari
 - [ ] Computadora
 
-## 11. Bloquear · 2 min
+## 13. Bloquear · 2 min
 
 Cuenta: familia y vecina.
 
@@ -209,7 +252,7 @@ Esperado:
 - [ ] iPhone · Safari
 - [ ] Computadora
 
-## 12. Denunciar y moderar · 3 min
+## 14. Denunciar y moderar · 3 min
 
 Cuenta: familia (moderadora, paso 1) y vecina.
 
@@ -227,7 +270,28 @@ Esperado:
 - [ ] iPhone · Safari
 - [ ] Computadora
 
-## 13. Coincidencias · 4 min · [Visión]
+## 15. Una publicación oculta · 3 min
+
+Cuenta: familia (moderadora) y vecina; una ventana privada sin cuenta.
+
+1. Vecina, en Toby: **Más opciones → Denunciar**, elegí un motivo y enviá la denuncia.
+2. Familia: copiá el link de Toby con **Compartir**. Después, en **Perfil → Panel de moderación**, tocá **Ocultar publicación** en la denuncia de Toby.
+3. Sin cuenta, en la ventana privada: abrí el link de Toby.
+4. Vecina: abrí el link de Toby, buscá a Toby en el mapa y abrí **Actividad → Mensajes →** la conversación sobre Toby. Mandá un mensaje.
+5. Familia: abrí Toby.
+6. Familia: en el panel, **Volver a mostrar**. Vecina vuelve a abrir el link y la conversación.
+
+Esperado:
+- 3 y 4: "Esta publicación no está disponible." con **Volver al mapa**, el mismo texto que con un link que no existe. Toby no está en el mapa ni en la lista.
+- 4: la conversación se sigue leyendo. En lugar de la tarjeta del caso dice "Publicación no disponible" con el aviso "Esta publicación fue ocultada por moderación. Nunca pagues ni compartas datos de tu tarjeta.", y el mensaje se manda.
+- 5: familia ve a Toby completo, con el aviso de que está oculto.
+- 6: todo vuelve: el caso, su historial, el mapa y la tarjeta en la conversación.
+
+- [ ] Android · Chrome
+- [ ] iPhone · Safari
+- [ ] Computadora
+
+## 16. Coincidencias · 4 min · [Visión]
 
 Cuenta: familia, después vecina.
 
@@ -254,7 +318,7 @@ Esperado:
 - [ ] iPhone · Safari
 - [ ] Computadora
 
-## 14. Resguardar un perdido · 3 min
+## 17. Resguardar un perdido · 3 min
 
 Cuenta: vecina, después familia, después sin cuenta.
 
@@ -273,7 +337,7 @@ Esperado:
 - [ ] iPhone · Safari
 - [ ] Computadora
 
-## 15. Reunido · 1 min
+## 18. Reunido · 1 min
 
 Cuenta: familia.
 
@@ -288,7 +352,7 @@ Esperado:
 - [ ] iPhone · Safari
 - [ ] Computadora
 
-## 16. Borrar un reporte · 2 min
+## 19. Borrar un reporte · 2 min
 
 Cuenta: familia.
 
@@ -303,7 +367,7 @@ Esperado:
 - [ ] iPhone · Safari
 - [ ] Computadora
 
-## 17. Recuperar la contraseña · 2 min · [SMTP]
+## 20. Recuperar la contraseña · 2 min · [SMTP]
 
 Cuenta: vecina (o familia, si es del equipo de Supabase).
 
@@ -321,7 +385,7 @@ Esperado:
 - [ ] iPhone · Safari
 - [ ] Computadora
 
-## 18. Borrar la cuenta · 2 min
+## 21. Borrar la cuenta · 2 min
 
 Cuenta: vecina.
 
@@ -346,7 +410,6 @@ Esperado:
 ## Problemas conocidos (no hace falta anotarlos)
 
 Están en `docs/reportes/2026-10-19-revision.md`, con su propuesta:
-- **Android:** el botón Atrás cierra la pantalla en vez de la hoja abierta (por ejemplo, el formulario de "Lo vi").
 - **Teclado:** en el celular puede tapar la barra de abajo de un formulario mientras se escribe; se ve al cerrarlo.
 - **Marcador:** tocar el marcador ya seleccionado lo deselecciona en vez de abrir el caso.
 - **Fotos HEIC:** en Chrome no se ven; Safari de iPhone las convierte solo.

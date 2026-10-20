@@ -102,3 +102,31 @@ export function avisosDeOtros(
 ): number {
   return avistamientos.filter((av) => av.usuario_id !== creadoPor).length;
 }
+
+/**
+ * A quién de los que avisaron que lo vieron le puede escribir quien mira, con
+ * "Escribirle" en el historial (abrir_conversacion, migración 0014). Solo
+ * quien publicó el caso o un reporte unido a él: al unirse, el primer
+ * avistamiento de cada reporte ("perdido" o "encontrado") pasa al caso
+ * principal, así que se reconoce por ahí. Nunca a uno mismo ni a una cuenta
+ * borrada (sin usuario), y no en un caso oculto: no se abren conversaciones
+ * nuevas.
+ */
+export function aQuienesLoVieron(
+  caso: Pick<AnimalDetalle, 'creado_por' | 'oculto'>,
+  avistamientos: Pick<AvistamientoDetalle, 'usuario_id' | 'tipo'>[],
+  usuarioId: string | null | undefined,
+): string[] {
+  if (!usuarioId || caso.oculto) return [];
+  const publico =
+    caso.creado_por === usuarioId ||
+    avistamientos.some(
+      (av) => av.usuario_id === usuarioId && (av.tipo === 'perdido' || av.tipo === 'encontrado'),
+    );
+  if (!publico) return [];
+  const destinatarios = new Set<string>();
+  for (const av of avistamientos) {
+    if (av.usuario_id && av.usuario_id !== usuarioId) destinatarios.add(av.usuario_id);
+  }
+  return [...destinatarios];
+}

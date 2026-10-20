@@ -152,6 +152,8 @@ export const t = {
     avisoEstafa:
       'Nunca pagues para recuperar a un animal. Si alguien te pide plata o datos de tu tarjeta, denuncialo.',
     noEncontrado: 'No encontramos este reporte. Puede que lo hayan cerrado.',
+    /** Oculto por moderación o inexistente: el mismo texto, a propósito. */
+    noDisponible: 'Esta publicación no está disponible.',
     conCollar: 'Con collar',
     sinCollar: 'Sin collar',
     historial: 'Historial',
@@ -390,6 +392,12 @@ export const t = {
     escribirAPublicador: 'Escribirle a quien publicó',
     escribirAFamilia: 'Escribirle a su familia',
     escribirAResguardo: 'Escribirle a quien lo resguarda',
+    /** En el historial, junto al aviso de alguien que lo vio. */
+    escribirle: 'Escribirle',
+    escribirleA: (nombre: string) => `Escribirle a ${nombre}`,
+    publicacionNoDisponible: 'Publicación no disponible',
+    publicacionOcultada:
+      'Esta publicación fue ocultada por moderación. Nunca pagues ni compartas datos de tu tarjeta.',
     aviso:
       'Hablás dentro de la app: tu email y tu teléfono no se comparten. Compartí solo lo que quieras.',
     vacio: 'Todavía no hay mensajes. Escribí el primero.',
