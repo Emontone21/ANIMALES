@@ -48,13 +48,22 @@ type Props = {
     onReintentar: () => void;
   };
   onVolver: () => void;
+  /** Abre el mapa en grande del recorrido. */
+  onVerMapa: () => void;
 };
 
 /**
  * Detalle de un caso (docs/DISENO.md, 7.2 y 8.2). Celular: foto de cabecera y
  * barra de acciones fija. Tablet: columna centrada de 640. Computadora: dos columnas.
  */
-export function DetalleCaso({ animal: a, avistamientos, cambios, historial, onVolver }: Props) {
+export function DetalleCaso({
+  animal: a,
+  avistamientos,
+  cambios,
+  historial,
+  onVolver,
+  onVerMapa,
+}: Props) {
   const { c } = useTema();
   const estilos = useEstilos(crear);
   const insets = useSafeAreaInsets();
@@ -197,7 +206,12 @@ export function DetalleCaso({ animal: a, avistamientos, cambios, historial, onVo
       {/* En computadora el contacto de la familia va en la columna izquierda, con el aviso. */}
       {contactoFamilia && !amplio ? avisoEstafa : null}
       <NovedadesCaso acciones={acciones} />
-      <VistoPorUltimaVez avistamientos={avistamientos} estado={a.estado} tipo={a.tipo_reporte} />
+      <VistoPorUltimaVez
+        avistamientos={avistamientos}
+        estado={a.estado}
+        tipo={a.tipo_reporte}
+        onVerEnGrande={onVerMapa}
+      />
       {a.estado !== 'reunido' ? <Coincidencias animalId={a.id} /> : null}
       <View style={estilos.seccion}>
         <Texto variante="subtitulo" accessibilityRole="header">

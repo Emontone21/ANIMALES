@@ -209,6 +209,7 @@ Se usa Ionicons, que ya está instalado, siempre en variante de contorno (`-outl
 | Reportar un error, y su aviso en Actividad | `bug-outline` |
 | Compartir de Safari (pasos para instalar en iPhone) | `share-outline` |
 | Elegir una captura | `image-outline` |
+| Ver el mapa en grande (sobre el mini mapa) | `expand-outline` |
 
 ## 6. Componentes
 
@@ -308,6 +309,33 @@ De 44 a 52, fondo `superficie` con sombra y ícono en `texto`. El de mi ubicaci�
   - "Visto por última vez", en `secundario`;
   - la fecha, en `cuerpoFuerte`;
   - la nota del avistamiento, en `cuerpo`.
+- **El mini mapa es un botón** ("Ver el mapa en grande") que abre el mapa en grande (6.9.1). En web, cursor de mano y el anillo de foco de siempre. Sobre su esquina inferior derecha, separado 8, un botón redondo chico de 36: ícono `expand-outline` de 20 en `texto`, fondo `superficie` con la sombra flotante (`superficieSuave` presionado o con hover). Se toca todo el mini mapa, así que el área táctil pasa de 44. El mapa de adentro no se anuncia: el nombre del botón ya lo dice.
+- Solo en el detalle. El mini mapa de Publicar (`CampoUbicacion`) no cambia.
+
+### 6.9.1 Mapa en grande del recorrido
+
+Pantalla aparte (`/animal/<id>/mapa`), no una hoja: Atrás vuelve al detalle como desde cualquier pantalla. Si el caso no existe o está oculto para quien mira, va al detalle, que muestra "Esta publicación no está disponible." (o el error con Reintentar).
+
+- **Mapa:** ocupa toda la pantalla y se mueve: arrastrar, pellizcar, doble toque y rueda del mouse. El mismo estilo base recoloreado en claro y oscuro, siempre al norte (sin rotar ni inclinar). En web, arrastrarlo no desplaza ni recarga la página.
+- **Vista inicial:** todos los avistamientos a la vista, con 40 de margen fuera de los botones y la tarjeta, sin pasar de zoom 17. Las zonas de los aproximados entran enteras. Un solo lugar se centra con `ZOOM_PUNTO` (15).
+- **Puntos:** como el mini mapa, en orden cronológico y unidos por la línea punteada (3 de ancho), pero más grandes y con su número de orden (1 es el más viejo), en Noto Sans Bold de 13 (15 el elegido):
+  - los anteriores, círculos de 26 en `puntoInactivo` con borde de 2,5 en `superficie`;
+  - el último, de 30 en el color del tipo, con halo de 54 al 22 %;
+  - el elegido crece 6 y su borde pasa a `texto` (3,5);
+  - el número va en el color de la paleta que más contraste tiene sobre su punto (al menos 4,5:1, lo comprueba `__tests__/recorridoGrande.test.ts`);
+  - encimados, arriba va el elegido y, si no, el más nuevo.
+- **Ubicaciones aproximadas** (las que la base guarda redondeadas a 3 decimales: donde se perdió y el "¿Dónde está ahora?" de un resguardo): no van como punto exacto sino como una zona, un círculo translúcido de 110 m de radio en el color del tipo (16 %), con borde de 2 del mismo color (`texto` si es el elegido). Mide 110 m en el mapa a cualquier zoom; de lejos, nunca menos de 16 de radio. El número va en el centro, en `texto` con borde de 2 en `superficie`. Ver "Ubicaciones aproximadas en el mapa" en `docs/DECISIONES.md`.
+- **Arriba,** respetando el área segura (16 del borde superior y 20 de los lados): Volver (`chevron-back`) a la izquierda y Mi ubicación (`locate-outline`, en `primario`) a la derecha, botones redondos flotantes (6.5). Mi ubicación hace lo mismo que en el mapa principal y, sin permiso, muestra el mismo aviso debajo de los botones.
+- **Tarjeta del punto elegido,** flotante abajo (16 sobre el borde inferior y el área segura, 20 de los lados): fondo `superficie`, radio `xl`, relleno de 16, sombra flotante y 420 de ancho como máximo. Al abrir, el último avistamiento. Muestra:
+  - la miniatura de la foto (64, radio `s`), si tiene;
+  - qué pasó, con los textos del Historial ("Lo vio Carla", "Se perdió acá"), en `cuerpoFuerte`;
+  - la fecha con `diaYHora` ("Hoy a las 14:05"), en `secundario`;
+  - la nota, en `cuerpo` y `textoCuerpo` (hasta 3 líneas);
+  - en los aproximados, "Ubicación aproximada, unos 100 m a la redonda.", en `pequeno`;
+  - abajo, "Anterior" y "Siguiente" (botones `secundario` de 44 de alto) y entre los dos "2 de 5", en `secundario`. Recorren los puntos en orden y centran el mapa en cada uno; en las puntas se apagan. Son la forma accesible de recorrer el mapa: al pasar de punto, el texto nuevo se anuncia.
+- **Tocar un punto** (o su zona) lo elige y actualiza la tarjeta, sin mover el mapa. La zona táctil se agranda 12 alrededor del punto.
+- **Medio y amplio:** el mapa ocupa el área de contenido (en amplio, con el riel visible) y la tarjeta va abajo a la izquierda.
+- **Carga (web):** el mapa sale del mismo bloque aparte de MapLibre que los otros (`mapasWeb.ts`) y, en esta pantalla, se pide enseguida. No suma a la carga inicial de `/` más que sus textos y la ruta.
 
 ### 6.10 Posibles coincidencias
 
@@ -415,7 +443,7 @@ Esta sección describe la versión de celular (compacta). La sección 8 indica c
 5. Chips de datos: especie, tamaño, color y collar.
 6. Contacto compartido por quien lo resguarda, si existe, en una tarjeta `superficieSuave`.
 7. **"Novedades del caso":** botones `secundario` para "Me lo llevé / está resguardado", "Se reunió con su familia" y "Se volvió a escapar", según las reglas actuales de quién ve cada uno.
-8. Visto por última vez (6.9).
+8. Visto por última vez (6.9). Tocar el mini mapa abre el mapa en grande (6.9.1).
 9. Posibles coincidencias (6.10), si el caso no está reunido.
 10. Historial (6.11).
 11. Aviso contra estafas (6.12).
@@ -557,6 +585,8 @@ Una columna centrada con ancho máximo:
 
 En amplio, el riel de navegación queda a la izquierda.
 
+El mapa en grande del recorrido no es una columna: ocupa toda el área de contenido y su tarjeta va abajo a la izquierda (6.9.1).
+
 ### 8.4 Reglas generales
 
 - **Ancho mínimo 320 px.** Nada de anchos fijos que desborden: flex, porcentajes y `maxWidth`. Nunca scroll horizontal de la página; solo el carrusel y la fila de chips se desplazan de costado.
@@ -654,6 +684,12 @@ En amplio, el riel de navegación queda a la izquierda.
 | `instalar.boton` | Instalar la app |
 | `errores.boton` | Reportar un error |
 | `errores.moderacion.errores` | Errores |
+| `mapa.recorrido.verEnGrande` | Ver el mapa en grande |
+| `mapa.recorrido.titulo` | Recorrido |
+| `mapa.recorrido.anterior` / `mapa.recorrido.siguiente` | Anterior / Siguiente |
+| `mapa.recorrido.posicion(n, total)` | 2 de 5 |
+| `mapa.recorrido.aproximada` | Ubicación aproximada, unos 100 m a la redonda. |
+| `animal.queHizo(tipo, nombre)` | Lo vio Carla / Se perdió acá (el Historial y el mapa en grande) |
 
 El lema actual sigue en uso para el título de la página web.
 

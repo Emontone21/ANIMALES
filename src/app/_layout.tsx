@@ -155,6 +155,11 @@ function Navegacion() {
             name="animal/[id]/index"
             options={{ title: t.animal.titulo, headerShown: false }}
           />
+          {/* El mapa en grande del recorrido también: botones flotantes sobre el mapa. */}
+          <Stack.Screen
+            name="animal/[id]/mapa"
+            options={{ title: t.mapa.recorrido.titulo, headerShown: false }}
+          />
           <Stack.Screen name="casos" options={{ title: t.mapa.lista.titulo }} />
           <Stack.Screen name="conversacion/[id]" options={{ title: t.mensajes.titulo }} />
           <Stack.Screen name="moderacion" options={{ title: t.moderacion.titulo }} />

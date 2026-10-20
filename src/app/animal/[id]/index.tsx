@@ -87,6 +87,7 @@ export default function PantallaAnimal() {
         },
       }}
       onVolver={volver}
+      onVerMapa={() => router.push(`/animal/${id}/mapa`)}
     />
   );
 }

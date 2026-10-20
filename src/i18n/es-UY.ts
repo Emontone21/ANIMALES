@@ -65,6 +65,17 @@ export const t = {
     verDetalle: 'Ver detalle',
     miUbicacion: 'Ir a mi ubicación',
     atribucion: '© OpenFreeMap · © OpenMapTiles · Datos de OpenStreetMap',
+    /** Mapa en grande del recorrido (docs/DISENO.md, 6.9.1). */
+    recorrido: {
+      verEnGrande: 'Ver el mapa en grande',
+      titulo: 'Recorrido',
+      anterior: 'Anterior',
+      siguiente: 'Siguiente',
+      /** "2 de 5": el punto elegido y cuántos hay. */
+      posicion: (n: number, total: number) => `${n} de ${total}`,
+      /** Donde se perdió y el resguardo: la base los guarda redondeados. */
+      aproximada: 'Ubicación aproximada, unos 100 m a la redonda.',
+    },
     filtros: {
       especie: 'Especie',
       estado: 'Estado',
@@ -154,6 +165,15 @@ export const t = {
     loBuscan: 'Lo buscan',
     contactoFamiliaAyuda: 'Es el dato que eligió mostrar su familia.',
     ultimaVez: 'Visto por última vez',
+    /**
+     * Un avistamiento en el Historial y en el mapa en grande: "Lo vio Carla"; el
+     * primero de un perdido es "Se perdió acá". Sin nombre: quien lo hizo borró
+     * su cuenta y lo dejó publicado.
+     */
+    queHizo: (tipo: TipoAvistamiento, nombre: string | null): string =>
+      tipo === 'perdido'
+        ? t.tipoAvistamiento.perdido
+        : `${t.tipoAvistamiento[tipo]} ${nombre ?? t.comunes.cuentaEliminada}`,
     novedades: 'Novedades del caso',
     masOpciones: 'Más opciones',
     avisoEstafa:

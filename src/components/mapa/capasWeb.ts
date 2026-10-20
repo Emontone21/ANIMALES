@@ -4,12 +4,20 @@ import { type GeoJSONSource, Map as MapaGL, type MapOptions } from 'maplibre-gl'
 
 import {
   FILTRO_CLUSTER,
+  FILTRO_HALO_GRANDE,
   FILTRO_LINEA,
+  FILTRO_PUNTO_EXACTO,
   FILTRO_PUNTO_RECORRIDO,
   FILTRO_ULTIMO,
+  FILTRO_ZONA,
   filtroPunto,
   ID_CAPA_CLUSTER,
   ID_CAPA_CLUSTER_NUMERO,
+  ID_CAPA_GRANDE_HALO,
+  ID_CAPA_GRANDE_LINEA,
+  ID_CAPA_GRANDE_NUMERO,
+  ID_CAPA_GRANDE_PUNTO,
+  ID_CAPA_GRANDE_ZONA,
   ID_CAPA_MI_UBICACION,
   ID_CAPA_MI_UBICACION_HALO,
   ID_CAPA_PUNTO,
@@ -19,23 +27,36 @@ import {
   ID_FUENTE_ANIMALES,
   ID_FUENTE_MI_UBICACION,
   ID_FUENTE_RECORRIDO,
+  ID_FUENTE_RECORRIDO_GRANDE,
   LAYOUT_CLUSTER_NUMERO,
+  LAYOUT_NUMERO_GRANDE,
+  LAYOUT_PUNTO_GRANDE,
   LAYOUT_RECORRIDO_LINEA,
+  LAYOUT_ZONA,
   OPCIONES_CLUSTER,
   paintCluster,
   paintClusterNumero,
+  paintHaloGrande,
+  paintLineaGrande,
   paintMiUbicacion,
   paintMiUbicacionHalo,
+  paintNumeroGrande,
   paintPunto,
+  paintPuntoGrande,
   paintRecorridoHalo,
   paintRecorridoLinea,
   paintRecorridoPunto,
+  paintZonaAproximada,
 } from '@/components/mapa/estilosCapa';
 import { configurarMapLibreWeb } from '@/components/mapa/maplibreWeb';
-import type { ColeccionAnimales, ColeccionRecorrido } from '@/components/mapa/tipos';
+import type {
+  ColeccionAnimales,
+  ColeccionRecorrido,
+  ColeccionRecorridoGrande,
+} from '@/components/mapa/tipos';
 import type { Esquema, Paleta } from '@/constants/tema';
 
-/** Solo web: helpers de MapLibre GL JS compartidos por los tres mapas. */
+/** Solo web: helpers de MapLibre GL JS compartidos por los mapas. */
 
 type EstiloWeb = Exclude<MapOptions['style'], undefined>;
 
@@ -192,5 +213,69 @@ export function agregarMiUbicacion(
     type: 'circle',
     source: fuente,
     paint: paintMiUbicacion(c),
+  });
+}
+
+/**
+ * Mapa en grande del recorrido: zonas de los aproximados, línea, halo del
+ * último, puntos y números. Las capas se rehacen (dependen de la paleta y del
+ * caso); para cambiar solo la selección alcanza con los datos nuevos.
+ */
+export function agregarCapasRecorridoGrande(
+  mapa: MapaGL,
+  datos: ColeccionRecorridoGrande,
+  c: Paleta,
+  colorTipo: string,
+  latitud: number,
+): void {
+  fuenteGeoJSON(mapa, ID_FUENTE_RECORRIDO_GRANDE, datos);
+  for (const capa of [
+    ID_CAPA_GRANDE_NUMERO,
+    ID_CAPA_GRANDE_PUNTO,
+    ID_CAPA_GRANDE_HALO,
+    ID_CAPA_GRANDE_LINEA,
+    ID_CAPA_GRANDE_ZONA,
+  ]) {
+    if (mapa.getLayer(capa)) mapa.removeLayer(capa);
+  }
+  const fuente = ID_FUENTE_RECORRIDO_GRANDE;
+  mapa.addLayer({
+    id: ID_CAPA_GRANDE_ZONA,
+    type: 'circle',
+    source: fuente,
+    filter: FILTRO_ZONA,
+    layout: LAYOUT_ZONA,
+    paint: paintZonaAproximada(c, colorTipo, latitud),
+  });
+  mapa.addLayer({
+    id: ID_CAPA_GRANDE_LINEA,
+    type: 'line',
+    source: fuente,
+    filter: FILTRO_LINEA,
+    layout: LAYOUT_RECORRIDO_LINEA,
+    paint: paintLineaGrande(c),
+  });
+  mapa.addLayer({
+    id: ID_CAPA_GRANDE_HALO,
+    type: 'circle',
+    source: fuente,
+    filter: FILTRO_HALO_GRANDE,
+    paint: paintHaloGrande(colorTipo),
+  });
+  mapa.addLayer({
+    id: ID_CAPA_GRANDE_PUNTO,
+    type: 'circle',
+    source: fuente,
+    filter: FILTRO_PUNTO_EXACTO,
+    layout: LAYOUT_PUNTO_GRANDE,
+    paint: paintPuntoGrande(c, colorTipo),
+  });
+  mapa.addLayer({
+    id: ID_CAPA_GRANDE_NUMERO,
+    type: 'symbol',
+    source: fuente,
+    filter: FILTRO_PUNTO_RECORRIDO,
+    layout: LAYOUT_NUMERO_GRANDE,
+    paint: paintNumeroGrande(c, colorTipo),
   });
 }

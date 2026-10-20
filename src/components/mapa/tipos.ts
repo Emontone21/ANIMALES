@@ -103,6 +103,44 @@ export type ColeccionRecorrido = FeatureCollection<
   PropiedadesRecorrido | Record<string, never>
 >;
 
+// --- Mapa en grande del recorrido (6.9.1) ---------------------------------------
+// Solo tipos: este archivo va en el bloque común de la web.
+
+export type PropiedadesPuntoGrande = {
+  id: string;
+  /** Número visible: 1 es el más viejo. */
+  orden: number;
+  ultimo: boolean;
+  /** Guardado redondeado: se dibuja como zona (src/features/mapa/recorrido.ts). */
+  aproximado: boolean;
+  seleccionado: boolean;
+};
+
+export type ColeccionRecorridoGrande = FeatureCollection<
+  Point | LineString,
+  PropiedadesPuntoGrande | Record<string, never>
+>;
+
+export type MapaRecorridoGrandeRef = {
+  /**
+   * Centra un punto en la parte visible. Sin zoom, se queda en el que está
+   * (Anterior y Siguiente); con zoom, vuela hasta ahí (mi ubicación).
+   */
+  irA: (centro: LngLat, zoom?: number) => void;
+};
+
+export type MapaRecorridoGrandeProps = {
+  /** Armado por la pantalla con recorridoGrandeAGeoJSON. */
+  datos: ColeccionRecorridoGrande;
+  /** Color del tipo del caso: el último punto y las zonas aproximadas. */
+  colorTipo: string;
+  miUbicacion: LngLat | null;
+  /** Lo que tapan los botones y la tarjeta: la vista inicial y el centrado van en lo visible. */
+  margenes: MargenesMapa;
+  onSeleccionar: (id: string) => void;
+  ref?: Ref<MapaRecorridoGrandeRef>;
+};
+
 /** Línea punteada del más viejo al más nuevo y un punto por avistamiento. */
 export function recorridoAGeoJSON(avistamientos: PuntoRecorrido[]): ColeccionRecorrido {
   const ordenados = [...avistamientos].sort(
