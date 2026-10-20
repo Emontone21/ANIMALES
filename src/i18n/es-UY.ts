@@ -5,6 +5,7 @@
 
 import type {
   DatosCompartir,
+  ErrorLlamadaIa,
   Especie,
   EstadoAnimal,
   EstadoDenuncia,
@@ -12,6 +13,7 @@ import type {
   Plataforma,
   Tamanio,
   TipoAvistamiento,
+  TipoLlamadaIa,
   TipoReporte,
 } from '@/types/dominio';
 
@@ -299,6 +301,22 @@ export const t = {
         ? `${nombre}, ${tipoTexto}${donde}, se parece en un ${porcentaje} %.`
         : `${t.especieConArticulo[especie]} ${tipoTexto}${donde} se parece en un ${porcentaje} %.`;
     },
+    /**
+     * Las del reconocimiento con IA muestran el motivo en vez del porcentaje:
+     * "Un perro encontrado a 1,2 km." o "Toby, perdido a 1,2 km."
+     */
+    quienYDonde: (
+      especie: Especie,
+      tipo: TipoReporte,
+      nombre: string | null,
+      km: number | null,
+    ): string => {
+      const tipoTexto = t.tipoReporte[tipo].toLowerCase();
+      const donde = km === null ? '' : ` ${t.mapa.distancia(km).toLowerCase()}`;
+      return nombre
+        ? `${nombre}, ${tipoTexto}${donde}.`
+        : `${t.especieConArticulo[especie]} ${tipoTexto}${donde}.`;
+    },
     confirmada: 'Listo: los reportes quedaron unidos.',
     rechazada: 'Gracias. Lo anotamos para afinar el reconocimiento.',
     resueltas: (n: number) =>
@@ -465,12 +483,50 @@ export const t = {
   reconocimiento: {
     titulo: 'Reconocimiento',
     intro:
-      'El servicio de visión compara cada foto nueva con los casos cercanos de la misma especie y sugiere posibles coincidencias.',
+      'Claude, la inteligencia artificial de Anthropic, describe cada foto nueva, la compara con los casos cercanos de la misma especie y sugiere posibles coincidencias. Siempre confirma una persona.',
     estado: 'Estado',
     configurado: 'Configurado',
     sinConfigurar: 'Sin configurar',
+    apagado: 'Apagado',
+    pausado: 'Pausado: sin crédito',
     sinConfigurarAyuda:
-      'Falta conectar el servicio de visión: cargar su dirección y su secreto en Supabase (services/vision/README.md).',
+      'Falta conectar la función de reconocimiento: cargar su dirección y su secreto en Supabase (README, "Servicio de reconocimiento").',
+    apagadoAyuda:
+      'El reconocimiento está apagado (config_app.ia_activa). Ninguna foto se analiza hasta volver a prenderlo.',
+    pausadoAyuda:
+      'La cuenta de Anthropic se quedó sin crédito y el reconocimiento se pausó. Cargá crédito y tocá Reactivar: las fotos que esperan se procesan solas.',
+    reactivar: 'Reactivar',
+    reactivado:
+      'Listo: el reconocimiento sigue. Las fotos que esperaban se procesan en unos minutos.',
+    llamadasHoy: 'Llamadas a la IA hoy',
+    /** "12 de 300" */
+    deTope: (n: number, tope: number) => `${n} de ${tope}`,
+    topeAlcanzado:
+      'Llegó al tope de llamadas del día: las fotos nuevas esperan a mañana (hora de Montevideo).',
+    costoMes: 'Costo estimado del mes',
+    /** "US$ 0,42"; lo chico, "Menos de US$ 0,01". */
+    costo: (usd: number): string => {
+      if (usd <= 0) return 'US$ 0';
+      if (usd < 0.01) return 'Menos de US$ 0,01';
+      return `US$ ${usd.toFixed(2).replace('.', ',')}`;
+    },
+    costoAyuda: 'Estimado con los precios de la API; la cuenta de Anthropic tiene el valor exacto.',
+    erroresIa: 'Errores de la IA',
+    erroresHoy: (n: number) => (n === 1 ? '1 hoy' : `${n} hoy`),
+    sinErrores: 'Ninguno en la última semana.',
+    tipoLlamada: {
+      describir: 'Describir',
+      comparar: 'Comparar',
+    } satisfies Record<TipoLlamadaIa, string>,
+    errorLlamada: {
+      invalida: 'Respuesta que no se pudo usar',
+      limite: 'Límite de pedidos',
+      sobrecarga: 'La API estaba sobrecargada',
+      sin_credito: 'Sin crédito',
+      error: 'Error de la API',
+    } satisfies Record<ErrorLlamadaIa, string>,
+    /** "Hoy a las 14:05 · Comparar · Sin crédito" */
+    filaError: (cuando: string, tipo: string, error: string) => `${cuando} · ${tipo} · ${error}`,
     pendientes: 'Fotos pendientes',
     /** Debajo de las pendientes: las que fallaron y esperan su próximo intento. */
     reintentando: (n: number) =>
@@ -482,7 +538,7 @@ export const t = {
     nunca: 'Todavía ninguna',
     procesar: 'Procesar pendientes ahora',
     enviado:
-      'Le avisamos al servicio. Si estaba apagado, tarda unos segundos en arrancar; esta pantalla se actualiza sola.',
+      'Le avisamos a la función de reconocimiento. Esta pantalla se actualiza sola mientras procesa.',
     sinPendientes: 'No hay fotos pendientes.',
   },
   estadoDenuncia: {
@@ -907,13 +963,14 @@ export const t = {
         {
           titulo: 'Reconocimiento de imágenes',
           parrafos: [
-            'Las fotos de los animales se procesan con un servicio de reconocimiento de imágenes para sugerir casos parecidos. Solo se analiza al animal, y las sugerencias las confirma siempre una persona.',
+            'Las fotos de los casos se analizan con un servicio de inteligencia artificial de Anthropic (Claude), que describe al animal y lo compara con casos cercanos para sugerir posibles coincidencias. Las sugerencias las confirma siempre una persona: nada se une solo.',
+            'A Anthropic le mandamos solo las fotos y los datos del animal (especie, tamaño, color y si tiene collar). Nunca tu nombre, tu email, tu contacto ni tus mensajes.',
           ],
         },
         {
           titulo: 'Con quién compartimos datos',
           parrafos: [
-            'No vendemos tus datos. Los guardan los servicios que usamos para que la app funcione: Supabase (datos y fotos), Vercel (la web), Hugging Face (reconocimiento de imágenes) y Expo (notificaciones en el celular). Algunos de sus servidores están fuera de Uruguay.',
+            'No vendemos tus datos. Los guardan los servicios que usamos para que la app funcione: Supabase (datos y fotos), Vercel (la web), Anthropic (el análisis de las fotos con inteligencia artificial) y Expo (notificaciones en el celular). Algunos de sus servidores están fuera de Uruguay.',
             'Solo entregamos datos a una autoridad cuando la ley lo exige.',
           ],
         },

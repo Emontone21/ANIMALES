@@ -1,5 +1,10 @@
 # Servicio de visión
 
+> **Alternativa sin desplegar.** Desde la migración 0018, el reconocimiento lo hace la API de Claude desde la Edge Function `supabase/functions/reconocer` (ver `docs/DECISIONES.md`, "El reconocimiento pasa a la API de Claude"). Este servicio queda en el repo como alternativa documentada, sin desplegar, y `guardar_embedding` está sin permiso para `service_role` (sus datos quedan). Para volver a usarlo:
+> 1. En el SQL Editor: `grant execute on function public.guardar_embedding(uuid, extensions.vector, jsonb) to service_role;`
+> 2. Desplegarlo con `desplegar.sh` (abajo) y poner su URL en `config_app.vision_url` en lugar de la de la función.
+> 3. La función `reconocer` y este servicio no conviven: la cola, el aviso y el trabajo de cada 2 minutos llaman a una sola URL.
+
 Microservicio Python (FastAPI) que calcula el embedding de cada foto de un animal y deja que Supabase busque coincidencias. Corre en **Google Cloud Run**, dentro de su capa gratuita: se enciende cuando Supabase le manda una foto y se apaga solo cuando no hay nada que hacer.
 
 ## Modelos (licencias permisivas)

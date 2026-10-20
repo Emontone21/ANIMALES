@@ -388,6 +388,8 @@ Para no sumar a la carga inicial, la lógica se divide según quién la usa. La 
 
 ## 2026-10-20 · El servicio de visión pasa a Cloud Run
 
+> Reemplazada el mismo día por "El reconocimiento pasa a la API de Claude": el servicio no llegó a desplegarse y queda en el repo como alternativa.
+
 Hugging Face pasó a cobrar los Spaces con Docker, y el servicio nunca llegó a correr (`config_app.vision_url` vacío). Se evaluaron:
 - **Hugging Face pago:** el plan más barato cuesta todos los meses, con o sin fotos.
 - **Render y Fly.io:** Render gratis da 512 MB, menos de lo que usan los modelos; Fly.io ya no tiene plan gratis.
@@ -443,6 +445,8 @@ Supabase depreca las claves legacy `anon` y `service_role` (JWT) a fines de 2026
 
 ## 2026-10-20 · Umbral de similitud: 0,80 hasta medirlo con fotos reales
 
+> Vale solo para el servicio de embeddings, que no se usa desde la 0018. El reconocimiento con IA usa `umbral_ia` (ver "El reconocimiento pasa a la API de Claude").
+
 `config_app.umbral_similitud` queda en 0,80. Para calibrarlo, `services/vision/evaluar.py` toma fotos de animales conocidos y calcula, por umbral:
 - cuántos pares del mismo animal detecta y cuántos pares falsos aparecen;
 - como la app, qué parte de las fotos encuentra a su animal y cuántas coincidencias falsas tendría cada foto con 20 animales de la especie cerca.
@@ -460,3 +464,33 @@ Recomienda el umbral que más encuentra sin pasar de 0,2 falsas por foto.
 - **Fondo:** el recorte lo saca casi todo. Si el detector no encuentra al animal se usa la foto entera, y dos animales fotografiados en el mismo lugar se parecen más.
 - **Animales muy parecidos:** labradores negros, gatos blancos y mestizos atigrados se distinguen por marcas chicas que el vector casi no ve. Ahí van a aparecer coincidencias falsas con cualquier umbral que encuentre algo.
 - **Fotos difíciles:** de noche, movidas, de lejos o con el animal tapado.
+
+## 2026-10-20 · El reconocimiento pasa a la API de Claude
+
+El servicio de embeddings en Cloud Run (entradas anteriores) no llegó a desplegarse: pedía un proyecto de Google Cloud con facturación y una imagen de casi 1 GB, y el umbral no se pudo calibrar con fotos reales. En su lugar, Claude mira las fotos: primero describe cada foto nueva y después la compara con pocos candidatos que elige la base, y dice por qué se parecen. La familia sigue confirmando o rechazando: nada se une solo.
+
+**Por qué:**
+- **Explica:** la familia ve "Mismo collar rojo y mancha blanca en el pecho" en vez de "se parece en un 86 %", y puede juzgar mirando eso en las fotos.
+- **Ve lo que el embedding no veía:** marcas, collar, orejas y cola, con poses, fondos y luces distintas. El vector de toda la imagen confundía dos animales de la misma raza en la misma pose (las limitaciones de la entrada del umbral).
+- **Sin infraestructura nueva:** corre en una Edge Function de Supabase, que ya se usa. El trabajo pesado lo hace la API, así que el límite de CPU de las Edge Functions (2 s por pedido, sin contar la espera) no molesta: la función casi solo espera respuestas.
+- **Costo chico y con topes:** se paga por llamada. Con Claude Haiku 5.5, unos US$0,0013 por foto con 10 candidatos (estimación en `docs/reportes/2026-10-20-reconocimiento-ia.md`). Hay interruptor, tope de llamadas por día y pausa automática sin crédito.
+
+**Lo que se resigna:** cuesta plata por foto (la capa gratuita de Cloud Run no), depende de la API de Anthropic y de tener crédito, y el modelo no es determinista: la misma foto puede dar una confianza un poco distinta.
+
+**Cómo:**
+- **Modelo:** `config_app.ia_modelo`, por defecto `claude-haiku-5-5`, el más barato. Si la evaluación (`scripts/evaluar-ia.ts`) muestra que no alcanza, se cambia ahí sin desplegar nada; los precios de los modelos conocidos están en `claude.ts` para el costo estimado.
+- **Dos pasos:** describir y después comparar. La descripción se hace una vez por foto (un reintento no la repite) y sirve para dos cosas: descartar en SQL los candidatos con colores o tamaños claramente incompatibles, y darle contexto a la comparación.
+- **Candidatos en SQL** (`candidatos_ia`), con las mismas reglas que `guardar_embedding`: misma especie, abiertos y visibles, a menos de 15 km, ventana de 60 días, perdido con encontrado o encontrado con encontrado, nunca perdido con perdido ni un encontrado visto más de un día antes de la pérdida. Del más cercano al más lejano, hasta `max_candidatos` (10; nunca más de 20 fotos por llamada).
+- **Cada par de casos se compara una vez** (`comparaciones_ia`, par ordenado). Una foto nueva de un caso ya comparado con otro no repite la comparación: ahorra llamadas, y lo que importa es el par de casos. Los pares que ya tienen coincidencia (también las rechazadas) tampoco se comparan.
+- **"Claramente incompatibles":** los colores se ordenan de claro a oscuro (blanco, dorado y naranja, gris, marrón, negro) y se descarta el par solo si ningún color de un lado (principal o secundario) queda a menos de 3 pasos de alguno del otro: negro con blanco, dorado o naranja; blanco con marrón. Los tamaños, solo chico con grande. Sin datos de un lado, no se descarta: la luz y el ángulo engañan, y descartar de más es perder un reencuentro.
+- **Salida estructurada:** cada paso es una herramienta con esquema JSON estricto (`strict`), con `tool_choice: auto` porque Claude Opus 5.5 y Sonnet 5.5 no aceptan forzar la herramienta y el modelo es configurable. Cada respuesta se valida en la función (largos, rangos, un resultado por candidato): si no valida, cuenta como error y la cola la reintenta.
+- **Esfuerzo:** `low` para describir y `medium` para comparar.
+- **Fotos por URL:** la miniatura de 320 de la Fase 8 (unos 140 tokens por imagen); si no existe (fotos de antes), la original. El nombre de la miniatura se arma en `src/lib/imagenes.ts`; la función, que no puede importar de `src/`, tiene una copia que `__tests__/imagenes.test.ts` compara con la original.
+- **Lo que viaja:** solo las fotos y los datos del animal (tipo, tamaño, color y collar declarados, y lo que se vio en las fotos). Nunca nombres, contactos, mensajes ni la descripción libre. Las instrucciones le piden a Claude que ignore cualquier pedido escrito en una foto o en los datos.
+- **Seguridad de la función:** `verify_jwt = false`, porque la llama Postgres, que no tiene un JWT de usuario; la protege `X-Vision-Secret`, que la función compara con `config_app.vision_secret` (lo lee de la base, así no hay que cargarlo en dos lugares). Para escribir, la clave secreta que Supabase pone en su entorno; `ANTHROPIC_API_KEY`, como secreto de la función.
+- **Errores de la API:** 429, 529 y cualquier otro marcan la foto con error y la cola la reintenta con espera creciente. Sin crédito (402), además, se pausa todo (`ia_pausa`) hasta que un moderador toca **Reactivar**: si no, cada foto gastaría sus 8 intentos en minutos.
+- **Topes:** `ia_activa` apaga los avisos, el trabajo de cada 2 minutos y la función. `ia_tope_diario` (300) cuenta las llamadas del día en hora de Montevideo: cada llamada se reserva antes en la base, con un candado, así dos fotos a la vez no lo pasan. Al llegar, las fotos esperan al día siguiente sin gastar intentos.
+- **Registro:** cada llamada queda en `llamadas_ia` con tokens, costo estimado, modelo y resultado. Moderación ve las llamadas de hoy, el costo del mes y los errores.
+- **El servicio de embeddings queda desactivado:** `guardar_embedding` no se puede llamar desde la API (se le sacó el permiso a `service_role`), pero sus datos quedan (`avistamientos.embedding` y las coincidencias con `origen = 'embedding'`, que la app sigue mostrando con el porcentaje). Para volver a usarlo: `grant execute on function public.guardar_embedding(uuid, extensions.vector, jsonb) to service_role;`, desplegar `services/vision` y poner su URL en `vision_url`.
+- **Privacidad:** la política (borrador) dice que las fotos las analiza Anthropic y qué se le manda. Cambió el texto, así que subió la versión de los términos (`2026-10-20`) y todos los vuelven a aceptar.
+

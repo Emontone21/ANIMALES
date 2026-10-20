@@ -291,6 +291,11 @@ export type Database = {
           resuelta_en: string | null;
           created_at: string;
           updated_at: string;
+          /** De 0 a 100; solo en las del reconocimiento con IA (0018). */
+          confianza: number | null;
+          /** Por qué se parecen, en las del reconocimiento con IA. */
+          motivo: string | null;
+          origen: 'embedding' | 'ia';
         };
         Insert: {
           id?: string;
@@ -306,6 +311,9 @@ export type Database = {
           resuelta_en?: string | null;
           created_at?: string;
           updated_at?: string;
+          confianza?: number | null;
+          motivo?: string | null;
+          origen?: 'embedding' | 'ia';
         };
         Update: {
           id?: string;
@@ -321,6 +329,9 @@ export type Database = {
           resuelta_en?: string | null;
           created_at?: string;
           updated_at?: string;
+          confianza?: number | null;
+          motivo?: string | null;
+          origen?: 'embedding' | 'ia';
         };
         Relationships: [];
       };
@@ -497,6 +508,51 @@ export type Database = {
         };
         Relationships: [];
       };
+      /** Cada llamada a la API de Claude (0018). Solo la leen los moderadores; la escribe la función. */
+      llamadas_ia: {
+        Row: {
+          id: number;
+          tipo: 'describir' | 'comparar';
+          avistamiento_id: string | null;
+          modelo: string;
+          resultado:
+            'en_curso' | 'ok' | 'invalida' | 'limite' | 'sobrecarga' | 'sin_credito' | 'error';
+          detalle: string | null;
+          tokens_entrada: number;
+          tokens_salida: number;
+          costo_usd: number | null;
+          created_at: string;
+          terminada_en: string | null;
+        };
+        Insert: {
+          tipo: 'describir' | 'comparar';
+          avistamiento_id?: string | null;
+          modelo: string;
+          resultado?:
+            'en_curso' | 'ok' | 'invalida' | 'limite' | 'sobrecarga' | 'sin_credito' | 'error';
+          detalle?: string | null;
+          tokens_entrada?: number;
+          tokens_salida?: number;
+          costo_usd?: number | null;
+          created_at?: string;
+          terminada_en?: string | null;
+        };
+        Update: {
+          id?: number;
+          tipo?: 'describir' | 'comparar';
+          avistamiento_id?: string | null;
+          modelo?: string;
+          resultado?:
+            'en_curso' | 'ok' | 'invalida' | 'limite' | 'sobrecarga' | 'sin_credito' | 'error';
+          detalle?: string | null;
+          tokens_entrada?: number;
+          tokens_salida?: number;
+          costo_usd?: number | null;
+          created_at?: string;
+          terminada_en?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       conversaciones_detalle: {
@@ -604,6 +660,9 @@ export type Database = {
           candidato_tipo_reporte: Database['public']['Enums']['tipo_reporte'];
           candidato_nombre: string | null;
           candidato_creado_por: string | null;
+          confianza: number | null;
+          motivo: string | null;
+          origen: 'embedding' | 'ia';
         };
         Relationships: [];
       };
@@ -802,12 +861,22 @@ export type Database = {
         Args: Record<string, never>;
         Returns: {
           configurado: boolean;
+          activa: boolean;
+          pausa: 'sin_credito' | null;
           pendientes: number;
           reintentando: number;
           con_error: number;
           ultima_procesada: string | null;
           ultima_coincidencia: string | null;
+          llamadas_hoy: number;
+          tope_diario: number;
+          errores_hoy: number;
+          costo_mes: number;
         }[];
+      };
+      reactivar_reconocimiento: {
+        Args: Record<string, never>;
+        Returns: string;
       };
       procesar_pendientes_vision: {
         Args: Record<string, never>;

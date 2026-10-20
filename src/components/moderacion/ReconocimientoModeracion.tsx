@@ -7,23 +7,41 @@ import { Etiqueta } from '@/components/ui/Etiqueta';
 import { Mensaje } from '@/components/ui/Mensaje';
 import { Texto } from '@/components/ui/Texto';
 import { Espacio, Radio } from '@/constants/tema';
-import { useEstadoReconocimiento, useProcesarPendientes } from '@/features/reconocimiento/api';
-import { avisoProcesar, cuando } from '@/features/reconocimiento/estado';
+import {
+  useErroresIa,
+  useEstadoReconocimiento,
+  useProcesarPendientes,
+  useReactivarReconocimiento,
+} from '@/features/reconocimiento/api';
+import {
+  avisoProcesar,
+  avisoReactivar,
+  cuando,
+  enElTope,
+  estadoGeneral,
+  etiquetaEstado,
+  filaError,
+  puedeProcesar,
+} from '@/features/reconocimiento/estado';
 import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 import { mensajeDeError } from '@/lib/errores';
 
 /**
- * Panel de moderación › Reconocimiento: si el servicio de visión está
- * configurado, cómo está la cola y cuándo anduvo por última vez, y el botón
- * que hace la misma llamada que el trabajo de cada 2 minutos. Sin la URL ni el
- * secreto. Va en un bloque aparte: el panel lo carga al elegir Reconocimiento.
+ * Panel de moderación › Reconocimiento: si el reconocimiento con IA está
+ * configurado, prendido o pausado por falta de crédito; cómo está la cola;
+ * las llamadas de hoy, el costo del mes y los errores de la API; "Reactivar"
+ * y el botón que hace la misma llamada que el trabajo de cada 2 minutos. Sin
+ * la URL ni el secreto. Va en un bloque aparte: el panel lo carga al elegir
+ * Reconocimiento.
  */
 export default function ReconocimientoModeracion() {
   const estilos = useEstilos(crear);
   const enFoco = useIsFocused();
   const estado = useEstadoReconocimiento(enFoco);
+  const errores = useErroresIa(enFoco);
   const procesar = useProcesarPendientes();
+  const reactivar = useReactivarReconocimiento();
 
   if (estado.isPending) return <Cargando />;
   if (estado.isError) {
@@ -37,18 +55,18 @@ export default function ReconocimientoModeracion() {
   }
 
   const e = estado.data;
+  const general = estadoGeneral(e);
+  const etiqueta = etiquetaEstado(general);
   const aviso = procesar.data ? avisoProcesar(procesar.data) : null;
+  const avisoReactivado = reactivar.data ? avisoReactivar(reactivar.data) : null;
+  const ultimosErrores = errores.data ?? [];
 
   return (
     <View style={estilos.raiz}>
       <Texto variante="secundario">{t.reconocimiento.intro}</Texto>
       <View style={estilos.tarjeta}>
         <Dato etiqueta={t.reconocimiento.estado}>
-          <Etiqueta
-            texto={e.configurado ? t.reconocimiento.configurado : t.reconocimiento.sinConfigurar}
-            fondo={e.configurado ? 'primarioSuave' : 'avisoFondo'}
-            color={e.configurado ? 'textoPrimarioSuave' : 'texto'}
-          />
+          <Etiqueta texto={etiqueta.texto} fondo={etiqueta.fondo} color={etiqueta.color} />
         </Dato>
         <Dato etiqueta={t.reconocimiento.pendientes}>
           <Texto variante="cuerpoFuerte">{e.pendientes}</Texto>
@@ -64,6 +82,30 @@ export default function ReconocimientoModeracion() {
             <Texto variante="pequeno">{t.reconocimiento.conErrorAyuda}</Texto>
           ) : null}
         </Dato>
+        <Dato etiqueta={t.reconocimiento.llamadasHoy}>
+          <Texto variante="cuerpoFuerte">
+            {t.reconocimiento.deTope(e.llamadas_hoy, e.tope_diario)}
+          </Texto>
+          {enElTope(e) ? <Texto variante="pequeno">{t.reconocimiento.topeAlcanzado}</Texto> : null}
+        </Dato>
+        <Dato etiqueta={t.reconocimiento.costoMes}>
+          <Texto variante="cuerpoFuerte">{t.reconocimiento.costo(Number(e.costo_mes))}</Texto>
+          <Texto variante="pequeno">{t.reconocimiento.costoAyuda}</Texto>
+        </Dato>
+        <Dato etiqueta={t.reconocimiento.erroresIa}>
+          <Texto variante="cuerpoFuerte" color={e.errores_hoy > 0 ? 'peligro' : 'texto'}>
+            {t.reconocimiento.erroresHoy(e.errores_hoy)}
+          </Texto>
+          {ultimosErrores.length === 0 ? (
+            <Texto variante="pequeno">{t.reconocimiento.sinErrores}</Texto>
+          ) : (
+            ultimosErrores.map((llamada) => (
+              <Texto key={llamada.id} variante="pequeno">
+                {filaError(llamada)}
+              </Texto>
+            ))
+          )}
+        </Dato>
         <Dato etiqueta={t.reconocimiento.ultimaProcesada}>
           <Texto variante="cuerpoFuerte">{cuando(e.ultima_procesada)}</Texto>
         </Dato>
@@ -71,13 +113,26 @@ export default function ReconocimientoModeracion() {
           <Texto variante="cuerpoFuerte">{cuando(e.ultima_coincidencia)}</Texto>
         </Dato>
       </View>
-      {!e.configurado ? <Mensaje texto={t.reconocimiento.sinConfigurarAyuda} /> : null}
+      {etiqueta.ayuda ? <Mensaje texto={etiqueta.ayuda} /> : null}
+      {general === 'pausado' ? (
+        <Boton
+          titulo={t.reconocimiento.reactivar}
+          icono="play-outline"
+          cargando={reactivar.isPending}
+          onPress={() => reactivar.mutate()}
+        />
+      ) : null}
+      {reactivar.isError ? (
+        <Mensaje texto={mensajeDeError(reactivar.error)} tipo="error" />
+      ) : avisoReactivado ? (
+        <Mensaje texto={avisoReactivado.texto} tipo={avisoReactivado.tipo} />
+      ) : null}
       <Boton
         titulo={t.reconocimiento.procesar}
         variante="secundario"
         icono="refresh-outline"
         cargando={procesar.isPending}
-        deshabilitado={!e.configurado}
+        deshabilitado={!puedeProcesar(e)}
         onPress={() => procesar.mutate()}
       />
       {procesar.isError ? (

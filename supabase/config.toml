@@ -399,6 +399,12 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# Reconocimiento con la API de Claude. La llama la base con pg_net
+# (llamar_vision), que no tiene un JWT de usuario: se protege con el header
+# X-Vision-Secret (config_app.vision_secret).
+[functions.reconocer]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

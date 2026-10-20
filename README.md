@@ -2,9 +2,9 @@
 
 App para reunir perros y gatos perdidos con sus familias. La familia que perdió un animal lo publica en un mapa con una foto, y quien encuentra uno, también; otras personas avisan que lo vieron en otro lugar, que lo resguardaron o que ya volvió a su casa. La app compara las fotos y sugiere cuándo dos reportes podrían ser el mismo animal; una persona confirma, nunca se unen solos. Hay mensajería interna para hablar sin compartir datos personales, notificaciones y un panel de moderación. Cada persona maneja su cuenta (contraseña, perfil, borrado) y se protege de otros usuarios (bloqueos, términos, resguardo de perdidos con foto). Quien publica puede corregir o borrar su reporte, y cualquiera lo puede compartir con una vista previa que muestra la foto del animal. La web se puede instalar como app, y cualquiera puede reportar un error a moderación desde Perfil.
 
-Interfaz en español rioplatense. Stack: Expo + React Native + TypeScript (corre en el navegador y, con el mismo código, como app nativa), Supabase en la nube (Auth, Postgres con PostGIS y pgvector, Storage), mapas MapLibre con teselas gratuitas de OpenFreeMap, reconocimiento de imágenes con modelos open source en Google Cloud Run (dentro de su capa gratuita). Se despliega en Vercel.
+Interfaz en español rioplatense. Stack: Expo + React Native + TypeScript (corre en el navegador y, con el mismo código, como app nativa), Supabase en la nube (Auth, Postgres con PostGIS y pgvector, Storage), mapas MapLibre con teselas gratuitas de OpenFreeMap, reconocimiento de imágenes con la API de Claude (Anthropic) desde una Edge Function de Supabase. Se despliega en Vercel.
 
-Estado: las fases 1 a 8 están implementadas (la 5 endureció permisos, la 6 sumó los perdidos, la 7 la cuenta y la protección de usuarios y la 8 la gestión de casos y compartir). La Fase 9 fue una revisión integral: correcciones, pruebas automáticas de la app y una lista de pruebas manuales ([docs/PRUEBAS-MANUALES.md](docs/PRUEBAS-MANUALES.md)). Después vinieron la carga inicial más rápida y las mejoras: hoja "Cerca tuyo" plegable, instalar la app y reportar un error. Ver [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) y [docs/DECISIONES.md](docs/DECISIONES.md).
+Estado: las fases 1 a 8 están implementadas (la 5 endureció permisos, la 6 sumó los perdidos, la 7 la cuenta y la protección de usuarios y la 8 la gestión de casos y compartir). La Fase 9 fue una revisión integral: correcciones, pruebas automáticas de la app y una lista de pruebas manuales ([docs/PRUEBAS-MANUALES.md](docs/PRUEBAS-MANUALES.md)). Después vinieron la carga inicial más rápida, las mejoras (hoja "Cerca tuyo" plegable, instalar la app y reportar un error) y el reconocimiento con la API de Claude. Ver [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) y [docs/DECISIONES.md](docs/DECISIONES.md).
 
 Todo corre en la nube: no hace falta Docker ni Android Studio. Solo Node 20+ para desarrollar.
 
@@ -13,8 +13,8 @@ Todo corre en la nube: no hace falta Docker ni Android Studio. Solo Node 20+ par
 ### 1. Supabase
 
 1. Creá un proyecto en [supabase.com](https://supabase.com) (plan gratuito). Guardá la contraseña de la base.
-2. Copiá la **Project URL** (botón **Connect**) y, en **Settings → API Keys**, la clave **anon / publishable**. La clave secreta del servicio de visión se crea en el paso 5.
-3. Aplicá las migraciones de `supabase/migrations/` **en orden** (0001 a 0017). Dos formas:
+2. Copiá la **Project URL** (botón **Connect**) y, en **Settings → API Keys**, la clave **anon / publishable**. El reconocimiento no necesita copiar claves de Supabase: la función usa la que Supabase le pone en su entorno (paso 5).
+3. Aplicá las migraciones de `supabase/migrations/` **en orden** (0001 a 0018). Dos formas:
 
    **a) CLI** (sin instalar nada):
 
@@ -60,14 +60,24 @@ Abre `http://localhost:8081`. En PowerShell, si `npx` está bloqueado por la pol
 
 Además de la web estática, Vercel publica una función: `api/vista-previa.ts`. `vercel.json` le manda solo a los bots de vista previa (WhatsApp, Facebook, Telegram…) los pedidos de `/animal/<id>`, y la función devuelve el `index.html` con la foto y el título del caso. Usa las mismas variables `EXPO_PUBLIC_*`, no necesita otras. `.vercelignore` deja afuera `services/`, para que Vercel no vuelva a detectar Python.
 
-### 5. Servicio de visión (reconocimiento)
+### 5. Servicio de reconocimiento
 
-Sigue [services/vision/README.md](services/vision/README.md):
-1. Creá un proyecto de Google Cloud con facturación y una alerta de presupuesto de US$1.
-2. En Cloud Shell, la terminal del navegador, corré `services/vision/desplegar.sh`. Pide la URL de Supabase y una clave secreta (`sb_secret_…`) sin mostrarlas, despliega el servicio en Cloud Run y al final imprime el SQL que conecta Supabase con el servicio.
-3. Antes, aplicá la migración 0017: el trabajo de pg_cron que lo despierta cuando hay fotos pendientes.
+Claude mira las fotos desde la Edge Function `supabase/functions/reconocer` (detalle en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md), "Reconocer"):
+1. Aplicá las migraciones 0017 y 0018 (el trabajo de pg_cron y lo del reconocimiento con IA).
+2. **Clave de Anthropic:** en [console.anthropic.com](https://console.anthropic.com) → **API Keys**, creá una clave, y cargala en Supabase → **Edge Functions → Secrets** con el nombre `ANTHROPIC_API_KEY`. No la pegues en ningún archivo ni en un chat. Conviene un límite de gasto mensual en la consola de Anthropic.
+3. **Desplegá la función,** desde la raíz del repo (sin Docker):
+   ```bash
+   npx supabase login
+   npx supabase link --project-ref <ref>
+   npx supabase functions deploy reconocer --use-api --no-verify-jwt
+   ```
+4. **Conectala** en el SQL Editor. El secreto lo genera la base y nadie lo ve: la función lo lee de ahí.
+   ```sql
+   update config_app set valor = 'https://<ref>.supabase.co/functions/v1/reconocer', updated_at = now() where clave = 'vision_url';
+   update config_app set valor = encode(extensions.gen_random_bytes(32), 'hex'), updated_at = now() where clave = 'vision_secret';
+   ```
 
-Sin este paso la app funciona igual; solo no aparecen "posibles coincidencias". El estado se ve en **Moderación → Reconocimiento**.
+Sin este paso la app funciona igual; solo no aparecen "posibles coincidencias". El estado, las llamadas de hoy y el costo del mes se ven en **Moderación → Reconocimiento**. El servicio de embeddings en Python (`services/vision`) queda como alternativa sin desplegar.
 
 ### 6. Push (solo app nativa)
 
@@ -82,7 +92,9 @@ Las notificaciones in-app funcionan en web sin configurar nada. Para push en And
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint + Prettier |
 | `npm run test` | Pruebas de la lógica de la app y de la vista previa (jest-expo, `__tests__/`) |
-| `pytest` (en `services/vision`) | Pruebas del servicio de visión, con un modelo falso: `pip install -r requirements-pruebas.txt` |
+| `deno test --allow-env` (en `supabase/functions/reconocer`) | Pruebas de la función de reconocimiento, con la API de Claude simulada |
+| `deno run … scripts/evaluar-ia.ts` | Evalúa el reconocimiento con fotos de animales conocidos y la API real (ver el reporte de la tarea) |
+| `pytest` (en `services/vision`) | Pruebas del servicio de embeddings (sin desplegar), con un modelo falso: `pip install -r requirements-pruebas.txt` |
 | `npm run format` | Formatea `src/` |
 | `npm run db:push` | Sube migraciones al proyecto enlazado |
 | `npm run db:types` | Regenera `src/types/database.ts` desde el proyecto enlazado; si falla, no toca el archivo |
@@ -105,7 +117,7 @@ Todo en el navegador. Conviene tener dos cuentas: la demo (`demo@encontrados.uy`
 4. **Seguir** y **Denunciar** (motivo + detalle). Tres denuncias de cuentas distintas con al menos 7 días ocultan la publicación.
 
 **Fase 3 · reconocimiento**
-1. Con el servicio de visión configurado, publicá dos reportes con fotos del mismo animal a pocas cuadras y con poca diferencia de tiempo.
+1. Con el reconocimiento configurado, publicá dos reportes con fotos del mismo animal a pocas cuadras y con poca diferencia de tiempo.
 2. En un minuto (unos segundos más si el servicio estaba apagado) el detalle muestra **Posibles coincidencias** con el porcentaje de parecido, distancia y tiempo. Se refresca solo cada 30 s.
 3. Entre dos encontrados deciden quien publicó cualquiera de los dos o un moderador. **Es el mismo animal** une los reportes: el más viejo queda como principal y el otro redirige a él. **No es el mismo** lo descarta y queda registrado para calibrar el umbral (`config_app.umbral_similitud`).
 
@@ -115,7 +127,7 @@ Necesitás tres cuentas: la familia, alguien que encuentra y un tercero.
 1. Sin cuenta: en el mapa, los chips **Todos · Perdidos · Encontrados** filtran por tipo; la especie quedó en **Más filtros**. Toby (seed) tiene el anillo naranja y un halo que lo distingue también en escala de grises.
 2. Con la familia: **Publicar → Perdí a mi animal**. Cargá foto, especie, nombre, tamaño, color, collar, señas, "¿Cuándo se perdió?" (en días) y dónde lo vieron por última vez; el formulario avisa que no hace falta la casa exacta. Opcional: un contacto para mostrar. En el detalle: el nombre primero, **Perdido desde el …**, la etiqueta naranja **Perdido** y, si cargaste contacto, **Lo buscan** junto al aviso contra estafas. El punto guardado está redondeado a unos 100 m.
 3. Con el tercero, en ese perdido: **Lo vi** y **Me lo llevé / está resguardado** funcionan (resguardarlo pide una foto actual); **Se reunió con su familia** y **Se volvió a escapar** no aparecen. Con la familia, sí.
-4. Con quien encuentra: **Publicar → Encontré un animal** con una foto parecida, cerca y después de la pérdida. Con el servicio de visión andando aparece la coincidencia: la familia recibe "Encontraron un animal parecido a <nombre>" y es la única que ve **Es el mismo animal** y **No es el mismo**; el resto ve "Su familia está mirando las fotos…". Al confirmar, el perdido queda como principal; si el encontrado estaba resguardado, el perdido pasa a resguardado con ese contacto.
+4. Con quien encuentra: **Publicar → Encontré un animal** con una foto parecida, cerca y después de la pérdida. Con el reconocimiento andando aparece la coincidencia, con el motivo: la familia recibe "Encontraron un animal parecido a <nombre>" y es la única que ve **Es el mismo animal** y **No es el mismo**; el resto ve "Su familia está mirando las fotos…". Al confirmar, el perdido queda como principal; si el encontrado estaba resguardado, el perdido pasa a resguardado con ese contacto.
 5. En un encontrado, **Se reunió con su familia** lo ven quien lo publicó y quien lo tiene resguardado.
 
 Las mismas reglas, probadas directo en la base: `supabase/tests/fase6_perdidos.sql`.
@@ -175,13 +187,14 @@ Con las migraciones 0015 y 0016 aplicadas:
 
 Probado en la base: `supabase/tests/errores.sql`. La lógica de la app: `npm run test`. A mano: los pasos 21 a 24 de `docs/PRUEBAS-MANUALES.md`.
 
-**Reconocimiento en Cloud Run**
+**Reconocimiento con la API de Claude**
 
-Con la migración 0017 aplicada y el servicio desplegado (`services/vision/README.md`):
-1. **Moderación → Reconocimiento** dice si está configurado, cuántas fotos hay pendientes y con error, y cuándo se procesó la última foto y apareció la última coincidencia.
-2. **Procesar pendientes ahora** despierta al servicio, como el trabajo de pg_cron de cada 2 minutos.
+Con las migraciones 0017 y 0018 aplicadas y la función desplegada (paso 5):
+1. **Moderación → Reconocimiento** dice si está configurado, apagado o pausado por falta de crédito; las fotos pendientes y con error; las llamadas a la IA de hoy, el costo estimado del mes y los últimos errores; y cuándo se procesó la última foto y apareció la última coincidencia.
+2. **Procesar pendientes ahora** llama a la función, como el trabajo de pg_cron de cada 2 minutos. Si se pausó sin crédito, **Reactivar**.
+3. En **Posibles coincidencias**, las de la IA muestran por qué se parecen en vez del porcentaje.
 
-Probado en la base: `supabase/tests/vision.sql`. El servicio: `pytest` en `services/vision` (con un modelo falso). A mano: el paso 26 de `docs/PRUEBAS-MANUALES.md`.
+Probado en la base: `supabase/tests/reconocimiento_ia.sql` y `vision.sql`. La función: `deno test --allow-env` en `supabase/functions/reconocer` (con la API simulada). A mano: el paso 26 de `docs/PRUEBAS-MANUALES.md`.
 
 **Fase 4 · notificaciones, mensajes, moderación**
 1. Con la demo seguí un animal; con tu cuenta registrá un avistamiento sobre ese animal. En la demo, la pestaña **Actividad → Novedades** muestra "Lo vieron de nuevo".
@@ -201,10 +214,11 @@ src/features/       auth, reportes, seguimientos, denuncias, coincidencias, noti
 src/lib/            supabase, imágenes (convención de miniaturas), fotos (comprimir, subir, borrar), compartir, ubicación, fechas, errores, env
 src/i18n/es-UY.ts   todos los textos
 src/types/          database.ts (esquema), dominio.ts
-supabase/           migrations/ (0001–0017), tests/ (pruebas SQL por fase, errores.sql y vision.sql), seed.sql, config.toml
+supabase/           migrations/ (0001–0018), tests/ (pruebas SQL por fase, errores.sql, vision.sql y reconocimiento_ia.sql), functions/reconocer (Edge Function del reconocimiento con la API de Claude y sus pruebas), seed.sql, config.toml
 api/                función de Vercel: vista previa del link de un caso (Open Graph)
 __tests__/          pruebas de jest-expo (npm run test)
-services/vision/    microservicio Python de reconocimiento (Google Cloud Run), desplegar.sh, evaluar.py y tests/
+services/vision/    alternativa sin desplegar: microservicio Python de embeddings (Google Cloud Run), desplegar.sh, evaluar.py y tests/
+scripts/            evaluar-ia.ts (evaluar el reconocimiento con fotos), tipos de la base, íconos y lo que copia postinstall
 public/             estáticos de la web: index.html, manifest y service worker de la app instalable, íconos (scripts/iconos-web.py), robots.txt y lo que copia postinstall (worker y estilos de MapLibre, fuentes)
 docs/               arquitectura, decisiones, diseño, pruebas manuales y reportes
 vercel.json         despliegue (y qué pedidos van a la función de api/)
