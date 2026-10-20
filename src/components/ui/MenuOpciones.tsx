@@ -6,6 +6,7 @@ import { Boton, type BotonProps } from '@/components/ui/Boton';
 import { Mensaje } from '@/components/ui/Mensaje';
 import { Texto } from '@/components/ui/Texto';
 import { AnchoMaximo, Espacio, Margen, Radio, sombraFlotante } from '@/constants/tema';
+import { useCerrarConAtras } from '@/hooks/useCerrarConAtras';
 import { useDisposicion } from '@/hooks/useDisposicion';
 import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
@@ -42,6 +43,7 @@ export function MenuOpciones({
   const estilos = useEstilos(crear);
   const insets = useSafeAreaInsets();
   const compacto = useDisposicion() === 'compacto';
+  useCerrarConAtras(visible, onCerrar);
 
   return (
     <Modal

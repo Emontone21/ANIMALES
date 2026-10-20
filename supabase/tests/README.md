@@ -1,6 +1,6 @@
 # Pruebas SQL
 
-Un archivo por fase, para correr sobre una base con todas las migraciones aplicadas (hoy, 0001 a 0013):
+Un archivo por fase, para correr sobre una base con todas las migraciones aplicadas (hoy, 0001 a 0014):
 
 | Archivo | Qué prueba |
 |---|---|
@@ -9,6 +9,7 @@ Un archivo por fase, para correr sobre una base con todas las migraciones aplica
 | `fase7_cuenta.sql` | Términos, perfil, bloqueos, borrado de cuenta (lo que queda anónimo y lo que se borra), denuncias de cuentas nuevas y resguardo de perdidos. |
 | `fase8_casos.sql` | Editar y borrar un reporte: solo quien lo publicó, qué se borra con un caso (también los avisos de otras personas y los reportes unidos), qué fotos se borran con sus miniaturas y qué pasa al cambiar la especie. |
 | `fase9_revision.sql` | Correcciones de la revisión integral: avisos de coincidencias con bloqueos, con quién se abre una conversación, ubicación del resguardo redondeada, bucket sin listado, aviso al servicio de visión desde la cola, reintentos con espera y coincidencias solo entre casos abiertos y visibles. |
+| `fase9_parte2.sql` | Casos ocultos por moderación y conversaciones (0014): qué ven del caso oculto, sus avistamientos, coincidencias y contactos una persona sin cuenta, otra cuenta, quien lo publicó y moderación; una coincidencia con un lado oculto; conversaciones nuevas rechazadas y las que había, legibles; volver a mostrarlo. Además, quien publicó le escribe a quien lo vio, un tercero no, bloqueos, cuentas borradas y reportes unidos. |
 
 ## Cómo correrlas
 
@@ -27,5 +28,5 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/fase7_cuenta.sql
 - Corren entre `begin` y `rollback`: no dejan usuarios, fotos, casos ni mensajes, y se pueden volver a correr.
 - Crean personas de prueba con emails `@encontrados.test`, que aceptan la versión vigente de los términos, y fotos de prueba en `storage.objects`, dentro de la transacción.
 - Nunca borran filas de `storage.objects`: Supabase no lo permite por SQL.
-- `fase9_revision.sql` carga una `vision_url` de prueba y mira los pedidos en `net.http_request_queue`: dentro de la transacción no sale ninguno (pg_net los manda al confirmar, y el script termina en `rollback`).
+- `fase9_revision.sql` carga una `vision_url` de prueba y mira los pedidos en `net.http_request_queue`: dentro de la transacción no sale ninguno (pg_net los manda al confirmar, y el script termina en `rollback`). pg_net guarda el cuerpo como `bytea`: se lee con `convert_from(body, 'UTF8')::jsonb`.
 - Cambian de persona con `request.jwt.claims` y de rol con `set local role`, igual que una llamada desde la app.

@@ -68,7 +68,7 @@ const crear = crearEstilos((c) => ({
     paddingHorizontal: Espacio.m,
     paddingVertical: Espacio.sm,
     borderWidth: 1,
-    borderColor: c.borde,
+    borderColor: c.bordeCampo,
     borderRadius: Radio.m,
     backgroundColor: c.superficie,
     color: c.texto,

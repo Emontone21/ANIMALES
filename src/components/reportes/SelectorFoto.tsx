@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { Pressable, View } from 'react-native';
 
@@ -92,9 +92,9 @@ const crear = crearEstilos((c) => ({
     justifyContent: 'center',
     gap: Espacio.s,
     borderWidth: 1,
-    borderColor: c.superficieSuave,
+    borderColor: c.bordeCampo,
   },
-  vacioActivo: { borderColor: c.borde },
+  vacioActivo: { borderColor: c.textoSecundario },
   conError: { borderColor: c.peligro },
   botones: { flexDirection: 'row', flexWrap: 'wrap', gap: Espacio.s },
   boton: { flex: 1, minWidth: 200 },

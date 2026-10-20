@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ComponentProps } from 'react';
 import { ActivityIndicator, Pressable, type StyleProp, Text, type ViewStyle } from 'react-native';
 
@@ -48,8 +48,11 @@ export function Boton({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
-      accessibilityState={{ disabled: inactivo, busy: cargando }}
+      // Mientras carga, el indicador reemplaza al texto: el nombre se mantiene.
+      accessibilityLabel={accessibilityLabel ?? titulo}
+      accessibilityState={{ disabled: inactivo }}
+      // react-native-web no traduce accessibilityState.busy; aria-busy anda en web y nativo.
+      aria-busy={cargando}
       onPress={onPress}
       disabled={inactivo}
       style={(estado) => [

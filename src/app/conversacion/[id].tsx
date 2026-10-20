@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Stack, useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import { type ComponentRef, useEffect, useRef, useState } from 'react';
 import {
@@ -31,6 +31,7 @@ import {
   useEnviarMensaje,
   useMensajes,
 } from '@/features/mensajes/api';
+import { casoDisponible } from '@/features/mensajes/casoDisponible';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 import { mensajeDeError } from '@/lib/errores';
@@ -133,13 +134,15 @@ function Chat({ conversacionId, miId }: { conversacionId: string; miId: string }
           headerRight: () =>
             otro ? (
               <View style={estilos.accionesCabecera}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={t.mensajes.verReporte}
-                  onPress={() => router.push(`/animal/${otro.animal_id}`)}
-                  style={(estado) => [estilos.verReporte, estaActivo(estado) && estilos.activo]}>
-                  <Ionicons name="paw-outline" size={22} color={c.primario} />
-                </Pressable>
+                {casoDisponible(otro) ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t.mensajes.verReporte}
+                    onPress={() => router.push(`/animal/${otro.animal_id}`)}
+                    style={(estado) => [estilos.verReporte, estaActivo(estado) && estilos.activo]}>
+                    <Ionicons name="paw-outline" size={22} color={c.primario} />
+                  </Pressable>
+                ) : null}
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={t.mensajes.masOpciones}
@@ -217,6 +220,13 @@ function Chat({ conversacionId, miId }: { conversacionId: string; miId: string }
             ref={scrollRef}
             contentContainerStyle={estilos.lista}
             onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}>
+            {/* Caso oculto por moderación: en lugar del caso, el aviso. */}
+            {otro && !casoDisponible(otro) ? (
+              <View style={estilos.noDisponible}>
+                <Texto variante="cuerpoFuerte">{t.mensajes.publicacionNoDisponible}</Texto>
+                <Mensaje texto={t.mensajes.publicacionOcultada} tipo="error" />
+              </View>
+            ) : null}
             <Texto variante="secundario" style={estilos.aviso}>
               {t.mensajes.aviso}
             </Texto>
@@ -300,6 +310,7 @@ const crear = crearEstilos((c) => ({
   },
   centrado: { textAlign: 'center' },
   aviso: { textAlign: 'center', marginBottom: Espacio.s },
+  noDisponible: { gap: Espacio.s, marginBottom: Espacio.s },
   burbuja: {
     maxWidth: '80%',
     paddingHorizontal: Espacio.m,
@@ -331,7 +342,7 @@ const crear = crearEstilos((c) => ({
     paddingTop: 15,
     paddingBottom: 15,
     borderWidth: 1,
-    borderColor: c.borde,
+    borderColor: c.bordeCampo,
     borderRadius: Medida.campo / 2,
     backgroundColor: c.superficie,
     ...Fuentes.regular,

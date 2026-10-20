@@ -45,7 +45,7 @@ export default function PantallaEditarReporte() {
     return (
       <Pantalla scroll bordes={['left', 'right', 'bottom']} ancho={AnchoMaximo.formulario}>
         <Mensaje
-          texto={mensajeDeError(animal.error, t.animal.noEncontrado)}
+          texto={mensajeDeError(animal.error, t.animal.noDisponible)}
           tipo={animal.isError ? 'error' : 'info'}
         />
       </Pantalla>

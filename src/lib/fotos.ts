@@ -61,8 +61,10 @@ async function leerBytes(uriLocal: string): Promise<ArrayBuffer | Blob> {
 
 async function subir(uriLocal: string, ruta: string): Promise<void> {
   const bytes = await leerBytes(uriLocal);
+  // El nombre es un UUID y nunca se reescribe (upsert: false): se cachea un año.
   const { error } = await supabase.storage.from(BUCKET_FOTOS).upload(ruta, bytes, {
     contentType: 'image/jpeg',
+    cacheControl: '31536000',
     upsert: false,
   });
   if (error) throw error;

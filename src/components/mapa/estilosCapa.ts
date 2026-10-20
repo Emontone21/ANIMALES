@@ -65,7 +65,8 @@ const FUENTE_NUMEROS = ['Noto Sans Bold'];
 
 export function paintCluster(c: Paleta): CircleLayerSpecification['paint'] {
   return {
-    'circle-radius': ['step', ['get', 'point_count'], 18, 10, 22, 50, 28],
+    // Al menos 44 de diámetro: es lo que se toca para acercarse.
+    'circle-radius': ['step', ['get', 'point_count'], 22, 50, 28],
     'circle-color': c.inverso,
     'circle-stroke-width': 3,
     'circle-stroke-color': c.superficie,

@@ -39,6 +39,7 @@ export default function PantallaMapa() {
   const [resaltadoId, setResaltadoId] = useState<string | null>(null);
   const [miUbicacion, setMiUbicacion] = useState<LngLat | null>(null);
   const [buscandoGps, setBuscandoGps] = useState(false);
+  const [avisoGps, setAvisoGps] = useState<string | null>(null);
 
   const { data: animales = [], error, refetch, isError, isLoading } = useAnimalesMapa();
 
@@ -67,9 +68,11 @@ export default function PantallaMapa() {
 
   const irAMiUbicacion = async () => {
     setBuscandoGps(true);
+    setAvisoGps(null);
     const posicion = await obtenerPosicionActual();
     setBuscandoGps(false);
-    if (!posicion) return;
+    // El mismo aviso que en Publicar.
+    if (!posicion) return setAvisoGps(t.publicar.permisoUbicacion);
     setMiUbicacion(posicion);
     mapaRef.current?.irA(posicion, ZOOM_PUNTO);
   };
@@ -84,6 +87,8 @@ export default function PantallaMapa() {
 
   const aviso = isError ? (
     <Mensaje texto={mensajeDeError(error)} tipo="error" onReintentar={() => void refetch()} />
+  ) : avisoGps ? (
+    <Mensaje texto={avisoGps} />
   ) : visibles.length === 0 && animales.length > 0 ? (
     <Mensaje texto={t.mapa.sinReportes} />
   ) : null;

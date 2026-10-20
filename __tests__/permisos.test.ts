@@ -1,5 +1,6 @@
 import { perdidoDelPar, puedeResolver } from '@/features/coincidencias/api';
 import {
+  aQuienesLoVieron,
   avisosDeOtros,
   cambiosDisponibles,
   destinatariosDelCaso,
@@ -154,5 +155,33 @@ describe('quién confirma una coincidencia (las reglas de resolver_coincidencia)
   test('un perdido cuya familia ya no está: no decide nadie', () => {
     const c = par({ origen_tipo_reporte: 'perdido', origen_creado_por: null });
     expect(puedeResolver(c, VECINA, true)).toBe(false);
+  });
+});
+
+describe('Escribirle a quien lo vio (abrir_conversacion, 0014)', () => {
+  const vistos = [
+    { usuario_id: FAMILIA, tipo: 'perdido' as const },
+    { usuario_id: VECINA, tipo: 'visto' as const },
+    { usuario_id: null, tipo: 'visto' as const },
+    { usuario_id: VECINA, tipo: 'visto' as const },
+    { usuario_id: OTRA, tipo: 'resguardado' as const },
+  ];
+
+  test('quien publicó le escribe a cada persona que lo vio, una vez, ni a sí misma ni a una cuenta borrada', () => {
+    expect(aQuienesLoVieron(perdido, vistos, FAMILIA)).toEqual([VECINA, OTRA]);
+  });
+
+  test('quien solo lo vio, no', () => {
+    expect(aQuienesLoVieron(perdido, vistos, VECINA)).toEqual([]);
+    expect(aQuienesLoVieron(perdido, vistos, null)).toEqual([]);
+  });
+
+  test('quien publicó un reporte unido al caso (su "encontrado" pasó al principal), también', () => {
+    const conUnido = [...vistos, { usuario_id: OTRA, tipo: 'encontrado' as const }];
+    expect(aQuienesLoVieron(perdido, conUnido, OTRA)).toEqual([FAMILIA, VECINA]);
+  });
+
+  test('en un caso oculto no se abren conversaciones nuevas', () => {
+    expect(aQuienesLoVieron({ ...perdido, oculto: true }, vistos, FAMILIA)).toEqual([]);
   });
 });

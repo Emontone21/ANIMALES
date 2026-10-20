@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo } from 'react';
 
 import { AvisoCaso, DetalleCaso } from '@/components/reportes/DetalleCaso';
+import { Boton } from '@/components/ui/Boton';
 import { Cargando } from '@/components/ui/Cargando';
 import { Mensaje } from '@/components/ui/Mensaje';
 import {
@@ -32,17 +33,21 @@ export default function PantallaAnimal() {
   );
 
   const volver = () => (router.canGoBack() ? router.back() : router.replace('/'));
+  const irAlMapa = <Boton titulo={t.comunes.volverAlMapa} onPress={() => router.replace('/')} />;
 
   if (animal.isPending) return <Cargando />;
 
+  // Un link roto da error; uno de un caso oculto por moderación o borrado no
+  // trae nada (la base no lo deja ver): el mismo texto para los dos.
   if (animal.isError) {
     return (
       <AvisoCaso onVolver={volver}>
         <Mensaje
-          texto={mensajeDeError(animal.error, t.animal.noEncontrado)}
+          texto={mensajeDeError(animal.error, t.animal.noDisponible)}
           tipo="error"
           onReintentar={() => void animal.refetch()}
         />
+        {irAlMapa}
       </AvisoCaso>
     );
   }
@@ -50,7 +55,8 @@ export default function PantallaAnimal() {
   if (!animal.data) {
     return (
       <AvisoCaso onVolver={volver}>
-        <Mensaje texto={t.animal.noEncontrado} />
+        <Mensaje texto={t.animal.noDisponible} />
+        {irAlMapa}
       </AvisoCaso>
     );
   }
