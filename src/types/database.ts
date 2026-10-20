@@ -798,6 +798,21 @@ export type Database = {
         Args: { p_id: string; p_nota?: string | null };
         Returns: undefined;
       };
+      estado_reconocimiento: {
+        Args: Record<string, never>;
+        Returns: {
+          configurado: boolean;
+          pendientes: number;
+          reintentando: number;
+          con_error: number;
+          ultima_procesada: string | null;
+          ultima_coincidencia: string | null;
+        }[];
+      };
+      procesar_pendientes_vision: {
+        Args: Record<string, never>;
+        Returns: string;
+      };
       capturas_para_borrar: {
         Args: Record<string, never>;
         Returns: string[];

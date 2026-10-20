@@ -1,0 +1,13 @@
+# Lo que `gcloud run deploy --source` no sube: solo hacen falta el Dockerfile,
+# requirements.txt y app/.
+.gcloudignore
+.env*
+README.md
+desplegar.sh
+evaluar.py
+pytest.ini
+requirements-pruebas.txt
+tests/
+__pycache__/
+*.pyc
+*.npz

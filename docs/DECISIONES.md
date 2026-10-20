@@ -10,6 +10,8 @@ Elegido sobre `react-native-maps`. Costo cero y sin clave de API; el precio es q
 
 Opciones consideradas: Edge Function con transformers.js (límite de 2 s de CPU en plan gratis, descarga del modelo en cada arranque frío), en el dispositivo (más de 100 MB en la app, embeddings falsificables, obliga a actualizar la app por cada cambio de modelo). El microservicio tiene el ecosistema completo y permite recalcular embeddings al cambiar de modelo. Decisión del dueño del proyecto.
 
+Desde el 20 de octubre de 2026 corre en Google Cloud Run: ver "El servicio de visión pasa a Cloud Run".
+
 ## 2026-10-17 · DINOv2 small para embeddings, detector Apache-2.0
 
 YOLOv8 (AGPL-3.0) queda descartado para una app cerrada. DINOv2 (Apache 2.0) distingue mejor individuos que CLIP (MIT), que es semántico. Se recorta el cuerpo completo; no hay detector de caras de mascotas open source maduro.
@@ -383,3 +385,68 @@ La base guarda redondeados a 3 decimales (unos 100 m) los puntos que suelen ser 
 El mapa en grande es una ruta (`/animal/<id>/mapa`) y no una hoja: Atrás vuelve al detalle sin tocar el historial del navegador, en web y en nativo. Si el caso no existe, está oculto o no carga, la pantalla manda al detalle, que ya sabe qué mostrar en cada caso; así no se comparte código entre las dos pantallas (iría a `__common`).
 
 Para no sumar a la carga inicial, la lógica se divide según quién la usa. La pantalla ordena, numera y arma el GeoJSON (`src/features/mapa/recorrido.ts`) y el mapa recibe los datos listos. La vista inicial, el radio de la zona y el contraste de los números (`encuadre.ts`, `src/lib/contraste.ts`) los usa solo el mapa, que en web va en el bloque de MapLibre (`mapasWeb.ts`). Si un mismo módulo lo importaran la pantalla y el mapa, Metro lo pondría en `__common`. La vista inicial se calcula a mano (Web Mercator) en vez de con `fitBounds`, porque la cámara de MapLibre React Native no acepta zoom máximo al encuadrar: así web y nativo arrancan igual.
+
+## 2026-10-20 · El servicio de visión pasa a Cloud Run
+
+Hugging Face pasó a cobrar los Spaces con Docker, y el servicio nunca llegó a correr (`config_app.vision_url` vacío). Se evaluaron:
+- **Hugging Face pago:** el plan más barato cuesta todos los meses, con o sin fotos.
+- **Render y Fly.io:** Render gratis da 512 MB, menos de lo que usan los modelos; Fly.io ya no tiene plan gratis.
+- **Edge Functions de Supabase:** tienen un límite de CPU por pedido que un modelo de visión no entra.
+- **Google Cloud Run:** cobra por segundo de pedido (CPU solo mientras atiende) y apaga la instancia sin tráfico. Su capa gratuita (180 000 vCPU-segundos, 360 000 GiB-segundos y 2 millones de pedidos por mes) cubre miles de fotos (`services/vision/README.md`).
+
+**Elegido Cloud Run, en `us-east5` (Columbus, Ohio).** Es de la capa Tier 1 (la gratuita se descuenta a precio Tier 1) y está al lado de Supabase (`us-east-2`, Ohio): cada foto se baja de Supabase y vuelve como embedding.
+
+**Cambios en el servicio:**
+- **Todo el trabajo dentro del pedido.** Cloud Run no da CPU fuera de los pedidos, así que no hay `BackgroundTasks` ni bucle interno. `/procesar` procesa la foto y responde al terminar; `/procesar-pendientes` vacía la cola con un tope de 90 s y dice cuántas quedan.
+- **Modelos dentro de la imagen.** Se bajan en el build y se leen sin red al arrancar (`HF_HUB_OFFLINE`).
+- **Puerto desde `PORT`.**
+- **Configuración del servicio:** 2 vCPU, `min-instances 0`, `max-instances 1`, sin el refuerzo de CPU al arrancar (`--no-cpu-boost`, que se cobra) y en la primera generación del entorno, que arranca más rápido.
+
+**Del lado de Supabase (migración 0017):** los avisos esperan lo que tarda en despertar: 60 s una foto y 150 s vaciar la cola, por el arranque en frío medido (`docs/reportes/2026-10-20-reconocimiento.md`). Si un aviso se corta, la foto sigue pendiente y la levanta el trabajo de cada 2 minutos.
+
+## 2026-10-20 · Un trabajo de pg_cron despierta al servicio solo si hay fotos
+
+El bucle interno del servicio revisaba la cola cada 5 minutos, pero en Cloud Run no puede correr: la instancia no tiene CPU entre pedidos y se apaga. Y el primer aviso a un servicio dormido se perdía (B31).
+
+Ahora un trabajo de pg_cron (`vision-pendientes`, cada 2 minutos) llama a `despertar_vision()`:
+- si no hay URL configurada o `cola_vision_pendientes` está vacía, no hace nada;
+- si no, llama a `/procesar-pendientes`.
+
+Así cubre los avisos perdidos y los reintentos con espera sin despertar al servicio cuando no hay nada: cada vuelta vacía es una consulta a la base y no consume nada en Google.
+
+Otros detalles:
+- **Por qué 2 minutos:** una foto cuyo aviso se perdió espera como mucho eso. Llamar más seguido no acelera nada, porque la vuelta anterior todavía puede estar trabajando (el servicio no superpone dos vueltas).
+- **Historial de pg_cron:** anota cada corrida y no se limpia solo, así que otro trabajo borra las de más de 7 días.
+- **"Procesar pendientes ahora":** el botón de moderación (`procesar_pendientes_vision`) hace la misma llamada.
+
+## 2026-10-20 · Las claves del servicio, en Secret Manager
+
+La clave `service_role` de Supabase y el secreto compartido podían ir como variables del servicio o en Secret Manager. Van en Secret Manager:
+- Las variables se ven en la consola de Cloud Run y en `gcloud run services describe` para cualquiera con permiso de lectura en el proyecto, y quedan en cada revisión.
+- En Secret Manager están cifradas, solo las lee la cuenta del servicio y cada lectura queda registrada.
+- Entra en la capa gratuita: 6 versiones activas y 10 000 lecturas por mes. Cada arranque en frío lee 2.
+
+Cómo lo maneja `desplegar.sh`:
+- Al cambiar las claves, destruye las versiones viejas (las destruidas no cuentan).
+- El servicio usa `latest`: cada despliegue arranca instancias nuevas, que leen la versión vigente.
+- `SUPABASE_URL` no es secreta y va como variable común.
+
+## 2026-10-20 · Umbral de similitud: 0,80 hasta medirlo con fotos reales
+
+`config_app.umbral_similitud` queda en 0,80. Para calibrarlo, `services/vision/evaluar.py` toma fotos de animales conocidos y calcula, por umbral:
+- cuántos pares del mismo animal detecta y cuántos pares falsos aparecen;
+- como la app, qué parte de las fotos encuentra a su animal y cuántas coincidencias falsas tendría cada foto con 20 animales de la especie cerca.
+
+Recomienda el umbral que más encuentra sin pasar de 0,2 falsas por foto.
+
+**No se pudo correr al hacer el cambio:** el entorno de trabajo no llega a Hugging Face (los modelos) ni a los conjuntos públicos. Los conjuntos sugeridos, con licencia CC BY 4.0, que permite evaluar:
+- **Perros: MPDD** (192 perros, unas 9 fotos de cuerpo entero por perro, en distintas posturas).
+- **Gatos: Cat Individual Images** (518 gatos; fotos centradas en la cara).
+
+**Por qué no bajarlo a ciegas:** una coincidencia falsa le llega como aviso a una familia que busca a su animal. Que una persona confirme cada una no le quita peso a ese aviso. Además, el radio (15 km), la ventana (60 días) y la especie ya acotan los candidatos.
+
+**Limitaciones del embedding** (DINOv2 small, el vector de toda la imagen recortada):
+- **Pose y ángulo:** el mismo perro de frente y de costado se parece menos que dos perros distintos de la misma raza en la misma pose.
+- **Fondo:** el recorte lo saca casi todo. Si el detector no encuentra al animal se usa la foto entera, y dos animales fotografiados en el mismo lugar se parecen más.
+- **Animales muy parecidos:** labradores negros, gatos blancos y mestizos atigrados se distinguen por marcas chicas que el vector casi no ve. Ahí van a aparecer coincidencias falsas con cualquier umbral que encuentre algo.
+- **Fotos difíciles:** de noche, movidas, de lejos o con el animal tapado.

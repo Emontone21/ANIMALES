@@ -42,7 +42,8 @@ App Expo + React Native + TypeScript con backend Supabase en la nube para reunir
   - **Datos de la ruta de entrada:** las pantallas que se abren desde un link usan las claves de `src/features/reportes/precarga.ts`, que las adelanta.
   - **Ver docs/ARQUITECTURA.md,** "Carga inicial en web".
 - **Estados accesibles:** react-native-web no traduce `accessibilityState` (salvo `disabled`). Para que lleguen a la web, usá `aria-checked` (radio, checkbox), `aria-selected` (tab) y `aria-busy`. No pongas `aria-selected` en un link ni en un botón: ARIA no lo permite.
-- **Antes de dar algo por terminado:** `npm run typecheck`, `npm run lint`, `npm run test` y `npx expo export -p web` sin errores. Si tocás la base, las pruebas de `supabase/tests/` tienen que seguir pasando; las reglas nuevas suman pruebas ahí.
+- **Antes de dar algo por terminado:** `npm run typecheck`, `npm run lint`, `npm run test` y `npx expo export -p web` sin errores. Si tocás la base, las pruebas de `supabase/tests/` tienen que seguir pasando; las reglas nuevas suman pruebas ahí. Si tocás `services/vision`, `pytest` ahí (`requirements-pruebas.txt`: sin torch, con un modelo falso).
+- **Servicio de visión (Cloud Run):** solo tiene CPU mientras atiende un pedido y se apaga sin tráfico. Todo el trabajo va dentro del pedido: nada de `BackgroundTasks`, hilos ni bucles propios. Lo que quede pendiente lo vuelve a pedir el trabajo de pg_cron (`despertar_vision`). Toda llamada de la base al servicio pasa por `llamar_vision`, con una espera que cubra el arranque en frío. torch y transformers se importan solo al cargar los modelos reales.
 - **Pruebas de la app:** `npm run test` (jest-expo) cubre la lógica sin pantallas, en `__tests__/`. Lo que calcula la app (fechas, filtros, textos, rutas de fotos, permisos, validaciones) va en funciones puras, con su prueba; una regla nueva suma su prueba ahí. Las pantallas se prueban a mano con `docs/PRUEBAS-MANUALES.md`.
 
 ## Expo cambia seguido
@@ -67,7 +68,7 @@ npx supabase db push        # subir migraciones al proyecto en la nube (tras sup
 - `src/features/<área>/`: acceso a datos (`api.ts`), hooks, acciones y reglas puras (`permisos.ts`, `validaciones.ts`). Único lugar que consulta la base; Storage se usa desde `src/lib/fotos.ts`.
 - `src/lib/`: utilidades sin React (supabase, imágenes y miniaturas, fotos, compartir, ubicación, fechas, errores, env).
 - `src/constants/tema.ts`: paletas claro y oscuro, espacios, radios, fuentes y escala tipográfica. `src/hooks/`: `useTema`, `useEstilos`, `useDisposicion` (compacto, medio, amplio) y `useElegirFoto`.
-- `supabase/`: configuración, migraciones (0001–0016), pruebas SQL por fase y `errores.sql` (`tests/`), seed. `services/vision/`: microservicio Python de reconocimiento.
+- `supabase/`: configuración, migraciones (0001–0017), pruebas SQL por fase, `errores.sql` y `vision.sql` (`tests/`), seed. `services/vision/`: microservicio Python de reconocimiento en Google Cloud Run (`desplegar.sh`, `evaluar.py`; pruebas con `pytest` y un modelo falso).
 - `api/`: función de Vercel de la vista previa del link (Open Graph).
 - `__tests__/`: pruebas de jest (`npm run test`). `docs/PRUEBAS-MANUALES.md`: la lista para probar a mano en celulares y computadora.
 - `public/`: archivos estáticos de la web. `index.html` (con la pantalla de carga, las fuentes, los `preconnect` y el aviso de instalar), `manifest.webmanifest`, `sw.js` (service worker mínimo, sin caché), `iconos/` (de `scripts/iconos-web.py`), `robots.txt`, y lo que copia `scripts/copiar-a-public.js` en `postinstall` (worker y estilos de MapLibre, `fuentes/`; no se versionan). `vercel.json`: despliegue y qué pedidos van a `api/`. `.vercelignore`: lo que Vercel no recibe.
@@ -85,5 +86,6 @@ npx supabase db push        # subir migraciones al proyecto en la nube (tras sup
 9. Revisión integral, parte 1: auditoría, correcciones (migración 0013), pruebas de la app con jest-expo y lista de pruebas manuales. **(hecha)**
    Parte 2: casos ocultos por moderación que dejan de verse y la familia que le escribe a quien lo vio (migración 0014), Atrás cierra la hoja en web, `bordeCampo` y arreglos chicos (íconos, caché, accesibilidad). **(hecha)**
    Mejoras: hoja "Cerca tuyo" plegable, instalar la app (manifest y service worker mínimo) y reportar un error con su sección en moderación (migraciones 0015 y 0016). **(hecha)**
+   Reconocimiento en Cloud Run: el servicio de visión pasa de Hugging Face a Google Cloud Run, pg_cron lo despierta cada 2 minutos si hay fotos pendientes y moderación ve su estado (migración 0017). **(hecha)**
 
-Pendiente de configuración externa (lo hace el dueño del proyecto): proyecto Supabase con migraciones aplicadas, proyecto Vercel con variables, Space de Hugging Face para el servicio de visión. Ver README.
+Pendiente de configuración externa (lo hace el dueño del proyecto): proyecto Supabase con migraciones aplicadas, proyecto Vercel con variables, proyecto de Google Cloud para el servicio de visión (`services/vision/desplegar.sh`). Ver README.

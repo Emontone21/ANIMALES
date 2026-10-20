@@ -42,6 +42,24 @@ async def listar_pendientes() -> list[dict[str, Any]]:
         return r.json()
 
 
+async def contar_pendientes() -> int:
+    """Cuántas fotos de la cola se pueden procesar ahora (sin las que esperan un reintento)."""
+    async with _cliente() as c:
+        r = await c.get(
+            "/rest/v1/cola_vision_pendientes",
+            params={"select": "avistamiento_id", "limit": "1"},
+            headers={"Prefer": "count=exact"},
+        )
+        r.raise_for_status()
+        return total_de_content_range(r.headers.get("content-range", ""))
+
+
+def total_de_content_range(valor: str) -> int:
+    """PostgREST responde "0-0/12" (o "*/0" si no hay filas): el total va después de la barra."""
+    total = valor.rpartition("/")[2]
+    return int(total) if total.isdigit() else 0
+
+
 async def obtener_pendiente(avistamiento_id: str) -> dict[str, Any] | None:
     async with _cliente() as c:
         r = await c.get(

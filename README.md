@@ -2,7 +2,7 @@
 
 App para reunir perros y gatos perdidos con sus familias. La familia que perdió un animal lo publica en un mapa con una foto, y quien encuentra uno, también; otras personas avisan que lo vieron en otro lugar, que lo resguardaron o que ya volvió a su casa. La app compara las fotos y sugiere cuándo dos reportes podrían ser el mismo animal; una persona confirma, nunca se unen solos. Hay mensajería interna para hablar sin compartir datos personales, notificaciones y un panel de moderación. Cada persona maneja su cuenta (contraseña, perfil, borrado) y se protege de otros usuarios (bloqueos, términos, resguardo de perdidos con foto). Quien publica puede corregir o borrar su reporte, y cualquiera lo puede compartir con una vista previa que muestra la foto del animal. La web se puede instalar como app, y cualquiera puede reportar un error a moderación desde Perfil.
 
-Interfaz en español rioplatense. Stack: Expo + React Native + TypeScript (corre en el navegador y, con el mismo código, como app nativa), Supabase en la nube (Auth, Postgres con PostGIS y pgvector, Storage), mapas MapLibre con teselas gratuitas de OpenFreeMap, reconocimiento de imágenes con modelos open source en un Space gratuito de Hugging Face. Se despliega en Vercel.
+Interfaz en español rioplatense. Stack: Expo + React Native + TypeScript (corre en el navegador y, con el mismo código, como app nativa), Supabase en la nube (Auth, Postgres con PostGIS y pgvector, Storage), mapas MapLibre con teselas gratuitas de OpenFreeMap, reconocimiento de imágenes con modelos open source en Google Cloud Run (dentro de su capa gratuita). Se despliega en Vercel.
 
 Estado: las fases 1 a 8 están implementadas (la 5 endureció permisos, la 6 sumó los perdidos, la 7 la cuenta y la protección de usuarios y la 8 la gestión de casos y compartir). La Fase 9 fue una revisión integral: correcciones, pruebas automáticas de la app y una lista de pruebas manuales ([docs/PRUEBAS-MANUALES.md](docs/PRUEBAS-MANUALES.md)). Después vinieron la carga inicial más rápida y las mejoras: hoja "Cerca tuyo" plegable, instalar la app y reportar un error. Ver [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) y [docs/DECISIONES.md](docs/DECISIONES.md).
 
@@ -62,14 +62,12 @@ Además de la web estática, Vercel publica una función: `api/vista-previa.ts`.
 
 ### 5. Servicio de visión (reconocimiento)
 
-Sigue [services/vision/README.md](services/vision/README.md): un Space de Hugging Face tipo Docker con `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` y `VISION_SECRET`, y luego en Supabase:
+Sigue [services/vision/README.md](services/vision/README.md):
+1. Creá un proyecto de Google Cloud con facturación y una alerta de presupuesto de US$1.
+2. En Cloud Shell, la terminal del navegador, corré `services/vision/desplegar.sh`. Pide la URL de Supabase y la clave `service_role` sin mostrarlas, despliega el servicio en Cloud Run y al final imprime el SQL que conecta Supabase con el servicio.
+3. Antes, aplicá la migración 0017: el trabajo de pg_cron que lo despierta cuando hay fotos pendientes.
 
-```sql
-update config_app set valor = 'https://<usuario>-<space>.hf.space' where clave = 'vision_url';
-update config_app set valor = '<VISION_SECRET>' where clave = 'vision_secret';
-```
-
-Sin este paso la app funciona igual; solo no aparecen "posibles coincidencias".
+Sin este paso la app funciona igual; solo no aparecen "posibles coincidencias". El estado se ve en **Moderación → Reconocimiento**.
 
 ### 6. Push (solo app nativa)
 
@@ -84,6 +82,7 @@ Las notificaciones in-app funcionan en web sin configurar nada. Para push en And
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint + Prettier |
 | `npm run test` | Pruebas de la lógica de la app y de la vista previa (jest-expo, `__tests__/`) |
+| `pytest` (en `services/vision`) | Pruebas del servicio de visión, con un modelo falso: `pip install -r requirements-pruebas.txt` |
 | `npm run format` | Formatea `src/` |
 | `npm run db:push` | Sube migraciones al proyecto enlazado |
 | `npm run db:types` | Regenera `src/types/database.ts` desde el proyecto enlazado; si falla, no toca el archivo |
@@ -107,7 +106,7 @@ Todo en el navegador. Conviene tener dos cuentas: la demo (`demo@encontrados.uy`
 
 **Fase 3 · reconocimiento**
 1. Con el servicio de visión configurado, publicá dos reportes con fotos del mismo animal a pocas cuadras y con poca diferencia de tiempo.
-2. En un minuto (más si el Space estaba dormido) el detalle muestra **Posibles coincidencias** con el porcentaje de parecido, distancia y tiempo. Se refresca solo cada 30 s.
+2. En un minuto (unos segundos más si el servicio estaba apagado) el detalle muestra **Posibles coincidencias** con el porcentaje de parecido, distancia y tiempo. Se refresca solo cada 30 s.
 3. Entre dos encontrados deciden quien publicó cualquiera de los dos o un moderador. **Es el mismo animal** une los reportes: el más viejo queda como principal y el otro redirige a él. **No es el mismo** lo descarta y queda registrado para calibrar el umbral (`config_app.umbral_similitud`).
 
 **Fase 6 · reportes de perdidos**
@@ -176,6 +175,14 @@ Con las migraciones 0015 y 0016 aplicadas:
 
 Probado en la base: `supabase/tests/errores.sql`. La lógica de la app: `npm run test`. A mano: los pasos 21 a 24 de `docs/PRUEBAS-MANUALES.md`.
 
+**Reconocimiento en Cloud Run**
+
+Con la migración 0017 aplicada y el servicio desplegado (`services/vision/README.md`):
+1. **Moderación → Reconocimiento** dice si está configurado, cuántas fotos hay pendientes y con error, y cuándo se procesó la última foto y apareció la última coincidencia.
+2. **Procesar pendientes ahora** despierta al servicio, como el trabajo de pg_cron de cada 2 minutos.
+
+Probado en la base: `supabase/tests/vision.sql`. El servicio: `pytest` en `services/vision` (con un modelo falso). A mano: el paso 26 de `docs/PRUEBAS-MANUALES.md`.
+
 **Fase 4 · notificaciones, mensajes, moderación**
 1. Con la demo seguí un animal; con tu cuenta registrá un avistamiento sobre ese animal. En la demo, la pestaña **Actividad → Novedades** muestra "Lo vieron de nuevo".
 2. Desde el detalle, **Escribirle a quien publicó** abre un chat. Respondé desde la otra cuenta: los mensajes llegan en pocos segundos y la otra persona recibe la novedad.
@@ -194,10 +201,10 @@ src/features/       auth, reportes, seguimientos, denuncias, coincidencias, noti
 src/lib/            supabase, imágenes (convención de miniaturas), fotos (comprimir, subir, borrar), compartir, ubicación, fechas, errores, env
 src/i18n/es-UY.ts   todos los textos
 src/types/          database.ts (esquema), dominio.ts
-supabase/           migrations/ (0001–0016), tests/ (pruebas SQL por fase y errores.sql), seed.sql, config.toml
+supabase/           migrations/ (0001–0017), tests/ (pruebas SQL por fase, errores.sql y vision.sql), seed.sql, config.toml
 api/                función de Vercel: vista previa del link de un caso (Open Graph)
 __tests__/          pruebas de jest-expo (npm run test)
-services/vision/    microservicio Python de reconocimiento (Hugging Face Spaces)
+services/vision/    microservicio Python de reconocimiento (Google Cloud Run), desplegar.sh, evaluar.py y tests/
 public/             estáticos de la web: index.html, manifest y service worker de la app instalable, íconos (scripts/iconos-web.py), robots.txt y lo que copia postinstall (worker y estilos de MapLibre, fuentes)
 docs/               arquitectura, decisiones, diseño, pruebas manuales y reportes
 vercel.json         despliegue (y qué pedidos van a la función de api/)
