@@ -1,6 +1,8 @@
 /**
- * public/index.html: lo único con colores y textos fuera de tema.ts y es-UY.ts
- * (la pantalla de carga y la descripción). Estas pruebas los mantienen iguales.
+ * public/index.html y public/manifest.webmanifest: lo único con colores y
+ * textos fuera de tema.ts y es-UY.ts (la pantalla de carga, la descripción,
+ * theme-color y el manifest de la app instalable). Estas pruebas los mantienen
+ * iguales. También, que el service worker no guarde nada.
  */
 import { FAMILIAS, paletas } from '@/constants/tema';
 import { t } from '@/i18n/es-UY';
@@ -8,7 +10,8 @@ import { t } from '@/i18n/es-UY';
 // Sin tipos de Node en el proyecto: lo justo de fs. Jest corre desde la raíz del repo.
 /* eslint-disable @typescript-eslint/no-require-imports */
 const fs = require('fs') as {
-  readFileSync: (ruta: string, codificacion: 'utf8') => string;
+  readFileSync: ((ruta: string, codificacion: 'utf8') => string) &
+    ((ruta: string) => { readUInt32BE: (posicion: number) => number });
   existsSync: (ruta: string) => boolean;
 };
 const { copias } = require('../scripts/copiar-a-public.js') as { copias: [string, string][] };
@@ -65,5 +68,88 @@ describe('public/index.html', () => {
     for (const [origen] of copias) {
       expect(fs.existsSync(`${raiz}/node_modules/${origen}`)).toBe(true);
     }
+  });
+
+  test('theme-color es el fondo de cada paleta', () => {
+    const colores = [
+      ...html.matchAll(
+        /<meta name="theme-color" content="(#[0-9A-Fa-f]{6})" media="\(prefers-color-scheme: (light|dark)\)" \/><!-- (claro|oscuro)\.(\w+) -->/g,
+      ),
+    ];
+    expect(colores.map(([, , esquema]) => esquema)).toEqual(['light', 'dark']);
+    for (const [, valor, , paleta, token] of colores) {
+      expect(token).toBe('fondo');
+      expect(valor).toBe(paletas[paleta as 'claro' | 'oscuro'].fondo);
+    }
+  });
+
+  test('enlaza el manifest y el ícono de iPhone, y guarda el aviso de instalar antes de la app', () => {
+    expect(html).toContain('<link rel="manifest" href="/manifest.webmanifest" />');
+    expect(html).toContain('<link rel="apple-touch-icon" href="/iconos/apple-touch-icon.png" />');
+    expect(fs.existsSync(`${raiz}/public/iconos/apple-touch-icon.png`)).toBe(true);
+    // El script va en el <head>, antes del JS de la app.
+    expect(html.indexOf("addEventListener('beforeinstallprompt'")).toBeLessThan(
+      html.indexOf('<div id="root">'),
+    );
+    expect(html).toContain("navigator.serviceWorker.register('/sw.js')");
+  });
+});
+
+/** Ancho y alto de un PNG, de su encabezado. */
+function tamanioPng(ruta: string): string {
+  const bytes = fs.readFileSync(ruta);
+  return `${bytes.readUInt32BE(16)}x${bytes.readUInt32BE(20)}`;
+}
+
+describe('public/manifest.webmanifest', () => {
+  const manifest = JSON.parse(fs.readFileSync(`${raiz}/public/manifest.webmanifest`, 'utf8')) as {
+    name: string;
+    short_name: string;
+    description: string;
+    lang: string;
+    start_url: string;
+    display: string;
+    background_color: string;
+    theme_color: string;
+    icons: { src: string; sizes: string; type: string; purpose: string }[];
+  };
+
+  test('nombre y descripción de es-UY.ts, start_url "/" y standalone', () => {
+    expect(manifest.name).toBe(t.app.nombre);
+    expect(manifest.short_name).toBe(t.app.nombre);
+    expect(manifest.description).toBe(t.compartir.vistaPrevia.descripcionGenerica);
+    expect(manifest.lang).toBe('es-UY');
+    expect(manifest.start_url).toBe('/');
+    expect(manifest.display).toBe('standalone');
+  });
+
+  test('los colores son el fondo de la paleta clara', () => {
+    expect(manifest.background_color).toBe(paletas.claro.fondo);
+    expect(manifest.theme_color).toBe(paletas.claro.fondo);
+  });
+
+  test('íconos de 192 y 512 y uno maskable, que existen y miden lo que dicen', () => {
+    const usos = manifest.icons.map((i) => `${i.sizes} ${i.purpose}`).sort();
+    expect(usos).toEqual(['192x192 any', '512x512 any', '512x512 maskable']);
+    for (const icono of manifest.icons) {
+      const ruta = `${raiz}/public${icono.src}`;
+      expect(fs.existsSync(ruta)).toBe(true);
+      expect(icono.type).toBe('image/png');
+      expect(tamanioPng(ruta)).toBe(icono.sizes);
+    }
+    expect(tamanioPng(`${raiz}/public/iconos/apple-touch-icon.png`)).toBe('180x180');
+  });
+});
+
+describe('public/sw.js', () => {
+  const sw = fs.readFileSync(`${raiz}/public/sw.js`, 'utf8');
+
+  test('tiene un manejador de fetch con algo adentro (Chrome lo pide para ofrecer instalar)', () => {
+    expect(sw).toMatch(/addEventListener\('fetch', \(evento\) => \{\n\s+\S/);
+  });
+
+  test('no guarda nada: ni Cache Storage, ni IndexedDB, ni respuestas propias', () => {
+    expect(sw).not.toMatch(/caches\.|indexedDB|cache\.put|new Response/);
+    expect(sw).not.toContain('supabase');
   });
 });

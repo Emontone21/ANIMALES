@@ -64,8 +64,8 @@ export function MapaReportes({
   const [visibles, setVisibles] = useState<string[]>([]);
 
   useImperativeHandle(ref, () => ({
-    irA: (centro, zoom) =>
-      cameraRef.current?.flyTo({ center: centro, zoom, duration: 600, padding: margenes }),
+    irA: (centro, zoom, otros = margenes) =>
+      cameraRef.current?.flyTo({ center: centro, zoom, duration: 600, padding: otros }),
   }));
 
   const coleccion = useMemo(() => animalesAGeoJSON(animales), [animales]);

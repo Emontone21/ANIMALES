@@ -1,8 +1,10 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { lazy, Suspense, useState } from 'react';
 import { View } from 'react-native';
 
 import { Boton } from '@/components/ui/Boton';
 import { Cargando } from '@/components/ui/Cargando';
+import { Chips } from '@/components/ui/Chips';
 import { Etiqueta } from '@/components/ui/Etiqueta';
 import { FotoMiniatura } from '@/components/ui/FotoMiniatura';
 import { Mensaje } from '@/components/ui/Mensaje';
@@ -17,15 +19,22 @@ import { t } from '@/i18n/es-UY';
 import { mensajeDeError } from '@/lib/errores';
 import { fechaHoraCorta } from '@/lib/fechas';
 
-/** Panel para moderadores (perfiles.es_moderador): denuncias y ocultar publicaciones. */
+// Los reportes de errores van en un bloque aparte: se carga al elegir Errores.
+const ErroresModeracion = lazy(() => import('@/components/moderacion/ErroresModeracion'));
+
+type Seccion = 'denuncias' | 'errores';
+
+/**
+ * Panel para moderadores (perfiles.es_moderador): denuncias (y ocultar
+ * publicaciones) y errores que reportan las personas. El aviso de un error
+ * nuevo abre Errores (`?seccion=errores`).
+ */
 export default function PantallaModeracion() {
-  const router = useRouter();
-  const estilos = useEstilos(crear);
   const { usuario } = useAuth();
   const perfil = usePerfil(usuario?.id);
   const esModerador = perfil.data?.es_moderador ?? false;
-  const denuncias = useDenuncias(esModerador);
-  const { resolver, ocultar } = useAccionesModeracion();
+  const { seccion: pedida } = useLocalSearchParams<{ seccion?: string }>();
+  const [seccion, setSeccion] = useState<Seccion>(pedida === 'errores' ? 'errores' : 'denuncias');
 
   if (perfil.isPending && usuario) return <Cargando />;
   if (!esModerador) {
@@ -38,6 +47,34 @@ export default function PantallaModeracion() {
 
   return (
     <Pantalla scroll bordes={['left', 'right']} ancho={AnchoMaximo.lista}>
+      <Chips
+        opciones={[
+          { valor: 'denuncias', etiqueta: t.errores.moderacion.denuncias },
+          { valor: 'errores', etiqueta: t.errores.moderacion.errores },
+        ]}
+        valor={seccion}
+        onCambio={setSeccion}
+      />
+      {seccion === 'errores' ? (
+        <Suspense fallback={<Cargando />}>
+          <ErroresModeracion />
+        </Suspense>
+      ) : (
+        <Denuncias />
+      )}
+    </Pantalla>
+  );
+}
+
+/** Las denuncias, con ocultar o mostrar la publicación y marcarlas revisadas. */
+function Denuncias() {
+  const router = useRouter();
+  const estilos = useEstilos(crear);
+  const denuncias = useDenuncias(true);
+  const { resolver, ocultar } = useAccionesModeracion();
+
+  return (
+    <>
       <Texto variante="secundario">{t.moderacion.intro}</Texto>
       {denuncias.isPending ? (
         <Cargando />
@@ -130,7 +167,7 @@ export default function PantallaModeracion() {
           ))}
         </View>
       )}
-    </Pantalla>
+    </>
   );
 }
 

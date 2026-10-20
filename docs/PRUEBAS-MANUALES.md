@@ -1,6 +1,6 @@
 # Pruebas manuales
 
-Recorrido de toda la app, paso a paso, para hacer en la web publicada (https://animales-blue.vercel.app). Lleva unos 55 minutos en un dispositivo; en los otros dos se repite marcando la casilla de cada uno.
+Recorrido de toda la app, paso a paso, para hacer en la web publicada (https://animales-blue.vercel.app). Lleva unos 65 minutos en un dispositivo; en los otros dos se repite marcando la casilla de cada uno.
 
 - **Dispositivos:** Android con Chrome, iPhone con Safari y una computadora (cualquier navegador). Cada flujo tiene una casilla por dispositivo.
 - **Cuentas:** dos, que en esta lista se llaman **familia** (publica un perro perdido) y **vecina** (lo encuentra y lo ve). Para probar de a una persona: familia en el celular y vecina en la computadora, o una en una ventana privada.
@@ -15,7 +15,7 @@ Tené a mano dos fotos parecidas de un mismo perro (o de dos perros parecidos) e
 
 **Cuentas.** Si no hay SMTP propio, creá las dos cuentas desde Supabase: **Authentication → Users → Add user → Create new user**, con **Auto Confirm User** marcado. Con SMTP propio, creálas desde la app: **Perfil → Crear cuenta** [SMTP].
 
-**Familia, moderadora.** Para los pasos 14 y 15, en el SQL Editor (reemplazá el email):
+**Familia, moderadora.** Para los pasos 14, 15 y 23, en el SQL Editor (reemplazá el email):
 
 ```sql
 update perfiles set es_moderador = true
@@ -386,17 +386,92 @@ Esperado:
 - [ ] iPhone · Safari
 - [ ] Computadora
 
-## 21. Borrar la cuenta · 2 min
+## 21. Hoja "Cerca tuyo" plegable · 3 min
+
+Cuenta: ninguna. En el celular; en la computadora, con la ventana angosta (menos de 600 px) y el mouse.
+
+1. En el mapa, arrastrá la manija de **Cerca tuyo** hacia abajo.
+2. Mirá el botón de **Mi ubicación** y los créditos del mapa (abajo a la izquierda).
+3. Recargá la página.
+4. Arrastrá la barra hacia arriba. Después tocala, y tocala otra vez.
+5. Con la hoja plegada, tocá un marcador.
+6. Con lector de pantalla (TalkBack o VoiceOver), recorré la barra.
+7. Computadora: ensanchá la ventana a más de 1024 px.
+
+Esperado:
+- Plegada queda solo la barra, con la manija, **Cerca tuyo** y la cantidad ("7 casos"), y el mapa usa todo el alto.
+- Arrastrar la hoja no mueve el mapa, ni la página, ni recarga (Chrome de Android).
+- Mi ubicación baja junto con la hoja y los créditos bajan cuando se suelta.
+- Al recargar sigue como la dejaste.
+- Un arrastre corto vuelve a su lugar; un gesto rápido cambia de posición aunque sea corto.
+- Tocar la barra (no **Ver lista**) pliega o despliega.
+- Al tocar un marcador con la hoja plegada, se despliega con esa tarjeta primera.
+- El lector dice "Ocultar casos, botón, expandido" o "Mostrar casos, botón, contraído".
+- En pantallas anchas no hay hoja: el panel lateral queda igual.
+
+- [ ] Android · Chrome
+- [ ] iPhone · Safari
+- [ ] Computadora
+
+## 22. Instalar la app · 4 min
+
+Cuenta: ninguna.
+
+1. **Android · Chrome** (y computadora con Chrome o Edge): usá la app medio minuto (Chrome no la ofrece apenas se abre), andá a **Perfil → Instalar la app** e instalala.
+2. Abrila desde la pantalla de inicio (o desde el escritorio) y andá a **Perfil**.
+3. **iPhone · Safari:** **Perfil → Instalar la app**. Seguí los pasos de la hoja y abrila desde la pantalla de inicio.
+4. Mandate el link del sitio por WhatsApp, abrilo desde WhatsApp (Android) o desde Instagram, y andá a **Perfil → Instalar la app**. Tocá **Copiar el link**.
+
+Esperado:
+- En Android y en la computadora se abre la ventana del navegador para instalar, con el nombre Encontrados y su ícono.
+- En iPhone, la hoja muestra los tres pasos con el ícono de Compartir dibujado, y Atrás o **Entendido** la cierran.
+- Ya instalada, se abre sin la barra del navegador y en **Perfil** no aparece **Instalar la app**. Después de instalar en Chrome, tampoco aparece en el navegador.
+- En el navegador de WhatsApp o Instagram, explica que hay que abrir el link en Chrome o Safari y copia el link del sitio.
+- Firefox de computadora y Safari de Mac no muestran el botón.
+
+- [ ] Android · Chrome
+- [ ] iPhone · Safari
+- [ ] Computadora
+
+## 23. Reportar un error · 5 min
+
+Cuenta: ninguna, vecina y familia (moderadora, paso 1).
+
+1. **Sin cuenta** (ventana privada): entrá a un caso, después a **Perfil → Reportar un error**. Tocá **Mandar el reporte** vacío; después escribí qué pasó y un email en el contacto, y mandalo.
+2. **Vecina:** desde el mapa, **Perfil → Reportar un error**. Elegí una captura, escribí qué pasó y qué estabas haciendo, y mandalo.
+3. **Familia:** **Actividad**. Tocá el aviso del reporte nuevo.
+4. En **Moderación → Errores**: mirá los dos reportes, tocá **Ver la captura**, escribí una nota y tocá **Marcar como resuelto** en el de vecina.
+5. **Vecina:** **Actividad**.
+6. **Vecina:** mandá reportes hasta pasar 5 en la misma hora.
+
+Esperado:
+- Vacío dice "Contá qué pasó con al menos 10 caracteres.".
+- Sin cuenta pide un contacto opcional, con el aviso de que solo lo ven los moderadores, y no ofrece captura. Con cuenta es al revés.
+- El formulario muestra lo que se suma solo: la pantalla anterior, el navegador y sistema, el tamaño de pantalla y la versión (con el commit del deploy).
+- Al mandarlo, Perfil dice "Gracias…"; con cuenta, que le avisamos en Actividad.
+- A familia le llega un aviso por cada reporte, que abre **Moderación → Errores**.
+- En el panel están todos los datos, la captura se ve, y el resuelto pasa a **Resueltos** con quién, cuándo y la nota.
+- A vecina le llega "Resolvimos el error que reportaste" con la nota.
+- El sexto reporte de la hora dice "Ya mandaste 5 reportes en la última hora. Probá de nuevo más tarde.".
+- En Supabase, **Storage → capturas** es privado: la captura no se abre con un link público.
+
+- [ ] Android · Chrome
+- [ ] iPhone · Safari
+- [ ] Computadora
+
+## 24. Borrar la cuenta · 2 min
 
 Cuenta: vecina.
 
 1. **Perfil → Borrar mi cuenta**. Leé las opciones, dejá la que viene marcada, marcá que entendés y confirmá.
 2. Familia: buscá en **Actividad → Mensajes** la conversación con vecina.
+3. Familia: en **Moderación → Errores**, mirá los reportes de vecina (flujo 23).
 
 Esperado:
 - Vuelve al mapa sin sesión.
 - Lo que vecina aportó a casos abiertos de otros queda sin su nombre ("una cuenta eliminada").
 - La conversación con familia ya no está.
+- Sus reportes de errores siguen, como "una cuenta eliminada" y sin captura; en **Storage → capturas** su carpeta quedó vacía.
 - No se puede volver a ingresar con esa cuenta.
 
 - [ ] Android · Chrome

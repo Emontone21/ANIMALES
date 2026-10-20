@@ -1,6 +1,6 @@
 # Pruebas SQL
 
-Un archivo por fase, para correr sobre una base con todas las migraciones aplicadas (hoy, 0001 a 0014):
+Un archivo por fase, para correr sobre una base con todas las migraciones aplicadas (hoy, 0001 a 0016):
 
 | Archivo | Qué prueba |
 |---|---|
@@ -10,6 +10,7 @@ Un archivo por fase, para correr sobre una base con todas las migraciones aplica
 | `fase8_casos.sql` | Editar y borrar un reporte: solo quien lo publicó, qué se borra con un caso (también los avisos de otras personas y los reportes unidos), qué fotos se borran con sus miniaturas y qué pasa al cambiar la especie. |
 | `fase9_revision.sql` | Correcciones de la revisión integral: avisos de coincidencias con bloqueos, con quién se abre una conversación, ubicación del resguardo redondeada, bucket sin listado, aviso al servicio de visión desde la cola, reintentos con espera y coincidencias solo entre casos abiertos y visibles. |
 | `fase9_parte2.sql` | Casos ocultos por moderación y conversaciones (0014): qué ven del caso oculto, sus avistamientos, coincidencias y contactos una persona sin cuenta, otra cuenta, quien lo publicó y moderación; una coincidencia con un lado oculto; conversaciones nuevas rechazadas y las que había, legibles; volver a mostrarlo. Además, quien publicó le escribe a quien lo vio, un tercero no, bloqueos, cuentas borradas y reportes unidos. |
+| `errores.sql` | Reportar un error (0015 y 0016): qué se valida con y sin cuenta (largo, contacto solo sin cuenta, captura solo propia y del bucket privado), el límite de 5 por hora por cuenta y el tope sin cuenta, que una persona sin cuenta no ve nada, que solo moderación lee y resuelve (una vez, con aviso a quien lo mandó), quién ve las capturas, los avisos a moderación con bloqueos y qué queda al borrar la cuenta. Usa usuarios propios y cambia el tope sin cuenta solo dentro de la transacción. |
 
 ## Cómo correrlas
 

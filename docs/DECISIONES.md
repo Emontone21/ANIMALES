@@ -299,3 +299,72 @@ react-native-web 0.21 ya no traduce `accessibilityState`, salvo `disabled`: "sel
 - `aria-busy` en botones.
 
 En las tarjetas (`link`) y en el botón de seguir (`button`) "seleccionado" queda solo para nativo: ARIA no permite `aria-selected` ahí, y en el botón el nombre ya lo dice ("Siguiendo"). Toda foto lleva texto alternativo: `FotoMiniatura` pide una descripción, el título del caso (`t.animal.tituloCaso`).
+
+## 2026-10-20 · Hoja "Cerca tuyo" plegable con PanResponder y Animated
+
+La hoja del celular tenía alto fijo y tapaba parte del mapa. Ahora tiene dos posiciones, abierta y plegada (solo la barra). Se cambia arrastrando la barra o tocándola. Detalle visual en `docs/DISENO.md`, 6.7.
+
+- **Sin librerías nuevas en la carga inicial.** El arrastre usa `PanResponder` y la posición `Animated`, de React Native: los dos ya estaban en el bloque inicial (los usa react-native-web). `react-native-gesture-handler` está instalado pero no entra en el build web, y sumarlo por esto costaba más que el resto del cambio.
+- **La hoja siempre mide lo mismo, y baja:** plegarla es un `translateY` de la hoja (y del botón de mi ubicación). No se anima el alto, que obligaría a rehacer el diseño del carrusel en cada cuadro. El contenedor del mapa recorta lo que queda abajo.
+- **Toda la barra es el botón** (con `aria-expanded`, "Ocultar casos" o "Mostrar casos"). "Ver lista" queda encima, y el título deja pasar los toques. El arrastre toma el gesto solo cuando el dedo se movió más de 6 px en vertical. Así un toque sigue siendo del botón y un desliz al costado no es de la hoja.
+- **En web, `touch-action: none`** en la barra: Safari de iPhone y Chrome de Android no desplazan la página ni recargan mientras se arrastra. El mapa no recibe el gesto, porque la hoja no está dentro de su contenedor.
+- **Los créditos del mapa bajan al soltar**, no durante el arrastre: se ubican con los márgenes del mapa (`margenes.bottom`), que cambian con el estado. En web pasan con una transición de 220 ms. El mapa no cambia su `padding` al plegar, para no saltar; al tocar un marcador con la hoja plegada, la cámara centra con el margen de la hoja abierta (`irA` acepta márgenes).
+- **Se recuerda** en el dispositivo, con `zustand` y `persist`, como la apariencia (`encontrados-hoja-cerca`).
+- **Las reglas del gesto** (cuándo es arrastre, a qué posición va al soltar) son funciones puras con su prueba (`src/features/mapa/posicionHoja.ts`).
+
+## 2026-10-20 · Instalar la app: manifest y un service worker mínimo
+
+"Instalar la app" en Perfil ofrece lo que cada navegador permite. Las reglas están en `src/features/instalar/formaDeInstalar.ts`, con su prueba:
+- **Chrome y Edge:** abren su propia ventana de instalación (`beforeinstallprompt`).
+- **iPhone y iPad:** una hoja con los pasos de Compartir.
+- **Navegadores de WhatsApp, Instagram y Facebook:** se explica cómo abrir el link en Chrome o Safari.
+- **Ya instalada o en la app nativa:** el botón no se muestra.
+
+- **Service worker:** según la documentación de Chrome, desde la versión 108 (Android) y 112 (computadora) instalar desde el menú ya no pide service worker. Pero el aviso `beforeinstallprompt`, que es el que usa el botón, sigue pidiendo uno con un manejador de `fetch` que no esté vacío (Chrome ignora los vacíos). `public/sw.js` es lo mínimo:
+  - responde las páginas (navegaciones) siempre desde la red, con *navigation preload* para no demorarlas;
+  - no toca nada más: ni JS, ni fotos, ni la API de Supabase;
+  - no usa Cache Storage ni funciona sin conexión.
+
+  Se registra cuando termina la carga. Una prueba comprueba que no guarda nada. Con las herramientas de Chrome (`Page.getInstallabilityErrors`) la app queda instalable sin errores.
+- **El aviso se guarda en `index.html`:** Chrome lo manda una sola vez y a veces antes de que cargue la app. Un script en el `<head>` lo guarda en `window.__instalar` (con `preventDefault`, que reemplaza la barrita automática de Chrome por el botón de Perfil). También anota `appinstalled`, para no volver a ofrecerla. La app lo lee con `useSyncExternalStore`.
+- **iPhone con otros navegadores:** desde iOS 16.4, Chrome y Firefox también agregan a inicio desde Compartir, así que ven los mismos pasos que Safari.
+- **Manifest:** nombre y descripción de `es-UY.ts` y colores de `tema.ts` (el `fondo` del claro). Como el JSON no admite comentarios, una prueba comprueba que coincidan. Los íconos (192, 512, maskable de 512 y el de iPhone de 180) los genera `scripts/iconos-web.py` desde `assets/images/icon.png`. Ese ícono sigue siendo el de la plantilla de Expo: el ícono propio es trabajo gráfico pendiente (DISENO.md, sección 10).
+
+## 2026-10-20 · Reportar un error: solo lo lee moderación y la base pone los límites
+
+Cualquiera, con o sin cuenta, puede avisar desde Perfil que algo anda mal. Los reportes van a `reportes_errores` (migraciones 0015 y 0016):
+
+- **Solo por RPC.** `reportar_error` valida, limita y avisa. Desde la API no hay INSERT ni UPDATE: la tabla solo se lee, y solo moderación (RLS con `es_moderador()`). Tampoco la lee quien mandó el reporte: con cuenta, la respuesta le llega a Actividad al resolverse (`resolver_reporte_error`, solo moderación).
+- **Límites en la base:**
+  - 5 reportes por hora por cuenta;
+  - un tope global por hora para los que se mandan sin cuenta (30, en `config_app`), que no frena a quien tiene cuenta.
+
+  Un candado (`pg_advisory_xact_lock`) evita que dos reportes simultáneos pasen el mismo límite. La columna `sin_cuenta` dice cómo se mandó: un reporte de una cuenta borrada queda sin usuario, pero no cuenta como anónimo. El tope sin cuenta lo puede llenar alguien a propósito; lo peor que pasa es que, por una hora, quien no tiene cuenta no puede reportar.
+- **No pide los términos:** no publica nada (lo leen solo los moderadores) y sin cuenta no se pueden aceptar. Que justo un error impida aceptarlos tampoco tiene que impedir reportarlo.
+- **Contacto solo sin cuenta.** Es el único dato personal, opcional, y lo ven solo los moderadores: la tabla no es pública. Con cuenta no se pide (la base lo rechaza), porque la respuesta llega por Actividad.
+- **Capturas en un bucket privado, `capturas`.** Solo se suben con cuenta, a la carpeta propia. Las leen quien la subió y moderación, con un link firmado de una hora. Se comprimen como las fotos (`comprimirFoto`: JPEG de 1280 de ancho), sin miniatura: una captura recortada al centro no sirve. Nunca van al bucket público `fotos`.
+- **Al borrar la cuenta:** sus reportes quedan sin autor y sin la ruta de la captura (`limpiar_cuenta`). La app borra antes sus capturas con la API de Storage (`capturas_para_borrar`), como hace con las fotos. Si la 0016 no está aplicada, ese paso se saltea.
+- **Avisos:** cada reporte nuevo le avisa a cada moderador, con quien lo mandó como actor, como el resto de los avisos. Quien lo bloqueó no recibe el aviso, pero lo ve en el panel. El aviso de "resuelto" no lleva actor: lo resuelve moderación, no una persona.
+- **Lo que suma la app:**
+  - la pantalla anterior a Perfil (`src/lib/rutasRecientes.ts`, que anota las rutas en memoria);
+  - el user agent;
+  - el tamaño de la ventana con la densidad;
+  - la plataforma;
+  - la versión.
+
+  El formulario lo muestra antes de mandarlo. La base recorta esos datos en vez de rechazar el reporte.
+
+## 2026-10-20 · La versión del deploy, fuera de la carga inicial
+
+El reporte dice qué versión se estaba usando: la de `app.json` más el commit del deploy. El build de Vercel pasa `EXPO_PUBLIC_COMMIT` (de `VERCEL_GIT_COMMIT_SHA`) y `EXPO_PUBLIC_FECHA_BUILD` (`vercel.json`, `buildCommand`). Si no hay commit, se usa la fecha.
+
+Esas dos variables se leen solo en el formulario de errores, que va en un bloque aparte, y no en `src/lib/env.ts`. Si estuvieran en el bloque inicial, cada deploy cambiaría su nombre y todos volverían a bajar los 290 KB de `entry`, aunque el deploy solo cambiara la documentación.
+
+## 2026-10-20 · Bloques aparte y el bloque común de Metro
+
+El formulario de errores, la sección Errores del panel y las hojas de instalar se cargan al usarlas (`lazy` e `import()`). Medirlo mostró una trampa: si un módulo lo usan dos bloques que se cargan aparte (o un bloque aparte y una pantalla), Metro lo pone en `__common`, que se baja siempre al abrir la app. Pasaba con `src/features/errores/api.ts`, que usaban el formulario y el panel: se dividió en `api.ts` (mandar) y `moderacion.ts` (listar y resolver). `hojaCompartir.web.ts` lo comparten el detalle y la hoja de instalar, y quedó en `__common` aunque se importe con `import()` (853 bytes sin comprimir). Al sumar un bloque aparte, conviene mirar qué entra en `__common` (el reporte `docs/reportes/2026-10-20-mejoras.md` explica cómo).
+
+Lo que sí suma a la carga inicial, medido en ese reporte:
+- los textos nuevos de `es-UY.ts`, que por regla viven ahí;
+- el código de la hoja plegable, en la pantalla del mapa;
+- el script y los enlaces de instalar en `index.html`.

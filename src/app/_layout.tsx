@@ -19,6 +19,7 @@ import { useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 import { activarFuentesWeb } from '@/lib/fuentesWeb';
 import { ocultarPantallaCarga } from '@/lib/pantallaCarga';
+import { anotarRuta } from '@/lib/rutasRecientes';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -113,6 +114,9 @@ function Navegacion() {
   const amplio = useDisposicion() === 'amplio';
   const recuperando = useRecuperacion((estado) => estado.activa);
   usePush(usuario?.id);
+
+  // La pantalla anterior, para "Reportar un error" (src/lib/rutasRecientes.ts).
+  useEffect(() => anotarRuta(ruta), [ruta]);
 
   // Al volver de un link de recuperación (aunque Supabase lo haya mandado a la
   // raíz), lo primero es elegir la contraseña nueva.

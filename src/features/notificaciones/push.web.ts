@@ -10,5 +10,9 @@ export function destinoDe(datos: DatosNotificacion): Href {
     return { pathname: '/conversacion/[id]', params: { id: datos.conversacion_id } };
   }
   if (datos.animal_id) return { pathname: '/animal/[id]', params: { id: datos.animal_id } };
+  // Un reporte de un error nuevo: al panel, en Errores. Quien lo mandó lee la respuesta acá.
+  if (datos.reporte_error_id && datos.moderacion) {
+    return { pathname: '/moderacion', params: { seccion: 'errores' } };
+  }
   return '/actividad';
 }

@@ -28,12 +28,18 @@ export type MensajeDetalle = Database['public']['Views']['mensajes_detalle']['Ro
 export type DenunciaDetalle = Database['public']['Views']['denuncias_detalle']['Row'];
 export type BloqueoDetalle = Database['public']['Views']['bloqueos_detalle']['Row'];
 export type EstadoDenuncia = Database['public']['Enums']['estado_denuncia'];
+export type ReporteErrorDetalle = Database['public']['Views']['reportes_errores_detalle']['Row'];
+/** Dónde se mandó un reporte de un error (reportes_errores.plataforma). */
+export type Plataforma = 'web' | 'ios' | 'android';
 
 /** Datos que viajan dentro de una notificación (jsonb `datos`). */
 export type DatosNotificacion = {
   animal_id?: string;
   coincidencia_id?: string;
   conversacion_id?: string;
+  /** Reportes de errores: a moderación (`moderacion`) y, al resolverse, a quien lo mandó. */
+  reporte_error_id?: string;
+  moderacion?: boolean;
 };
 
 /** [longitud, latitud], el orden que usan GeoJSON y MapLibre. */
