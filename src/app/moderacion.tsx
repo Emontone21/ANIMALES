@@ -19,15 +19,18 @@ import { t } from '@/i18n/es-UY';
 import { mensajeDeError } from '@/lib/errores';
 import { fechaHoraCorta } from '@/lib/fechas';
 
-// Los reportes de errores van en un bloque aparte: se carga al elegir Errores.
+// Errores y Reconocimiento van en bloques aparte: se cargan al elegirlos.
 const ErroresModeracion = lazy(() => import('@/components/moderacion/ErroresModeracion'));
+const ReconocimientoModeracion = lazy(
+  () => import('@/components/moderacion/ReconocimientoModeracion'),
+);
 
-type Seccion = 'denuncias' | 'errores';
+type Seccion = 'denuncias' | 'errores' | 'reconocimiento';
 
 /**
  * Panel para moderadores (perfiles.es_moderador): denuncias (y ocultar
- * publicaciones) y errores que reportan las personas. El aviso de un error
- * nuevo abre Errores (`?seccion=errores`).
+ * publicaciones), errores que reportan las personas y el estado del
+ * reconocimiento. El aviso de un error nuevo abre Errores (`?seccion=errores`).
  */
 export default function PantallaModeracion() {
   const { usuario } = useAuth();
@@ -51,6 +54,7 @@ export default function PantallaModeracion() {
         opciones={[
           { valor: 'denuncias', etiqueta: t.errores.moderacion.denuncias },
           { valor: 'errores', etiqueta: t.errores.moderacion.errores },
+          { valor: 'reconocimiento', etiqueta: t.reconocimiento.titulo },
         ]}
         valor={seccion}
         onCambio={setSeccion}
@@ -58,6 +62,10 @@ export default function PantallaModeracion() {
       {seccion === 'errores' ? (
         <Suspense fallback={<Cargando />}>
           <ErroresModeracion />
+        </Suspense>
+      ) : seccion === 'reconocimiento' ? (
+        <Suspense fallback={<Cargando />}>
+          <ReconocimientoModeracion />
         </Suspense>
       ) : (
         <Denuncias />

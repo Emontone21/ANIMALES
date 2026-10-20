@@ -29,6 +29,9 @@ export type DenunciaDetalle = Database['public']['Views']['denuncias_detalle']['
 export type BloqueoDetalle = Database['public']['Views']['bloqueos_detalle']['Row'];
 export type EstadoDenuncia = Database['public']['Enums']['estado_denuncia'];
 export type ReporteErrorDetalle = Database['public']['Views']['reportes_errores_detalle']['Row'];
+/** Moderación › Reconocimiento (estado_reconocimiento, 0017). */
+export type EstadoReconocimiento =
+  Database['public']['Functions']['estado_reconocimiento']['Returns'][number];
 /** Dónde se mandó un reporte de un error (reportes_errores.plataforma). */
 export type Plataforma = 'web' | 'ios' | 'android';
 

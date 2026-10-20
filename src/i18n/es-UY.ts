@@ -461,6 +461,30 @@ export const t = {
     cuentaNuevaAyuda:
       'La cuenta tenía menos de 7 días: no cuenta para ocultar sola la publicación.',
   },
+  /** Moderación › Reconocimiento (servicio de visión). */
+  reconocimiento: {
+    titulo: 'Reconocimiento',
+    intro:
+      'El servicio de visión compara cada foto nueva con los casos cercanos de la misma especie y sugiere posibles coincidencias.',
+    estado: 'Estado',
+    configurado: 'Configurado',
+    sinConfigurar: 'Sin configurar',
+    sinConfigurarAyuda:
+      'Falta conectar el servicio de visión: cargar su dirección y su secreto en Supabase (services/vision/README.md).',
+    pendientes: 'Fotos pendientes',
+    /** Debajo de las pendientes: las que fallaron y esperan su próximo intento. */
+    reintentando: (n: number) =>
+      n === 1 ? '1 espera un nuevo intento' : `${n} esperan un nuevo intento`,
+    conError: 'Fotos con error',
+    conErrorAyuda: 'Fallaron 8 veces y ya no se reintentan solas.',
+    ultimaProcesada: 'Última foto procesada',
+    ultimaCoincidencia: 'Última coincidencia',
+    nunca: 'Todavía ninguna',
+    procesar: 'Procesar pendientes ahora',
+    enviado:
+      'Le avisamos al servicio. Si estaba apagado, tarda unos segundos en arrancar; esta pantalla se actualiza sola.',
+    sinPendientes: 'No hay fotos pendientes.',
+  },
   estadoDenuncia: {
     pendiente: 'Pendiente',
     revisada: 'Revisada',

@@ -210,6 +210,7 @@ Se usa Ionicons, que ya está instalado, siempre en variante de contorno (`-outl
 | Compartir de Safari (pasos para instalar en iPhone) | `share-outline` |
 | Elegir una captura | `image-outline` |
 | Ver el mapa en grande (sobre el mini mapa) | `expand-outline` |
+| Procesar pendientes ahora (moderación) | `refresh-outline` |
 
 ## 6. Componentes
 
@@ -506,9 +507,18 @@ Contenido centrado, de 420 de ancho como máximo:
 
 ### 7.8 Moderación y página no encontrada
 
-- **Moderación:** arriba, chips "Denuncias" y "Errores" (activo en `inverso`). El aviso de un error nuevo abre "Errores".
+- **Moderación:** arriba, chips "Denuncias", "Errores" y "Reconocimiento" (activo en `inverso`). El aviso de un error nuevo abre "Errores".
   - *Denuncias:* misma lista que Actividad. La marca "Oculta" usa una etiqueta con `peligroSuave` y `peligro`.
   - *Errores:* chips "Pendientes (n)" y "Resueltos (n)". Cada reporte es una fila con la etiqueta "Pendiente" (`avisoFondo` y `texto`) o "Resuelto" (`superficieSuave` y `textoSecundario`), "Sin cuenta" si se mandó así, quién y cuándo en `pequeno`, qué pasó en `cuerpo` y un bloque `superficieSuave` de radio `l` con los datos (cada etiqueta en Figtree 700). "Ver la captura" (botón `fantasma`) la muestra entera, de 320 de alto, sobre `superficieSuave`. Los pendientes terminan con un campo "Nota para quien lo reportó (opcional)" y el botón `primario` "Marcar como resuelto"; los resueltos, con quién lo resolvió, cuándo y la nota.
+  - *Reconocimiento:* el estado del servicio de visión, sin su dirección ni su secreto.
+    - Arriba, una línea en `secundario` que explica qué hace.
+    - Una tarjeta (borde de 1 en `borde`, radio `xl`, relleno de 16) con cada dato: el nombre en `secundario` y, debajo, el valor en `cuerpoFuerte`.
+      - **Estado:** etiqueta "Configurado" (`primarioSuave` y `textoPrimarioSuave`) o "Sin configurar" (`avisoFondo` y `texto`).
+      - **Fotos pendientes,** con "n esperan un nuevo intento" en `pequeno` si hay.
+      - **Fotos con error,** en `peligro` si hay, con la ayuda en `pequeno`.
+      - **Última foto procesada** y **última coincidencia,** con `diaYHora` o "Todavía ninguna".
+    - Debajo, el botón `secundario` "Procesar pendientes ahora" (ícono `refresh-outline`), apagado si no está configurado, y el resultado en un mensaje.
+    - Se actualiza sola cada 15 s mientras está a la vista.
 - **No encontrado:** mensaje centrado con un botón para volver al mapa.
 
 ### 7.9 Pantalla de carga (web)

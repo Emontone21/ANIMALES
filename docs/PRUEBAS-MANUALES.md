@@ -1,6 +1,6 @@
 # Pruebas manuales
 
-Recorrido de toda la app, paso a paso, para hacer en la web publicada (https://animales-blue.vercel.app). Lleva unos 70 minutos en un dispositivo; en los otros dos se repite marcando la casilla de cada uno.
+Recorrido de toda la app, paso a paso, para hacer en la web publicada (https://animales-blue.vercel.app). Lleva unos 75 minutos en un dispositivo; en los otros dos se repite marcando la casilla de cada uno.
 
 - **Dispositivos:** Android con Chrome, iPhone con Safari y una computadora (cualquier navegador). Cada flujo tiene una casilla por dispositivo.
 - **Cuentas:** dos, que en esta lista se llaman **familia** (publica un perro perdido) y **vecina** (lo encuentra y lo ve). Para probar de a una persona: familia en el celular y vecina en la computadora, o una en una ventana privada.
@@ -505,6 +505,35 @@ Esperado:
 - En oscuro, el mapa y la tarjeta usan la paleta oscura y los números se leen.
 - El lector anuncia "Ver el mapa en grande, botón" y, al pasar de punto, lee el punto nuevo.
 - En la computadora, el mapa ocupa todo al lado del riel y la tarjeta va abajo a la izquierda.
+
+- [ ] Android · Chrome
+- [ ] iPhone · Safari
+- [ ] Computadora
+
+## 26. Reconocimiento en Cloud Run · 6 min · [Visión]
+
+Cuenta: familia (moderadora) en la computadora; vecina en un celular. Requiere la migración 0017 y el servicio desplegado con `services/vision/desplegar.sh`.
+
+1. Familia: **Perfil → Panel de moderación → Reconocimiento**. Mirá el estado.
+2. Vecina: publicá un encontrado con foto. Con el servicio apagado (más de 15 minutos sin fotos), mejor.
+3. Familia: sin tocar nada, mirá cómo cambian **Fotos pendientes** y **Última foto procesada** (la sección se actualiza sola cada 15 s).
+4. Familia: tocá **Procesar pendientes ahora** con la cola vacía.
+5. En Google Cloud: **Cloud Run → encontrados-vision → Registros**. Buscá la foto del paso 2.
+6. En el SQL Editor de Supabase, el historial del trabajo de cada 2 minutos:
+   ```sql
+   select status, return_message, start_time from cron.job_run_details
+   where jobid = (select jobid from cron.job where jobname = 'vision-pendientes')
+   order by start_time desc limit 5;
+   ```
+7. Al día siguiente: **Facturación → Informes** del proyecto de Google Cloud.
+
+Esperado:
+- El estado dice **Configurado**. No aparecen la URL del servicio ni el secreto.
+- La foto pasa por **Fotos pendientes** y en menos de un minuto (unos segundos más si el servicio estaba apagado) **Última foto procesada** dice la hora. Si había un caso parecido cerca, **Última coincidencia** también cambia.
+- Con la cola vacía, el botón dice "No hay fotos pendientes.".
+- En los registros de Cloud Run, la foto aparece con "procesado en … s".
+- En `cron.job_run_details` hay una corrida cada 2 minutos, todas `succeeded`.
+- El consumo de Cloud Run es US$0 (dentro de la capa gratuita) y no llegó ningún mail de la alerta de presupuesto.
 
 - [ ] Android · Chrome
 - [ ] iPhone · Safari

@@ -1,25 +1,27 @@
-# Servicio de visión de Encontrados, pensado para un Space de Hugging Face
-# (tipo Docker, CPU básica gratuita). Expone el puerto 7860 como exige HF.
+# Servicio de visión de Encontrados para Google Cloud Run (lo construye
+# desplegar.sh con `gcloud run deploy --source`). Cloud Run pasa el puerto en
+# PORT (8080); sin PORT escucha en 7860.
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    HF_HOME=/data/hf \
-    TRANSFORMERS_OFFLINE=0
+    HF_HOME=/opt/modelos
 
-# HF Spaces corre como usuario 1000; los modelos se cachean en /data.
-RUN useradd -m -u 1000 app && mkdir -p /data/hf && chown -R app:app /data
 WORKDIR /srv
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
-RUN chown -R app:app /srv
+
+# Los modelos se bajan en el build y quedan dentro de la imagen: el arranque en
+# frío los lee del disco y no depende de Hugging Face.
+RUN python -c "from app import vision; vision.cargar_modelos()"
+ENV HF_HUB_OFFLINE=1 \
+    TRANSFORMERS_OFFLINE=1
+
+RUN useradd -m -u 1000 app && chown -R app:app /srv /opt/modelos
 USER app
 
-# Descargar los modelos en el build para que el arranque en frío sea más corto.
-RUN python -c "from app import vision; vision.cargar_modelos()"
-
-EXPOSE 7860
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
+EXPOSE 8080
+CMD ["python", "-m", "app"]

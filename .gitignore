@@ -45,7 +45,9 @@ supabase/signing_keys.json
 
 # Servicio de visión (fase 3)
 services/vision/.venv/
-services/vision/__pycache__/
+services/vision/**/__pycache__/
+# Embeddings que guarda evaluar.py (--cache) y las fotos con las que se evalúa.
+services/vision/*.npz
 
 # Generados por postinstall (scripts/copiar-a-public.js)
 public/maplibre-gl-worker.mjs
