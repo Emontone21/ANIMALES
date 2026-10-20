@@ -13,8 +13,8 @@ Todo corre en la nube: no hace falta Docker ni Android Studio. Solo Node 20+ par
 ### 1. Supabase
 
 1. Creá un proyecto en [supabase.com](https://supabase.com) (plan gratuito). Guardá la contraseña de la base.
-2. En **Project Settings → API** copiá la **Project URL**, la clave **anon / publishable** y la **service_role** (esta última es secreta: solo va al servicio de visión).
-3. Aplicá las migraciones de `supabase/migrations/` **en orden** (0001 a 0016). Dos formas:
+2. Copiá la **Project URL** (botón **Connect**) y, en **Settings → API Keys**, la clave **anon / publishable**. La clave secreta del servicio de visión se crea en el paso 5.
+3. Aplicá las migraciones de `supabase/migrations/` **en orden** (0001 a 0017). Dos formas:
 
    **a) CLI** (sin instalar nada):
 
@@ -64,7 +64,7 @@ Además de la web estática, Vercel publica una función: `api/vista-previa.ts`.
 
 Sigue [services/vision/README.md](services/vision/README.md):
 1. Creá un proyecto de Google Cloud con facturación y una alerta de presupuesto de US$1.
-2. En Cloud Shell, la terminal del navegador, corré `services/vision/desplegar.sh`. Pide la URL de Supabase y la clave `service_role` sin mostrarlas, despliega el servicio en Cloud Run y al final imprime el SQL que conecta Supabase con el servicio.
+2. En Cloud Shell, la terminal del navegador, corré `services/vision/desplegar.sh`. Pide la URL de Supabase y una clave secreta (`sb_secret_…`) sin mostrarlas, despliega el servicio en Cloud Run y al final imprime el SQL que conecta Supabase con el servicio.
 3. Antes, aplicá la migración 0017: el trabajo de pg_cron que lo despierta cuando hay fotos pendientes.
 
 Sin este paso la app funciona igual; solo no aparecen "posibles coincidencias". El estado se ve en **Moderación → Reconocimiento**.

@@ -103,7 +103,7 @@ RPC: `publicar_animal`, `registrar_avistamiento`, `cambiar_estado_animal`, `reso
 - Las validaciones con un usuario que puede faltar (casos sin autor) usan `is distinct from`: con `<>` o `not in`, un null hace que la condición no se cumpla y la validación se saltea.
 - Borrar la cuenta solo actúa sobre `auth.uid()`. Las fotos se borran con la API de Storage, con la sesión del usuario; nunca por SQL. Lo mismo al borrar un reporte, que solo puede borrar quien lo publicó.
 - La vista previa del link (`api/vista-previa.ts`) lee con la clave anon y pide a la base solo las columnas que usa: ni el contacto ni quién publicó llegan a la función. Tampoco usa la descripción libre, donde alguien pudo haber escrito un teléfono, ni la ubicación.
-- Claves: la `anon` va en la app (pública por diseño); la `service_role` solo en el servicio de visión (Secret Manager de Google Cloud); `vision_secret` en `config_app` y en el servicio (también en Secret Manager); Google en el dashboard de Supabase.
+- Claves: la `anon` va en la app (pública por diseño); una clave secreta (`sb_secret_…`, o la legacy `service_role` mientras exista) solo en el servicio de visión (Secret Manager de Google Cloud); `vision_secret` en `config_app` y en el servicio (también en Secret Manager); Google en el dashboard de Supabase.
 
 ## Mapa
 

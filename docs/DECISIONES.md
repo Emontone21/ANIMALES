@@ -421,7 +421,7 @@ Otros detalles:
 
 ## 2026-10-20 · Las claves del servicio, en Secret Manager
 
-La clave `service_role` de Supabase y el secreto compartido podían ir como variables del servicio o en Secret Manager. Van en Secret Manager:
+La clave secreta de Supabase y el secreto compartido podían ir como variables del servicio o en Secret Manager. Van en Secret Manager:
 - Las variables se ven en la consola de Cloud Run y en `gcloud run services describe` para cualquiera con permiso de lectura en el proyecto, y quedan en cada revisión.
 - En Secret Manager están cifradas, solo las lee la cuenta del servicio y cada lectura queda registrada.
 - Entra en la capa gratuita: 6 versiones activas y 10 000 lecturas por mes. Cada arranque en frío lee 2.
@@ -430,6 +430,16 @@ Cómo lo maneja `desplegar.sh`:
 - Al cambiar las claves, destruye las versiones viejas (las destruidas no cuentan).
 - El servicio usa `latest`: cada despliegue arranca instancias nuevas, que leen la versión vigente.
 - `SUPABASE_URL` no es secreta y va como variable común.
+
+## 2026-10-20 · El servicio usa la clave secreta nueva de Supabase
+
+Supabase depreca las claves legacy `anon` y `service_role` (JWT) a fines de 2026. El servicio de visión y `desplegar.sh` aceptan la clave secreta nueva (`sb_secret_…`) y la prefieren:
+- **Dónde está:** Settings → API Keys → "Publishable and secret API keys" → Secret keys. Conviene una propia del servicio (por ejemplo `vision`): si se filtra, se borra sola, sin tocar las demás.
+- **Cómo se manda:** no es un JWT. Según la documentación de Supabase ("Understanding API keys"), va solo en el header `apikey`, no como `Authorization: Bearer`; con ella el pedido tiene el rol `service_role`, que salta la RLS, igual que antes.
+- **User-Agent:** Supabase rechaza (401) una clave secreta en un pedido que parece de un navegador. El servicio manda siempre `User-Agent: encontrados-vision`.
+- **La legacy sigue andando** mientras exista: va en `apikey` y como `Authorization: Bearer`. El servicio la toma de `SUPABASE_SERVICE_ROLE_KEY` si no está `SUPABASE_SECRET_KEY`; el script la acepta con un aviso. Las dos formas tienen su prueba (`services/vision/tests/test_db.py`).
+- **En Secret Manager** se guarda con el nombre `encontrados-supabase-secret-key` y llega al servicio como `SUPABASE_SECRET_KEY`.
+- **La app no cambia:** usa la `anon`, que también se depreca. Pasarla a la publishable (`sb_publishable_…`) queda pendiente: es otra tarea, con su variable en Vercel y la vista previa del link.
 
 ## 2026-10-20 · Umbral de similitud: 0,80 hasta medirlo con fotos reales
 

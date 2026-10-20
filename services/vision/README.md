@@ -67,10 +67,12 @@ La alerta avisa, pero no corta el servicio. Si llegara un mail, mirá **Facturac
 
    Si el repositorio es privado, `git clone` pide usuario y contraseña: en la contraseña va un token de GitHub (**Settings → Developer settings → Personal access tokens**, con permiso de lectura). Otra opción es bajar el ZIP del repositorio desde GitHub y subirlo con el menú **⋮ → Subir** de Cloud Shell.
 3. El script pide, sin mostrarlas mientras las escribís:
-   - **SUPABASE_URL:** en Supabase, **Project Settings → Data API**. Es `https://<ref>.supabase.co`.
-   - **Clave service_role:** en Supabase, **Project Settings → API Keys → Legacy API Keys**, **Reveal** y copiar. Es un texto largo que empieza con `eyJ`. Tiene que ser esta, no la nueva `sb_secret_…`.
+   - **SUPABASE_URL:** en Supabase, el botón **Connect** de arriba muestra la URL del proyecto. Es `https://<ref>.supabase.co`.
+   - **Clave secreta:** en Supabase, **Settings → API Keys → "Publishable and secret API keys"**, sección **Secret keys**. Conviene una propia del servicio: **Add new secret key**, con un nombre como `vision`, y copiarla. Empieza con `sb_secret_`.
 
    Antes de seguir, el script comprueba que la clave funcione.
+
+   La clave legacy `service_role` (pestaña **Legacy API Keys**, empieza con `eyJ`) también anda mientras Supabase la mantenga, pero la depreca a fines de 2026: el script avisa y conviene cambiarla por una secreta. Si alguna vez se filtra la secreta, se borra en la misma pantalla sin tocar las demás, y se vuelve a correr el script contestando **s**.
 4. Después:
    - genera el secreto compartido (`VISION_SECRET`) al azar;
    - guarda las dos claves en Secret Manager;

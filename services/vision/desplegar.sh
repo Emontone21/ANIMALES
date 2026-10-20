@@ -8,7 +8,7 @@
 #   cd ANIMALES/services/vision
 #   bash desplegar.sh
 #
-# La primera vez pide la URL de Supabase y la clave service_role (sin
+# La primera vez pide la URL de Supabase y su clave secreta (sin
 # mostrarlas), genera el secreto compartido y guarda las dos claves en Secret
 # Manager. Las siguientes, pregunta si querés cambiarlas; si no, solo actualiza
 # el código. Al final imprime el SQL para pegar en el SQL Editor de Supabase.
@@ -29,7 +29,7 @@ CPU=2
 TIEMPO_PEDIDO=300
 # Sin refuerzo de CPU al arrancar (--no-cpu-boost): viene prendido en los
 # servicios nuevos y se cobra en cada arranque en frío, que acá son casi todos.
-SECRETO_CLAVE=encontrados-supabase-service-role
+SECRETO_CLAVE=encontrados-supabase-secret-key
 SECRETO_VISION=encontrados-vision-secret
 
 cd "$(dirname "$0")"
@@ -83,22 +83,33 @@ fi
 VARIABLES="HILOS=$CPU,TIEMPO_MAXIMO_COLA_SEG=90"
 OPCIONES_CLAVES=()
 if [[ "$CAMBIAR" =~ ^[sS] ]]; then
-  echo "Están en Supabase: Project Settings → API (la URL) y API Keys → Legacy API Keys (service_role)."
+  echo "En Supabase: la URL está en el botón Connect; la clave, en Settings → API Keys →"
+  echo "\"Publishable and secret API keys\" → Secret keys (empieza con sb_secret_)."
   read -r -s -p "SUPABASE_URL (no se muestra): " SUPABASE_URL; echo
   SUPABASE_URL="${SUPABASE_URL%/}"
   [[ "$SUPABASE_URL" =~ ^https://[a-z0-9]+\.supabase\.co$ ]] \
     || falla "La URL tiene que ser como https://<ref>.supabase.co"
-  read -r -s -p "Clave service_role (no se muestra): " CLAVE; echo
-  [[ "$CLAVE" == eyJ* ]] \
-    || falla "Tiene que ser la clave service_role de Legacy API Keys (empieza con eyJ), no la sb_secret_…"
+  read -r -s -p "Clave secreta de Supabase (no se muestra): " CLAVE; echo
+  # La secreta nueva no es un JWT: va solo en el header apikey. La legacy
+  # service_role (un JWT) anda mientras Supabase la mantenga y va también como Bearer.
+  if [[ "$CLAVE" == sb_secret_* ]]; then
+    HEADERS="$(printf 'apikey: %s' "$CLAVE")"
+  elif [[ "$CLAVE" == eyJ* ]]; then
+    echo "Es la clave legacy service_role: anda, pero Supabase la depreca a fines de 2026."
+    echo "Conviene una secreta nueva (sb_secret_…) y volver a correr el script con ella."
+    HEADERS="$(printf 'apikey: %s\nAuthorization: Bearer %s' "$CLAVE" "$CLAVE")"
+  else
+    falla "Tiene que ser una clave secreta (sb_secret_…) o la legacy service_role (eyJ…), no la publishable."
+  fi
 
   # Antes de desplegar: que la clave sirva y que la base tenga la cola de visión.
-  CODIGO="$(curl -s -o /dev/null -w '%{http_code}' \
-    "$SUPABASE_URL/rest/v1/cola_vision_pendientes?select=avistamiento_id&limit=1" \
-    -H "apikey: $CLAVE" -H "Authorization: Bearer $CLAVE" || true)"
+  # Los headers van por un archivo temporal del proceso, no en la línea de comandos.
+  CODIGO="$(curl -s -o /dev/null -w '%{http_code}' -H @<(printf '%s\n' "$HEADERS") \
+    "$SUPABASE_URL/rest/v1/cola_vision_pendientes?select=avistamiento_id&limit=1" || true)"
+  unset HEADERS
   case "$CODIGO" in
     200) echo "La clave funciona y la base tiene la cola de visión." ;;
-    401|403) falla "Supabase rechazó la clave (HTTP $CODIGO). Revisá que sea la service_role." ;;
+    401|403) falla "Supabase rechazó la clave (HTTP $CODIGO). Revisá que sea una clave secreta del proyecto." ;;
     404) falla "La base no tiene la cola de visión (HTTP 404): faltan migraciones." ;;
     *) falla "No se pudo hablar con Supabase (HTTP $CODIGO). Revisá la URL." ;;
   esac
@@ -110,7 +121,7 @@ if [[ "$CAMBIAR" =~ ^[sS] ]]; then
   unset CLAVE VISION_SECRET
   VARIABLES="$VARIABLES,SUPABASE_URL=$SUPABASE_URL"
   OPCIONES_CLAVES=(
-    --update-secrets "SUPABASE_SERVICE_ROLE_KEY=$SECRETO_CLAVE:latest,VISION_SECRET=$SECRETO_VISION:latest"
+    --update-secrets "SUPABASE_SECRET_KEY=$SECRETO_CLAVE:latest,VISION_SECRET=$SECRETO_VISION:latest"
   )
   echo "Claves guardadas en Secret Manager."
 else
