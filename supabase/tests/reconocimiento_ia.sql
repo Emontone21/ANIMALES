@@ -176,7 +176,9 @@ begin
     raise exception 'FALLA 2a: la foto de un perro, en un caso de perro abierto, no se compara';
   end if;
 
-  if array(select animal_id from public.candidatos_ia(pg_temp.foto('P')))
+  -- Solo los casos de la prueba: en una base con datos, un caso real cerca
+  -- también puede ser candidato (en producción, el perro de Parque Rodó).
+  if array(select x.animal_id from public.candidatos_ia(pg_temp.foto('P')) x where x.animal_id in (select animal from casos))
      is distinct from array[pg_temp.caso('E2'), pg_temp.caso('E1')] then
     raise exception 'FALLA 2b: candidatos de P inesperados: %', (
       select string_agg(c.nombre, ', ' order by x.ord)
@@ -292,9 +294,9 @@ begin
      or (select procesado_en from public.avistamientos where id = pg_temp.foto('P')) is null then
     raise exception 'FALLA 3f: la foto comparada no salió de la cola';
   end if;
-  -- Los pares ya comparados no se vuelven a comparar.
+  -- Los pares ya comparados no se vuelven a comparar (entre los casos de la prueba).
   set local role service_role;
-  if exists (select 1 from public.candidatos_ia(pg_temp.foto('P'))) then
+  if exists (select 1 from public.candidatos_ia(pg_temp.foto('P')) x where x.animal_id in (select animal from casos)) then
     raise exception 'FALLA 3g: P tiene candidatos que ya se compararon';
   end if;
   reset role;
