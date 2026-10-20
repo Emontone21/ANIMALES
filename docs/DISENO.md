@@ -161,6 +161,7 @@ Cualquier combinación nueva de colores se verifica antes de usarla.
 - Nada por debajo de 12.
 - Oraciones en minúscula inicial normal, sin mayúsculas sostenidas.
 - Todo texto visible vive en `src/i18n/es-UY.ts`, con voseo.
+- La app no nombra la marca de la IA: dice "inteligencia artificial" o "IA" (y "el servicio de IA" para la cuenta, el crédito y los errores). Solo la política de privacidad nombra a Anthropic, como proveedor, igual que a Supabase y Vercel. Lo comprueba `__tests__/reconocimiento.test.ts`.
 
 ## 4. Forma, espacio y elevación
 
@@ -514,7 +515,7 @@ Contenido centrado, de 420 de ancho como máximo:
   - *Denuncias:* misma lista que Actividad. La marca "Oculta" usa una etiqueta con `peligroSuave` y `peligro`.
   - *Errores:* chips "Pendientes (n)" y "Resueltos (n)". Cada reporte es una fila con la etiqueta "Pendiente" (`avisoFondo` y `texto`) o "Resuelto" (`superficieSuave` y `textoSecundario`), "Sin cuenta" si se mandó así, quién y cuándo en `pequeno`, qué pasó en `cuerpo` y un bloque `superficieSuave` de radio `l` con los datos (cada etiqueta en Figtree 700). "Ver la captura" (botón `fantasma`) la muestra entera, de 320 de alto, sobre `superficieSuave`. Los pendientes terminan con un campo "Nota para quien lo reportó (opcional)" y el botón `primario` "Marcar como resuelto"; los resueltos, con quién lo resolvió, cuándo y la nota.
   - *Reconocimiento:* el estado del reconocimiento con IA, sin la dirección de la función ni su secreto.
-    - Arriba, una línea en `secundario` que explica qué hace (Claude, de Anthropic; siempre confirma una persona).
+    - Arriba, una línea en `secundario` que explica qué hace: "La inteligencia artificial describe cada foto nueva…" (sin nombrar la marca; siempre confirma una persona).
     - Una tarjeta (borde de 1 en `borde`, radio `xl`, relleno de 16) con cada dato: el nombre en `secundario` y, debajo, el valor en `cuerpoFuerte`.
       - **Estado:** etiqueta "Configurado" (`primarioSuave` y `textoPrimarioSuave`), "Sin configurar" o "Apagado" (`avisoFondo` y `texto`), o "Pausado: sin crédito" (`peligroSuave` y `peligro`).
       - **Fotos pendientes,** con "n esperan un nuevo intento" en `pequeno` si hay.
@@ -692,6 +693,8 @@ El mapa en grande del recorrido no es una columna: ocupa toda el área de conten
 | `animal.avisoEstafa` | Nunca pagues para recuperar a un animal. Si alguien te pide plata o datos de tu tarjeta, denuncialo. |
 | `coincidencias.resumen(especie, km, porcentaje)` | Un perro encontrado a 1,2 km se parece en un 86 %. |
 | `coincidencias.quienYDonde(especie, tipo, nombre, km)` | Un perro encontrado a 1,2 km. (debajo del motivo de la IA) |
+| `reconocimiento.intro` | La inteligencia artificial describe cada foto nueva, la compara con los casos cercanos de la misma especie y sugiere posibles coincidencias. Siempre confirma una persona. |
+| `reconocimiento.pausadoAyuda` | El servicio de IA se quedó sin crédito y el reconocimiento se pausó. Cargá crédito y tocá Reactivar: las fotos que esperan se procesan solas. |
 | `reconocimiento.costo(usd)` | US$ 0,42 / Menos de US$ 0,01 |
 | `reconocimiento.reactivar` | Reactivar |
 | `mensajes.escribir` | Escribir |

@@ -84,7 +84,7 @@ describe('Moderación › Reconocimiento', () => {
         ahora,
       ),
     ).toBe(`${t.fechas.hoyALas('12:05')} · Comparar · Sin crédito`);
-    // Un resultado sin texto propio se muestra como error de la API.
+    // Un resultado sin texto propio se muestra como error del servicio de IA.
     expect(
       filaError(
         { created_at: '2026-10-20T15:05:00Z', tipo: 'describir', resultado: 'en_curso' },
@@ -102,5 +102,25 @@ describe('Moderación › Reconocimiento', () => {
   test('las pendientes que esperan un nuevo intento', () => {
     expect(t.reconocimiento.reintentando(1)).toBe('1 espera un nuevo intento');
     expect(t.reconocimiento.reintentando(3)).toBe('3 esperan un nuevo intento');
+  });
+
+  test('la app dice "inteligencia artificial" o "IA", no la marca; solo la privacidad nombra al proveedor', () => {
+    const marca = /claude|anthropic/i;
+    const conMarca: string[] = [];
+    const recorrer = (valor: unknown, ruta: string) => {
+      if (ruta === 'legal.privacidad') return;
+      // De las funciones se mira el código: los textos fijos de sus plantillas.
+      if (typeof valor === 'string' || typeof valor === 'function') {
+        if (marca.test(String(valor))) conMarca.push(ruta);
+      } else if (valor && typeof valor === 'object') {
+        for (const [clave, hijo] of Object.entries(valor)) {
+          recorrer(hijo, ruta ? `${ruta}.${clave}` : clave);
+        }
+      }
+    };
+    recorrer(t, '');
+    expect(conMarca).toEqual([]);
+    expect(JSON.stringify(t.legal.privacidad)).toMatch(/Anthropic/);
+    expect(JSON.stringify(t.legal.privacidad)).not.toMatch(/Claude/);
   });
 });

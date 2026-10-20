@@ -483,7 +483,7 @@ export const t = {
   reconocimiento: {
     titulo: 'Reconocimiento',
     intro:
-      'Claude, la inteligencia artificial de Anthropic, describe cada foto nueva, la compara con los casos cercanos de la misma especie y sugiere posibles coincidencias. Siempre confirma una persona.',
+      'La inteligencia artificial describe cada foto nueva, la compara con los casos cercanos de la misma especie y sugiere posibles coincidencias. Siempre confirma una persona.',
     estado: 'Estado',
     configurado: 'Configurado',
     sinConfigurar: 'Sin configurar',
@@ -494,7 +494,7 @@ export const t = {
     apagadoAyuda:
       'El reconocimiento está apagado (config_app.ia_activa). Ninguna foto se analiza hasta volver a prenderlo.',
     pausadoAyuda:
-      'La cuenta de Anthropic se quedó sin crédito y el reconocimiento se pausó. Cargá crédito y tocá Reactivar: las fotos que esperan se procesan solas.',
+      'El servicio de IA se quedó sin crédito y el reconocimiento se pausó. Cargá crédito y tocá Reactivar: las fotos que esperan se procesan solas.',
     reactivar: 'Reactivar',
     reactivado:
       'Listo: el reconocimiento sigue. Las fotos que esperaban se procesan en unos minutos.',
@@ -510,7 +510,7 @@ export const t = {
       if (usd < 0.01) return 'Menos de US$ 0,01';
       return `US$ ${usd.toFixed(2).replace('.', ',')}`;
     },
-    costoAyuda: 'Estimado con los precios de la API; la cuenta de Anthropic tiene el valor exacto.',
+    costoAyuda: 'Estimado con los precios del servicio de IA; el valor exacto está en su cuenta.',
     erroresIa: 'Errores de la IA',
     erroresHoy: (n: number) => (n === 1 ? '1 hoy' : `${n} hoy`),
     sinErrores: 'Ninguno en la última semana.',
@@ -521,9 +521,9 @@ export const t = {
     errorLlamada: {
       invalida: 'Respuesta que no se pudo usar',
       limite: 'Límite de pedidos',
-      sobrecarga: 'La API estaba sobrecargada',
+      sobrecarga: 'El servicio de IA estaba sobrecargado',
       sin_credito: 'Sin crédito',
-      error: 'Error de la API',
+      error: 'Error del servicio de IA',
     } satisfies Record<ErrorLlamadaIa, string>,
     /** "Hoy a las 14:05 · Comparar · Sin crédito" */
     filaError: (cuando: string, tipo: string, error: string) => `${cuando} · ${tipo} · ${error}`,
@@ -963,7 +963,7 @@ export const t = {
         {
           titulo: 'Reconocimiento de imágenes',
           parrafos: [
-            'Las fotos de los casos se analizan con un servicio de inteligencia artificial de Anthropic (Claude), que describe al animal y lo compara con casos cercanos para sugerir posibles coincidencias. Las sugerencias las confirma siempre una persona: nada se une solo.',
+            'Las fotos de los casos se analizan con un servicio de inteligencia artificial de Anthropic, que describe al animal y lo compara con casos cercanos para sugerir posibles coincidencias. Las sugerencias las confirma siempre una persona: nada se une solo.',
             'A Anthropic le mandamos solo las fotos y los datos del animal (especie, tamaño, color y si tiene collar). Nunca tu nombre, tu email, tu contacto ni tus mensajes.',
           ],
         },
