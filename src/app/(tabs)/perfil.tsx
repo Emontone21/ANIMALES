@@ -155,6 +155,7 @@ export default function PantallaPerfil() {
                     style={(estado) => [estilos.fila, estaActivo(estado) && estilos.filaActiva]}>
                     <FotoMiniatura
                       ruta={a.foto_principal_path}
+                      descripcion={t.animal.tituloCaso(a.nombre, a.especie, a.color, a.tamanio)}
                       style={estilos.foto}
                       contentFit="cover"
                       accessibilityIgnoresInvertColors

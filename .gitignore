@@ -47,5 +47,7 @@ supabase/signing_keys.json
 services/vision/.venv/
 services/vision/__pycache__/
 
-# Generado por postinstall (scripts/copiar-worker-maplibre.js)
+# Generados por postinstall (scripts/copiar-a-public.js)
 public/maplibre-gl-worker.mjs
+public/maplibre-gl.css
+public/fuentes/

@@ -2,12 +2,10 @@ import { View } from 'react-native';
 
 import { CapaRecorrido } from '@/components/mapa/CapaRecorrido';
 import { MapaBase } from '@/components/mapa/MapaBase';
-import { limitesDe, type MapaRecorridoProps } from '@/components/mapa/tipos';
+import { ALTO_MAPA_RECORRIDO, limitesDe, type MapaRecorridoProps } from '@/components/mapa/tipos';
 import { coloresDeEstado, Radio } from '@/constants/tema';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { ZOOM_PUNTO } from '@/lib/ubicacion';
-
-const ALTO = 140;
 
 /** Mini mapa del detalle (Android/iOS) con el recorrido del animal (6.9). */
 export function MapaRecorrido({ avistamientos, estado, tipo }: MapaRecorridoProps) {
@@ -36,5 +34,5 @@ export function MapaRecorrido({ avistamientos, estado, tipo }: MapaRecorridoProp
 }
 
 const crear = crearEstilos(() => ({
-  contenedor: { height: ALTO, borderRadius: Radio.m, overflow: 'hidden' },
+  contenedor: { height: ALTO_MAPA_RECORRIDO, borderRadius: Radio.m, overflow: 'hidden' },
 }));

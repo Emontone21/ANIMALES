@@ -56,6 +56,7 @@ export default function PantallaModeracion() {
               <View style={estilos.cabecera}>
                 <FotoMiniatura
                   ruta={d.animal_foto_path}
+                  descripcion={t.especie[d.animal_especie]}
                   style={estilos.foto}
                   contentFit="cover"
                   accessibilityIgnoresInvertColors

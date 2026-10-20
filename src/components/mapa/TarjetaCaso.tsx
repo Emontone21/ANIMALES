@@ -11,6 +11,11 @@ import { t } from '@/i18n/es-UY';
 import { haceCuanto } from '@/lib/fechas';
 
 export const ANCHO_TARJETA = 224;
+/**
+ * Cuántas tarjetas se ven al abrir sin desplazar: sus fotos son las primeras que
+ * se piden (prioritaria). Dos en el carrusel de "Cerca tuyo", cuatro en las filas.
+ */
+export const TARJETAS_A_LA_VISTA = { vertical: 2, fila: 4 } as const;
 export const ALTO_FOTO_TARJETA = 124;
 const LADO_FOTO_FILA = 96;
 
@@ -24,6 +29,8 @@ type Props = {
   onPress: () => void;
   /** Hover o foco sobre la tarjeta: resalta su marcador en el mapa. */
   onResaltar?: (id: string | null) => void;
+  /** Una de las primeras que se ven: su foto se pide enseguida (FotoMiniatura). */
+  prioritaria?: boolean;
 };
 
 /** Tarjeta de un caso (docs/DISENO.md, 6.8): foto, estado, título y distancia. */
@@ -34,6 +41,7 @@ export function TarjetaCaso({
   altoFoto = ALTO_FOTO_TARJETA,
   onPress,
   onResaltar,
+  prioritaria,
 }: Props) {
   const estilos = useEstilos(crear);
   const { animal, km } = caso;
@@ -45,9 +53,12 @@ export function TarjetaCaso({
   const foto = (
     <FotoMiniatura
       ruta={animal.foto_principal_path}
+      descripcion={titulo}
+      prioritaria={prioritaria}
       style={fila ? estilos.fotoFila : [estilos.foto, { height: altoFoto }]}
       contentFit="cover"
-      transition={150}
+      // Las primeras se pintan apenas llegan, sin fundido: son lo primero que se ve.
+      transition={prioritaria ? 0 : 150}
       accessibilityIgnoresInvertColors
     />
   );
@@ -56,6 +67,7 @@ export function TarjetaCaso({
     <Pressable
       accessibilityRole="link"
       accessibilityLabel={`${titulo}. ${t.etiquetaEstado(animal.estado, animal.tipo_reporte)}. ${linea}`}
+      // "Seleccionado" queda para nativo: en web ARIA no permite aria-selected en un link.
       accessibilityState={{ selected: seleccionado }}
       onPress={onPress}
       onHoverIn={() => onResaltar?.(animal.id)}

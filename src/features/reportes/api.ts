@@ -16,6 +16,12 @@ import type {
 } from '@/types/dominio';
 
 const LIMITE_MAPA = 500;
+/**
+ * Cuánto se usa lo ya leído sin volver a pedirlo al montar una pantalla. Sin
+ * esto, lo que se adelanta al arrancar (precarga.ts) se pediría dos veces.
+ * Publicar, avisar o cambiar un estado invalida lo que cambia.
+ */
+const VIGENCIA_MS = 30_000;
 
 export const clavesReportes = {
   mapa: ['animales', 'mapa'] as const,
@@ -212,7 +218,7 @@ export function useAnimalesMapa() {
   return useQuery({
     queryKey: clavesReportes.mapa,
     queryFn: listarAnimalesMapa,
-    staleTime: 30_000,
+    staleTime: VIGENCIA_MS,
   });
 }
 
@@ -221,6 +227,7 @@ export function useAnimal(id: string | undefined) {
     queryKey: clavesReportes.animal(id ?? ''),
     queryFn: () => obtenerAnimal(id as string),
     enabled: Boolean(id),
+    staleTime: VIGENCIA_MS,
   });
 }
 
@@ -239,6 +246,7 @@ export function useAvistamientos(animalId: string | undefined) {
     queryKey: clavesReportes.avistamientos(animalId ?? ''),
     queryFn: () => listarAvistamientos(animalId as string),
     enabled: Boolean(animalId),
+    staleTime: VIGENCIA_MS,
   });
 }
 
@@ -247,6 +255,7 @@ export function useCambiosEstado(animalId: string | undefined) {
     queryKey: clavesReportes.cambiosEstado(animalId ?? ''),
     queryFn: () => listarCambiosEstado(animalId as string),
     enabled: Boolean(animalId),
+    staleTime: VIGENCIA_MS,
   });
 }
 

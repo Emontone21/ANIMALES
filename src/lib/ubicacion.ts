@@ -1,4 +1,3 @@
-import * as Location from 'expo-location';
 import { Platform } from 'react-native';
 
 import type { LngLat } from '@/types/dominio';
@@ -23,6 +22,8 @@ const ESPERA_GPS_MS = 15_000;
 export async function obtenerPosicionActual(): Promise<LngLat | null> {
   try {
     if (Platform.OS === 'web') return await posicionWeb();
+    // Solo nativo: en web no se usa y, como import dinámico, queda fuera de la carga inicial.
+    const Location = await import('expo-location');
     const permiso = await Location.requestForegroundPermissionsAsync();
     if (!permiso.granted) return null;
     const posicion = await Location.getCurrentPositionAsync({

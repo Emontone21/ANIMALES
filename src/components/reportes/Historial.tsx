@@ -32,11 +32,13 @@ type Props = {
   /** Estado y tipo del caso: dan el color del evento más reciente. */
   estado: EstadoAnimal;
   tipo?: TipoReporte;
+  /** El nombre o la especie del caso: texto alternativo de las fotos. */
+  tituloCaso: string;
   escribir?: EscribirDesdeHistorial;
 };
 
 /** Historial del detalle (6.11): avistamientos y cambios de estado, más nuevo primero. */
-export function Historial({ eventos, estado, tipo, escribir }: Props) {
+export function Historial({ eventos, estado, tipo, tituloCaso, escribir }: Props) {
   const { c } = useTema();
   const estilos = useEstilos(crear);
   const colores = coloresDeEstado(c, estado, tipo);
@@ -84,6 +86,7 @@ export function Historial({ eventos, estado, tipo, escribir }: Props) {
         extra: av.foto_path ? (
           <FotoMiniatura
             ruta={av.foto_path}
+            descripcion={tituloCaso}
             style={estilos.miniatura}
             contentFit="cover"
             accessibilityIgnoresInvertColors

@@ -1,7 +1,7 @@
 import { type ComponentRef, useEffect, useRef } from 'react';
 import { type ScrollView, View } from 'react-native';
 
-import { ALTO_FOTO_TARJETA, TarjetaCaso } from '@/components/mapa/TarjetaCaso';
+import { ALTO_FOTO_TARJETA, TarjetaCaso, TARJETAS_A_LA_VISTA } from '@/components/mapa/TarjetaCaso';
 import { Boton } from '@/components/ui/Boton';
 import { Cargando } from '@/components/ui/Cargando';
 import { DesplazableHorizontal } from '@/components/ui/DesplazableHorizontal';
@@ -69,12 +69,13 @@ export function HojaCercaTuyo({
           ref={carruselRef}
           contentContainerStyle={estilos.carrusel}
           style={estilos.desplazable}>
-          {casos.map((caso) => (
+          {casos.map((caso, i) => (
             <TarjetaCaso
               key={caso.animal.id}
               caso={caso}
               seleccionado={caso.animal.id === seleccionadoId}
               altoFoto={altoFoto}
+              prioritaria={i < TARJETAS_A_LA_VISTA.vertical}
               onPress={() => onAbrir(caso.animal.id)}
             />
           ))}

@@ -33,6 +33,7 @@ export function SelectorFoto({ foto, onCambio, error, etiqueta = t.publicar.foto
       {foto ? (
         <Image
           source={{ uri: foto.uri }}
+          accessibilityLabel={etiqueta}
           style={estilos.vistaPrevia}
           contentFit="cover"
           accessibilityIgnoresInvertColors

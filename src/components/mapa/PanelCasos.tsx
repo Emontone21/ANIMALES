@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useRef } from 'react';
 import { FlatList, View } from 'react-native';
 
-import { TarjetaCaso } from '@/components/mapa/TarjetaCaso';
+import { TarjetaCaso, TARJETAS_A_LA_VISTA } from '@/components/mapa/TarjetaCaso';
 import { Cargando } from '@/components/ui/Cargando';
 import { Texto } from '@/components/ui/Texto';
 import { Espacio, Radio, sombraFlotante } from '@/constants/tema';
@@ -67,10 +67,11 @@ export function PanelCasos({
           data={casos}
           keyExtractor={(caso) => caso.animal.id}
           contentContainerStyle={estilos.lista}
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <TarjetaCaso
               caso={item}
               forma="fila"
+              prioritaria={index < TARJETAS_A_LA_VISTA.fila}
               seleccionado={item.animal.id === seleccionadoId}
               onPress={() => onAbrir(item.animal.id)}
               onResaltar={onResaltar}

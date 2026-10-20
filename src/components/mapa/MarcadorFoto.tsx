@@ -4,6 +4,7 @@ import { MARCADOR } from '@/components/mapa/estilosCapa';
 import { FotoMiniatura } from '@/components/ui/FotoMiniatura';
 import { coloresDeEstado, sombraFlotante } from '@/constants/tema';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
+import { t } from '@/i18n/es-UY';
 import type { AnimalEnMapa } from '@/types/dominio';
 
 /**
@@ -11,7 +12,7 @@ import type { AnimalEnMapa } from '@/types/dominio';
  * Círculo de 48 (58 si está seleccionado) con borde interno en superficie,
  * anillo del color del tipo, colita en rombo y, en los perdidos, halo. Los
  * reunidos van al 45 %. No recibe toques: los recibe la zona táctil de abajo.
- * En web se arma como elemento del DOM (MapaReportes.web).
+ * En web se arma como elemento del DOM (MapaReportesGL).
  */
 export function MarcadorFoto({
   animal,
@@ -60,6 +61,12 @@ export function MarcadorFoto({
           ]}>
           <FotoMiniatura
             ruta={animal.foto_principal_path}
+            descripcion={t.animal.tituloCaso(
+              animal.nombre,
+              animal.especie,
+              animal.color,
+              animal.tamanio,
+            )}
             style={[estilos.foto, { borderRadius: diametro / 2 }]}
             contentFit="cover"
           />

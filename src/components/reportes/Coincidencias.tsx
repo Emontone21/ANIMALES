@@ -77,7 +77,8 @@ export function Coincidencias({ animalId }: Props) {
 
       {pendientes.map((c) => {
         const otro = otroAnimal(c, animalId);
-        const propia = c.animal_origen === animalId ? c.origen_foto_path : c.candidato_foto_path;
+        // El "otro" del otro es este caso.
+        const propio = otroAnimal(c, otro.id);
         const porcentaje = Math.round(c.similitud * 100);
         const km = c.distancia_m === null ? null : c.distancia_m / 1000;
         const decide = puedeResolver(c, usuario?.id, esModerador);
@@ -90,13 +91,15 @@ export function Coincidencias({ animalId }: Props) {
                 accessibilityElementsHidden
                 importantForAccessibility="no-hide-descendants">
                 <FotoMiniatura
-                  ruta={propia}
+                  ruta={propio.fotoPath}
+                  descripcion={t.animal.tituloCaso(propio.nombre, propio.especie, null, null)}
                   style={estilos.foto}
                   contentFit="cover"
                   accessibilityIgnoresInvertColors
                 />
                 <FotoMiniatura
                   ruta={otro.fotoPath}
+                  descripcion={t.animal.tituloCaso(otro.nombre, otro.especie, null, null)}
                   style={[estilos.foto, estilos.fotoSuperpuesta]}
                   contentFit="cover"
                   accessibilityIgnoresInvertColors

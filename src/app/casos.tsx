@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FilaFiltros } from '@/components/mapa/FilaFiltros';
 import { HojaFiltros } from '@/components/mapa/HojaFiltros';
-import { TarjetaCaso } from '@/components/mapa/TarjetaCaso';
+import { TarjetaCaso, TARJETAS_A_LA_VISTA } from '@/components/mapa/TarjetaCaso';
 import { Cargando } from '@/components/ui/Cargando';
 import { Mensaje } from '@/components/ui/Mensaje';
 import { Texto } from '@/components/ui/Texto';
@@ -71,11 +71,12 @@ export default function PantallaCasos() {
           keyExtractor={(caso) => caso.animal.id}
           ListHeaderComponent={encabezado}
           contentContainerStyle={[estilos.lista, { paddingBottom: insets.bottom + Espacio.l }]}
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <View style={estilos.columna}>
               <TarjetaCaso
                 caso={item}
                 forma="fila"
+                prioritaria={index < TARJETAS_A_LA_VISTA.fila}
                 onPress={() => router.push(`/animal/${item.animal.id}`)}
               />
             </View>

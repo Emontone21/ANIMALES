@@ -273,3 +273,29 @@ En web, Atrás con una hoja abierta (por ejemplo "Lo vi", con la foto ya elegida
 Lo delicado es convivir con Expo Router, que también escribe en el historial. Quitar la entrada de una hoja cerrada desde la interfaz es asincrónico (`history.go`), y si en ese momento la app navega, la entrada nueva quedaría detrás de la vieja. Por eso el módulo envuelve `pushState`, `replaceState` y `go`. Mientras se quita una entrada propia, lo que escribe Expo Router espera. Si la app navega con una hoja abierta, primero se quitan sus entradas. Los `popstate` que solo cierran hojas no le llegan a Expo Router, que sigue en la misma entrada.
 
 Se descartó hacer de cada hoja una ruta: cambiaba todas las pantallas que las abren, un link compartido abriría una hoja suelta y el estado del formulario quedaría atado a la URL. El costo de lo elegido es que depende de cómo usa el historial Expo Router (`browserHistoryAdapter`): al actualizar Expo o Expo Router hay que volver a recorrer los flujos de Atrás de `docs/PRUEBAS-MANUALES.md`. En Android, `Modal` ya cierra la hoja con Atrás (`onRequestClose`); en iOS no hay Atrás.
+
+## 2026-10-20 · Carga inicial en el celular: primero lo que se vino a ver
+
+La primera visita, casi siempre desde un link de WhatsApp a un caso, tardaba de 10 a 15 s en mostrar algo, con la pantalla en blanco o en negro. El navegador interno de WhatsApp, Instagram o Facebook no comparte la caché, así que esa carga es la que importa. Las mediciones están en `docs/reportes/2026-10-20-carga.md`. El criterio: lo que se ve sin JS, después los datos y las fotos de la pantalla, y al final el mapa y la tipografía.
+
+- **Pantalla de carga en `index.html`,** solo HTML y CSS, con el fondo de la paleta. Es la única excepción a `tema.ts` y `es-UY.ts`: cada color lleva su token en un comentario y una prueba comprueba que coincidan. Se va cuando la app dibuja contenido, no apenas monta: las pantallas llegan en bloques aparte y entre medio quedaba el fondo vacío.
+- **MapLibre en un bloque aparte, cargado al final.** Era 1 MB de los 2,9 MB de la carga inicial. Los tres mapas web salen de un solo módulo (`mapasWeb.ts`): importados por separado, Metro manda lo que comparten al bloque común, que se carga siempre. El mapa espera a que la pantalla muestre sus datos y terminen sus fotos prioritarias. Si arrancaba junto con ellas, su descarga y su arranque demoraban las fotos: sin el mapa en el medio, el LCP simulado bajaba de 9 a 4,7 s.
+- **Fuentes sin esperar y al final.** Se descartó precargarlas en `index.html`: con 170 KB competían con el JS en la 4G lenta. También se descartó seguir con `expo-font` en web: dejaba la app en blanco hasta que bajaban (o hasta 12 s) y pedía cada fuente dos veces. Se eligió declararlas en `index.html` con `font-display: swap` y activarlas después de las fotos prioritarias. Hasta entonces el texto usa la fuente del sistema y después cambia solo. Activarlas al final bajó el LCP simulado alrededor de 1 s. En nativo sigue `useFonts`.
+- **Datos antes de las pantallas.** `_layout` pide los datos de la ruta de entrada apenas carga (`precarga.ts`), sin esperar a que lleguen sus pantallas. Para que la pantalla no los vuelva a pedir al montar, las consultas del mapa y del detalle se dan por frescas 30 s; publicar, avisar o cambiar un estado invalida lo que cambia.
+- **Conexiones abiertas de antemano** a Supabase y OpenFreeMap. La URL de Supabase queda escrita en `index.html`: el export solo reemplaza el título y el idioma.
+- **Lo que solo usa una acción se importa al usarla** (subir una foto, la ubicación en nativo). `expo-image-picker` no: en Safari el selector de archivos tiene que abrirse en el mismo toque, sin esperar una descarga.
+
+**Lo que no se hizo:**
+
+- **Ionicons:** la fuente de íconos (390 KB) es hoy lo que más compite con las fotos, pero quedó para otra tarea. El ahorro estimado está en el reporte.
+- **El resto del JS inicial** (React, react-native-web y Expo Router, unos 290 KB comprimidos) no se tocó.
+
+## 2026-10-20 · Atributos aria en web
+
+react-native-web 0.21 ya no traduce `accessibilityState`, salvo `disabled`: "seleccionado", "marcado" y "ocupado" no llegaban al lector de pantalla en web. Donde ARIA los permite se usan los atributos `aria-*` de React Native, que andan en web y en nativo:
+
+- `aria-checked` en chips, casillas y opciones;
+- `aria-selected` en pestañas;
+- `aria-busy` en botones.
+
+En las tarjetas (`link`) y en el botón de seguir (`button`) "seleccionado" queda solo para nativo: ARIA no permite `aria-selected` ahí, y en el botón el nombre ya lo dice ("Siguiendo"). Toda foto lleva texto alternativo: `FotoMiniatura` pide una descripción, el título del caso (`t.animal.tituloCaso`).
