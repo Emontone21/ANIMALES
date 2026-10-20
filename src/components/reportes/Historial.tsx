@@ -58,11 +58,7 @@ export function Historial({ eventos, estado, tipo, tituloCaso, escribir }: Props
       return {
         id: `av-${av.id}`,
         // "Lo vio Carla"; el primer avistamiento de un perdido es "Se perdió acá".
-        // Sin nombre: quien lo hizo borró su cuenta y lo dejó publicado.
-        titulo:
-          av.tipo === 'perdido'
-            ? t.tipoAvistamiento.perdido
-            : `${t.tipoAvistamiento[av.tipo]} ${av.usuario_nombre ?? t.comunes.cuentaEliminada}`,
+        titulo: t.animal.queHizo(av.tipo, av.usuario_nombre),
         nota: av.nota,
         fecha: fechaHoraCorta(evento.fecha),
         detalle:

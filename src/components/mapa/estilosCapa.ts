@@ -7,6 +7,8 @@ import type {
 } from '@maplibre/maplibre-gl-style-spec';
 
 import type { Esquema, Paleta } from '@/constants/tema';
+import { paradasRadioZona } from '@/features/mapa/encuadre';
+import { masLegible } from '@/lib/contraste';
 
 /**
  * Capas de marcadores, compartidas entre el mapa nativo (MapLibre React
@@ -169,5 +171,140 @@ export function paintRecorridoPunto(
     'circle-color': ['case', ultimo, colorTipo, c.puntoInactivo],
     'circle-stroke-width': ['case', ultimo, 3, 2],
     'circle-stroke-color': c.superficie,
+  };
+}
+
+// --- Mapa en grande del recorrido (6.9.1) --------------------------------------
+
+export const ID_FUENTE_RECORRIDO_GRANDE = 'recorrido-grande';
+export const ID_CAPA_GRANDE_ZONA = 'recorrido-grande-zona';
+export const ID_CAPA_GRANDE_LINEA = 'recorrido-grande-linea';
+export const ID_CAPA_GRANDE_HALO = 'recorrido-grande-halo';
+export const ID_CAPA_GRANDE_PUNTO = 'recorrido-grande-punto';
+export const ID_CAPA_GRANDE_NUMERO = 'recorrido-grande-numero';
+/** Lo que se toca para elegir un punto. */
+export const CAPAS_GRANDE_TOCABLES = [
+  ID_CAPA_GRANDE_NUMERO,
+  ID_CAPA_GRANDE_PUNTO,
+  ID_CAPA_GRANDE_ZONA,
+] as const;
+
+/** Medidas de los puntos del mapa en grande: más grandes que en el mini mapa, con su número. */
+export const PUNTO_GRANDE = {
+  radio: 13,
+  radioUltimo: 15,
+  /** Lo que crece el seleccionado, que además lleva borde en `texto`. */
+  extraSeleccionado: 3,
+  halo: 27,
+  borde: 2.5,
+  bordeSeleccionado: 3.5,
+  numero: 13,
+  numeroSeleccionado: 15,
+  opacidadZona: 0.16,
+} as const;
+
+const ES_PUNTO: ExpressionSpecification = ['==', ['geometry-type'], 'Point'];
+const APROXIMADO: ExpressionSpecification = ['==', ['get', 'aproximado'], true];
+const ULTIMO: ExpressionSpecification = ['==', ['get', 'ultimo'], true];
+const SELECCIONADO: ExpressionSpecification = ['==', ['get', 'seleccionado'], true];
+
+/** Encimados, arriba va el elegido y, si no, el más nuevo. */
+const ORDEN_DIBUJO: ExpressionSpecification = ['case', SELECCIONADO, 1e6, ['get', 'orden']];
+
+export const LAYOUT_ZONA: CircleLayerSpecification['layout'] = { 'circle-sort-key': ORDEN_DIBUJO };
+export const LAYOUT_PUNTO_GRANDE: CircleLayerSpecification['layout'] = {
+  'circle-sort-key': ORDEN_DIBUJO,
+};
+
+export const FILTRO_ZONA: FilterSpecification = ['all', ES_PUNTO, APROXIMADO];
+export const FILTRO_PUNTO_EXACTO: FilterSpecification = ['all', ES_PUNTO, ['!', APROXIMADO]];
+export const FILTRO_HALO_GRANDE: FilterSpecification = ['all', ES_PUNTO, ULTIMO, ['!', APROXIMADO]];
+
+/**
+ * Zona de un punto aproximado: un círculo translúcido del color del tipo que
+ * mide RADIO_APROXIMADO_M en el mapa (src/features/mapa/encuadre.ts).
+ */
+export function paintZonaAproximada(
+  c: Paleta,
+  colorTipo: string,
+  latitud: number,
+): CircleLayerSpecification['paint'] {
+  return {
+    'circle-radius': [
+      'interpolate',
+      ['exponential', 2],
+      ['zoom'],
+      ...paradasRadioZona(latitud).flat(),
+    ] as ExpressionSpecification,
+    'circle-color': colorTipo,
+    'circle-opacity': PUNTO_GRANDE.opacidadZona,
+    'circle-stroke-width': ['case', SELECCIONADO, PUNTO_GRANDE.bordeSeleccionado, 2],
+    'circle-stroke-color': ['case', SELECCIONADO, c.texto, colorTipo],
+  };
+}
+
+export function paintLineaGrande(c: Paleta): LineLayerSpecification['paint'] {
+  return { ...paintRecorridoLinea(c), 'line-width': 3 };
+}
+
+export function paintHaloGrande(colorTipo: string): CircleLayerSpecification['paint'] {
+  return {
+    'circle-radius': [
+      'case',
+      SELECCIONADO,
+      PUNTO_GRANDE.halo + PUNTO_GRANDE.extraSeleccionado,
+      PUNTO_GRANDE.halo,
+    ],
+    'circle-color': colorTipo,
+    'circle-opacity': 0.22,
+  };
+}
+
+/** Como en el mini mapa: el último en el color del tipo y los anteriores neutros. */
+export function paintPuntoGrande(c: Paleta, colorTipo: string): CircleLayerSpecification['paint'] {
+  return {
+    'circle-radius': [
+      '+',
+      ['case', ULTIMO, PUNTO_GRANDE.radioUltimo, PUNTO_GRANDE.radio],
+      ['case', SELECCIONADO, PUNTO_GRANDE.extraSeleccionado, 0],
+    ],
+    'circle-color': ['case', ULTIMO, colorTipo, c.puntoInactivo],
+    'circle-stroke-width': [
+      'case',
+      SELECCIONADO,
+      PUNTO_GRANDE.bordeSeleccionado,
+      PUNTO_GRANDE.borde,
+    ],
+    'circle-stroke-color': ['case', SELECCIONADO, c.texto, c.superficie],
+  };
+}
+
+export const LAYOUT_NUMERO_GRANDE: SymbolLayerSpecification['layout'] = {
+  'text-field': ['to-string', ['get', 'orden']],
+  'symbol-sort-key': ORDEN_DIBUJO,
+  'text-size': ['case', SELECCIONADO, PUNTO_GRANDE.numeroSeleccionado, PUNTO_GRANDE.numero],
+  'text-font': FUENTE_NUMEROS,
+  // Siempre se ven todos, aunque se encimen: el orden es lo que se vino a mirar.
+  'text-allow-overlap': true,
+  'text-ignore-placement': true,
+};
+
+/**
+ * El número, con el color que más se lee sobre su punto. En las zonas va sobre
+ * el mapa, con un borde en superficie.
+ */
+export function paintNumeroGrande(c: Paleta, colorTipo: string): SymbolLayerSpecification['paint'] {
+  const opciones = [c.texto, c.textoInverso, c.textoSobrePrimario];
+  return {
+    'text-color': [
+      'case',
+      APROXIMADO,
+      c.texto,
+      ULTIMO,
+      masLegible(colorTipo, opciones),
+      masLegible(c.puntoInactivo, opciones),
+    ],
+    'text-halo-color': c.superficie,
+    'text-halo-width': ['case', APROXIMADO, 2, 0],
   };
 }

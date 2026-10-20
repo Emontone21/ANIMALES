@@ -368,3 +368,18 @@ Lo que sí suma a la carga inicial, medido en ese reporte:
 - los textos nuevos de `es-UY.ts`, que por regla viven ahí;
 - el código de la hoja plegable, en la pantalla del mapa;
 - el script y los enlaces de instalar en `index.html`.
+
+## 2026-10-20 · Ubicaciones aproximadas en el mapa
+
+La base guarda redondeados a 3 decimales (unos 100 m) los puntos que suelen ser una casa: donde se perdió un perdido (`publicar_animal`, migración 0010) y el "¿Dónde está ahora?" de un resguardo (`cambiar_estado_animal`, desde la 0013). Redondear protege el dato, pero un punto dibujado exacto sobre el mapa invita a leerlo como "la casa está acá". En el mapa en grande del recorrido, esos puntos se dibujan como una zona: un círculo translúcido de 110 m de radio en el color del tipo, con el número en el centro, y la tarjeta dice "Ubicación aproximada, unos 100 m a la redonda.".
+
+- **Cuáles son:** se decide por el tipo de avistamiento (`perdido` y `resguardado`, `src/features/mapa/recorrido.ts`), no mirando si las coordenadas tienen 3 decimales: un punto exacto puede caer por casualidad en un valor redondo. Dos casos se dibujan como zona aunque en la base no estén redondeados: los resguardos de antes de la 0013 (19 de octubre de 2026) y un resguardo sin "¿Dónde está ahora?", que repite el último punto, ya público. Mostrar de más como zona no expone nada.
+- **Por qué 110 m:** el redondeo deja el lugar real a menos de 56 m en latitud y 46 m en longitud (en Montevideo) del punto guardado, unos 72 m en diagonal. 110 m lo cubren con holgura y se leen como "unos 100 m". La zona mide eso en el mapa a cualquier zoom (`src/features/mapa/encuadre.ts`); de lejos no se achica más que 16 px de radio, para que se siga viendo y tocando.
+- **El mini mapa del detalle sigue igual:** a 140 de alto y sin acercar, un punto ya no dice más que la zona.
+- **Los demás avistamientos** ("Lo vio", "Lo encontró") se ven exactos: son de otras personas en la calle, como ya decía "La ubicación de un perdido se redondea en la base".
+
+## 2026-10-20 · El mapa en grande, una pantalla en el bloque de MapLibre
+
+El mapa en grande es una ruta (`/animal/<id>/mapa`) y no una hoja: Atrás vuelve al detalle sin tocar el historial del navegador, en web y en nativo. Si el caso no existe, está oculto o no carga, la pantalla manda al detalle, que ya sabe qué mostrar en cada caso; así no se comparte código entre las dos pantallas (iría a `__common`).
+
+Para no sumar a la carga inicial, la lógica se divide según quién la usa. La pantalla ordena, numera y arma el GeoJSON (`src/features/mapa/recorrido.ts`) y el mapa recibe los datos listos. La vista inicial, el radio de la zona y el contraste de los números (`encuadre.ts`, `src/lib/contraste.ts`) los usa solo el mapa, que en web va en el bloque de MapLibre (`mapasWeb.ts`). Si un mismo módulo lo importaran la pantalla y el mapa, Metro lo pondría en `__common`. La vista inicial se calcula a mano (Web Mercator) en vez de con `fitBounds`, porque la cámara de MapLibre React Native no acepta zoom máximo al encuadrar: así web y nativo arrancan igual.

@@ -100,7 +100,7 @@ Todo en el navegador. Conviene tener dos cuentas: la demo (`demo@encontrados.uy`
 3. **Publicar → Encontré un animal**: foto, datos, "¿cuándo lo viste?" y ubicación (GPS o punto en el mapa). Caés en el detalle y el animal aparece en el mapa.
 
 **Fase 2 · interacciones**
-1. Con tu cuenta, abrí un animal de la demo y tocá **Lo vi**: foto, cuándo, dónde, nota. El historial suma una fila y el mini mapa dibuja el recorrido; en el mapa principal, al seleccionar el animal, se ve la línea entre avistamientos.
+1. Con tu cuenta, abrí un animal de la demo y tocá **Lo vi**: foto, cuándo, dónde, nota. El historial suma una fila y el mini mapa dibuja el recorrido; tocándolo se abre en grande, con cada punto numerado. En el mapa principal, al seleccionar el animal, se ve la línea entre avistamientos.
 2. **Me lo llevé / está resguardado**: escribí un contacto opcional. El estado cambia, el contacto se ve en el detalle y queda en el historial. **Se volvió a escapar** lo reabre; en un encontrado, solo lo pueden decir quien lo publicó y quien lo resguarda.
 3. **Se reunió con su familia** cierra el caso (deja de estar en "Activos"). En un encontrado lo pueden marcar quien lo publicó y quien lo tiene resguardado; reabrirlo, solo quien publicó.
 4. **Seguir** y **Denunciar** (motivo + detalle). Tres denuncias de cuentas distintas con al menos 7 días ocultan la publicación.
@@ -188,7 +188,7 @@ El mismo código compila para Android e iOS (MapLibre React Native, push con Exp
 ## Estructura
 
 ```
-src/app/            rutas (Expo Router): (tabs)/ mapa·publicar·actividad·perfil, animal/[id] (detalle y editar), casos (lista), conversacion/[id], moderacion, auth/, cuenta/, legal/
+src/app/            rutas (Expo Router): (tabs)/ mapa·publicar·actividad·perfil, animal/[id] (detalle, editar y mapa del recorrido), casos (lista), conversacion/[id], moderacion, auth/, cuenta/, legal/
 src/components/     ui/ (botones, inputs, chips, casillas, avatar, modales), mapa/ (nativo .tsx y web .web.tsx), reportes/, auth/, legal/, errores/, instalar/, moderacion/
 src/features/       auth, reportes, seguimientos, denuncias, coincidencias, notificaciones, mensajes, moderacion, perfil, bloqueos, cuenta, legal, mapa, instalar, errores
 src/lib/            supabase, imágenes (convención de miniaturas), fotos (comprimir, subir, borrar), compartir, ubicación, fechas, errores, env

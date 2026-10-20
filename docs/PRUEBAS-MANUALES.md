@@ -1,6 +1,6 @@
 # Pruebas manuales
 
-Recorrido de toda la app, paso a paso, para hacer en la web publicada (https://animales-blue.vercel.app). Lleva unos 65 minutos en un dispositivo; en los otros dos se repite marcando la casilla de cada uno.
+Recorrido de toda la app, paso a paso, para hacer en la web publicada (https://animales-blue.vercel.app). Lleva unos 70 minutos en un dispositivo; en los otros dos se repite marcando la casilla de cada uno.
 
 - **Dispositivos:** Android con Chrome, iPhone con Safari y una computadora (cualquier navegador). Cada flujo tiene una casilla por dispositivo.
 - **Cuentas:** dos, que en esta lista se llaman **familia** (publica un perro perdido) y **vecina** (lo encuentra y lo ve). Para probar de a una persona: familia en el celular y vecina en la computadora, o una en una ventana privada.
@@ -334,6 +334,8 @@ Esperado:
 - Familia ve el contacto de vecina en el historial y puede escribirle desde **Escribir**; sin sesión se ve "Alguien avisó que lo tiene", sin el contacto.
 - El punto del resguardo en el mini mapa está redondeado.
 
+Antes de seguir con el 18, hacé el **25 (mapa en grande)**: Toby tiene ahora todos los tipos de punto.
+
 - [ ] Android · Chrome
 - [ ] iPhone · Safari
 - [ ] Computadora
@@ -473,6 +475,36 @@ Esperado:
 - La conversación con familia ya no está.
 - Sus reportes de errores siguen, como "una cuenta eliminada" y sin captura; en **Storage → capturas** su carpeta quedó vacía.
 - No se puede volver a ingresar con esa cuenta.
+
+- [ ] Android · Chrome
+- [ ] iPhone · Safari
+- [ ] Computadora
+
+## 25. Mapa en grande del recorrido · 4 min
+
+Cuenta: ninguna (alcanza una ventana sin sesión). Se hace con Toby resguardado, entre el 17 y el 18: tiene el punto donde se perdió, los avisos de vecina y el resguardo.
+
+1. En el detalle de Toby, tocá el mini mapa de **Visto por última vez**. En la computadora, llegá con Tab y abrilo con Enter.
+2. Mové el mapa con un dedo; acercá con dos dedos, con doble toque y, en la computadora, con la rueda del mouse.
+3. Tocá **Anterior** hasta el primer punto y **Siguiente** hasta el último.
+4. Tocá un punto en el mapa.
+5. Tocá **Mi ubicación**.
+6. Volvé con Atrás: el botón del navegador, el gesto de Atrás en Android o, en iPhone, deslizando desde el borde izquierdo. Abrilo otra vez y volvé con el botón redondo de Volver.
+7. Repetí los pasos 1 y 3 en modo oscuro (**Perfil → Apariencia**).
+8. Con lector de pantalla (TalkBack o VoiceOver), llegá al mini mapa y recorré los puntos con **Anterior** y **Siguiente**.
+
+Esperado:
+- El mini mapa tiene un botón chico de agrandar abajo a la derecha; en la computadora, cursor de mano y anillo de foco.
+- Se abre con todos los puntos a la vista, numerados del más viejo (1) al más nuevo, y la tarjeta muestra el último ("3 de 3", según cuántos avisos haya).
+- El mapa se mueve y se acerca, pero nunca gira ni se inclina; arrastrarlo no mueve ni recarga la página (Chrome de Android).
+- Anterior y Siguiente centran el mapa en cada punto y se apagan en las puntas. La tarjeta cambia: qué pasó ("Lo vio …", "Se perdió acá"), la fecha, la nota y la foto.
+- Donde se perdió Toby y el resguardo de vecina se ven como una zona redonda translúcida, no como un punto, y su tarjeta dice "Ubicación aproximada, unos 100 m a la redonda.".
+- Tocar un punto lo elige (se agranda y su borde se marca) y cambia la tarjeta, sin mover el mapa.
+- Mi ubicación pide permiso y va hasta tu posición; sin permiso, avisa "No pudimos acceder a tu ubicación…".
+- Atrás y Volver llevan al detalle de Toby.
+- En oscuro, el mapa y la tarjeta usan la paleta oscura y los números se leen.
+- El lector anuncia "Ver el mapa en grande, botón" y, al pasar de punto, lee el punto nuevo.
+- En la computadora, el mapa ocupa todo al lado del riel y la tarjeta va abajo a la izquierda.
 
 - [ ] Android · Chrome
 - [ ] iPhone · Safari
