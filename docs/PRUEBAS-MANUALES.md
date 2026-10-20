@@ -1,12 +1,12 @@
 # Pruebas manuales
 
-Recorrido de toda la app, paso a paso, para hacer en la web publicada (https://animales-blue.vercel.app). Lleva unos 75 minutos en un dispositivo; en los otros dos se repite marcando la casilla de cada uno.
+Recorrido de toda la app, paso a paso, para hacer en la web publicada (https://animales-blue.vercel.app). Lleva unos 77 minutos en un dispositivo; en los otros dos se repite marcando la casilla de cada uno.
 
 - **Dispositivos:** Android con Chrome, iPhone con Safari y una computadora (cualquier navegador). Cada flujo tiene una casilla por dispositivo.
 - **Cuentas:** dos, que en esta lista se llaman **familia** (publica un perro perdido) y **vecina** (lo encuentra y lo ve). Para probar de a una persona: familia en el celular y vecina en la computadora, o una en una ventana privada.
 - **Marcas:**
   - **[SMTP]** necesita SMTP propio en Supabase. Sin eso, Supabase solo manda mails a las direcciones del equipo del proyecto (y pocos por hora).
-  - **[Visión]** necesita el servicio de visión configurado (`config_app.vision_url`). Sin eso, ese paso se simula con el SQL que está ahí mismo.
+  - **[Visión]** necesita el reconocimiento con IA configurado: la función `reconocer` desplegada y su dirección en `config_app.vision_url`. Sin eso, ese paso se simula con el SQL que está ahí mismo.
 - **Si algo falla:** anotá el número del paso, el dispositivo y una captura. Los problemas que ya se conocen están al final.
 
 Tené a mano dos fotos parecidas de un mismo perro (o de dos perros parecidos) en cada celular.
@@ -296,13 +296,13 @@ Esperado:
 
 Cuenta: familia, después vecina.
 
-**Con el servicio de visión:** a los pocos minutos de publicar el encontrado (paso 5), la coincidencia aparece sola.
+**Con el reconocimiento con IA:** a los pocos minutos de publicar el encontrado (paso 5), la coincidencia aparece sola, si Claude ve el mismo animal en las dos fotos.
 
-**Sin el servicio:** simulala en el SQL Editor, con los ids de los dos casos (están en la URL del detalle, `/animal/<id>`):
+**Sin el reconocimiento:** simulala en el SQL Editor, con los ids de los dos casos (están en la URL del detalle, `/animal/<id>`):
 
 ```sql
-insert into coincidencias (animal_origen, animal_candidato, similitud, distancia_m, horas_diferencia)
-select least(a, b), greatest(a, b), 0.9, 300, 2
+insert into coincidencias (animal_origen, animal_candidato, similitud, distancia_m, horas_diferencia, confianza, motivo, origen)
+select least(a, b), greatest(a, b), 0.9, 300, 2, 90, 'Mismo collar rojo y mancha blanca en el pecho', 'ia'
 from (values ('<id del perdido>'::uuid, '<id del encontrado>'::uuid)) as v(a, b);
 ```
 
@@ -311,7 +311,7 @@ from (values ('<id del perdido>'::uuid, '<id del encontrado>'::uuid)) as v(a, b)
 3. Familia: **Es el mismo animal**.
 
 Esperado:
-- Familia ve las dos fotos, el porcentaje, la distancia y el tiempo.
+- Familia ve las dos fotos, el motivo ("Mismo collar rojo y mancha blanca en el pecho.") y, debajo, la distancia y el tiempo. Sin porcentaje.
 - Vecina ve "Su familia está mirando las fotos…" y no puede confirmar.
 - Al confirmar, el encontrado se une a Toby: abrir el encontrado lleva a Toby, que suma sus avistamientos.
 
@@ -510,30 +510,32 @@ Esperado:
 - [ ] iPhone · Safari
 - [ ] Computadora
 
-## 26. Reconocimiento en Cloud Run · 6 min · [Visión]
+## 26. Reconocimiento con la API de Claude · 8 min · [Visión]
 
-Cuenta: familia (moderadora) en la computadora; vecina en un celular. Requiere la migración 0017 y el servicio desplegado con `services/vision/desplegar.sh`.
+Cuenta: familia (moderadora) en la computadora; vecina en un celular. Requiere la migración 0018 y la función `reconocer` desplegada (pasos en `docs/reportes/2026-10-20-reconocimiento-ia.md`). Hacen falta dos fotos del mismo perro (de otro ángulo o en otro lugar) y una foto sin animal (una pared, una calle).
 
-1. Familia: **Perfil → Panel de moderación → Reconocimiento**. Mirá el estado.
-2. Vecina: publicá un encontrado con foto. Con el servicio apagado (más de 15 minutos sin fotos), mejor.
-3. Familia: sin tocar nada, mirá cómo cambian **Fotos pendientes** y **Última foto procesada** (la sección se actualiza sola cada 15 s).
-4. Familia: tocá **Procesar pendientes ahora** con la cola vacía.
-5. En Google Cloud: **Cloud Run → encontrados-vision → Registros**. Buscá la foto del paso 2.
-6. En el SQL Editor de Supabase, el historial del trabajo de cada 2 minutos:
+1. Familia: **Perfil → Panel de moderación → Reconocimiento**. Mirá el estado, las llamadas de hoy, el costo del mes y los errores.
+2. Familia: publicá un perdido con la primera foto del perro.
+3. Vecina: publicá un encontrado con la segunda foto, a pocas cuadras.
+4. Familia: esperá un minuto y abrí el perdido. Mirá **Posibles coincidencias** y **Actividad**.
+5. Vecina: publicá un encontrado con la foto sin animal.
+6. Familia, en el SQL Editor:
    ```sql
-   select status, return_message, start_time from cron.job_run_details
-   where jobid = (select jobid from cron.job where jobname = 'vision-pendientes')
-   order by start_time desc limit 5;
+   select created_at, tipo, resultado, tokens_entrada, tokens_salida, costo_usd, detalle
+   from llamadas_ia order by created_at desc limit 5;
    ```
-7. Al día siguiente: **Facturación → Informes** del proyecto de Google Cloud.
+7. **Interruptor:** en el SQL Editor, `update config_app set valor = 'false' where clave = 'ia_activa';`. Vecina publica otra foto. Después, `update config_app set valor = 'true' where clave = 'ia_activa';` y esperá 2 minutos.
+8. **Sin crédito (simulado):** `update config_app set valor = 'sin_credito' where clave = 'ia_pausa';`. Familia: volvé a **Reconocimiento** y tocá **Reactivar**.
+9. En Supabase: **Edge Functions → reconocer → Logs**. Y en la consola de Anthropic, **Usage** del día.
 
 Esperado:
-- El estado dice **Configurado**. No aparecen la URL del servicio ni el secreto.
-- La foto pasa por **Fotos pendientes** y en menos de un minuto (unos segundos más si el servicio estaba apagado) **Última foto procesada** dice la hora. Si había un caso parecido cerca, **Última coincidencia** también cambia.
-- Con la cola vacía, el botón dice "No hay fotos pendientes.".
-- En los registros de Cloud Run, la foto aparece con "procesado en … s".
-- En `cron.job_run_details` hay una corrida cada 2 minutos, todas `succeeded`.
-- El consumo de Cloud Run es US$0 (dentro de la capa gratuita) y no llegó ningún mail de la alerta de presupuesto.
+- El estado dice **Configurado**. No aparecen la URL de la función ni el secreto. Los textos dicen "inteligencia artificial" o "IA", nunca la marca.
+- En menos de un minuto, Toby tiene una coincidencia con el motivo (por ejemplo "Mismo collar rojo y mancha blanca en el pecho.") en vez de un porcentaje, y la familia recibe "Encontraron un animal parecido a…". Si la IA no los ve parecidos, no aparece: probá con fotos más claras.
+- La foto sin animal no genera coincidencias: en `llamadas_ia` tiene solo una llamada (`describir`), sin `comparar`.
+- Cada foto con candidatos suma 2 llamadas (describir y comparar); el costo estimado del mes sube muy poco ("Menos de US$ 0,01" las primeras).
+- Con el interruptor apagado, el estado dice **Apagado**, la foto queda en **Fotos pendientes** y no se agrega ninguna llamada. Al prenderlo, se procesa sola en los 2 minutos siguientes.
+- Con la pausa, el estado dice **Pausado: sin crédito**, "Procesar pendientes ahora" está apagado y aparece **Reactivar**. Al tocarlo, vuelve a **Configurado**.
+- En los registros de la función no aparece ninguna clave. El uso en la consola de Anthropic se parece al costo estimado.
 
 - [ ] Android · Chrome
 - [ ] iPhone · Safari

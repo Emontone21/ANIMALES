@@ -1,6 +1,8 @@
 import { conVariantes } from '@/lib/fotos';
 import { esUrlExterna, rutaMiniatura, urlFoto, urlMiniatura } from '@/lib/imagenes';
 
+import * as funcion from '../supabase/functions/reconocer/fotos';
+
 // fotos.ts usa el cliente de Supabase para subir y borrar; acá no hace falta.
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
 
@@ -36,5 +38,37 @@ describe('rutas de fotos y miniaturas', () => {
       `${UID}/a.jpg`,
       `${UID}/a.miniatura.jpg`,
     ]);
+  });
+});
+
+// La función reconocer (Deno) no puede importar de src/ y tiene una copia:
+// tiene que dar lo mismo que imagenes.ts, el único lugar con la convención.
+describe('la copia de la función reconocer', () => {
+  const rutas = [
+    `${UID}/abc.jpg`,
+    `${UID}/abc.miniatura.jpg`,
+    `${UID}/sin-extension`,
+    `/${UID}/con espacio.jpg`,
+    'https://cataas.com/cat?width=800',
+  ];
+
+  test('arma la misma miniatura y la misma URL pública', () => {
+    for (const ruta of rutas) {
+      expect(funcion.esUrlExterna(ruta)).toBe(esUrlExterna(ruta));
+      expect(funcion.rutaMiniatura(ruta)).toBe(rutaMiniatura(ruta));
+      if (!esUrlExterna(ruta)) {
+        expect(funcion.urlPublica('https://ejemplo.supabase.co/', ruta)).toBe(urlFoto(ruta));
+      }
+    }
+  });
+
+  test('a Claude le manda primero la miniatura y, si no está, la original', () => {
+    expect(funcion.urlsCandidatas('https://ejemplo.supabase.co', `${UID}/abc.jpg`)).toEqual([
+      urlMiniatura(`${UID}/abc.jpg`),
+      urlFoto(`${UID}/abc.jpg`),
+    ]);
+    expect(funcion.urlsCandidatas('https://ejemplo.supabase.co', 'https://cataas.com/cat')).toEqual(
+      ['https://cataas.com/cat'],
+    );
   });
 });

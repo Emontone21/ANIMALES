@@ -29,9 +29,14 @@ export type DenunciaDetalle = Database['public']['Views']['denuncias_detalle']['
 export type BloqueoDetalle = Database['public']['Views']['bloqueos_detalle']['Row'];
 export type EstadoDenuncia = Database['public']['Enums']['estado_denuncia'];
 export type ReporteErrorDetalle = Database['public']['Views']['reportes_errores_detalle']['Row'];
-/** Moderación › Reconocimiento (estado_reconocimiento, 0017). */
+/** Moderación › Reconocimiento (estado_reconocimiento, 0017 y 0018). */
 export type EstadoReconocimiento =
   Database['public']['Functions']['estado_reconocimiento']['Returns'][number];
+/** Una llamada a la API de Claude (llamadas_ia, 0018). */
+export type LlamadaIa = Database['public']['Tables']['llamadas_ia']['Row'];
+export type TipoLlamadaIa = LlamadaIa['tipo'];
+/** Cómo terminó una llamada que no anduvo (sin 'ok' ni 'en_curso'). */
+export type ErrorLlamadaIa = Exclude<LlamadaIa['resultado'], 'ok' | 'en_curso'>;
 /** Dónde se mandó un reporte de un error (reportes_errores.plataforma). */
 export type Plataforma = 'web' | 'ios' | 'android';
 

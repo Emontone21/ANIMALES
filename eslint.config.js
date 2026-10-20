@@ -7,6 +7,6 @@ module.exports = defineConfig([
   expoConfig,
   eslintPluginPrettierRecommended,
   {
-    ignores: ['dist/*', 'node_modules/*', 'ios/*', 'android/*', 'supabase/*', 'services/*'],
+    ignores: ['dist/*', 'node_modules/*', 'ios/*', 'android/*', 'supabase/*', 'services/*', 'scripts/evaluar-ia.ts'],
   },
 ]);

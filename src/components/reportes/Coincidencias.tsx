@@ -15,6 +15,7 @@ import {
   useCoincidencias,
   useResolverCoincidencia,
 } from '@/features/coincidencias/api';
+import { resumenCoincidencia } from '@/features/coincidencias/resumen';
 import { usePerfil } from '@/features/perfil/api';
 import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
@@ -28,9 +29,10 @@ const SUPERPOSICION = 16;
 
 /**
  * "Posibles coincidencias" (6.10): otros reportes que el reconocimiento de
- * imágenes cree que son el mismo animal. Una persona confirma o rechaza; nunca
- * se une solo. Si el par incluye un perdido decide su familia; entre dos
- * encontrados, quien publicó alguno o un moderador. El resto ve un mensaje de espera.
+ * imágenes cree que son el mismo animal, con el motivo que dio la IA. Una
+ * persona confirma o rechaza; nunca se une solo. Si el par incluye un perdido
+ * decide su familia; entre dos encontrados, quien publicó alguno o un
+ * moderador. El resto ve un mensaje de espera.
  */
 export function Coincidencias({ animalId }: Props) {
   const router = useRouter();
@@ -79,8 +81,7 @@ export function Coincidencias({ animalId }: Props) {
         const otro = otroAnimal(c, animalId);
         // El "otro" del otro es este caso.
         const propio = otroAnimal(c, otro.id);
-        const porcentaje = Math.round(c.similitud * 100);
-        const km = c.distancia_m === null ? null : c.distancia_m / 1000;
+        const resumen = resumenCoincidencia(c, otro);
         const decide = puedeResolver(c, usuario?.id, esModerador);
         const perdido = perdidoDelPar(c);
         return (
@@ -105,12 +106,10 @@ export function Coincidencias({ animalId }: Props) {
                   accessibilityIgnoresInvertColors
                 />
               </View>
-              <Texto style={estilos.resumen}>
-                {t.coincidencias.resumen(otro.especie, otro.tipo, otro.nombre, km, porcentaje)}
-                {c.horas_diferencia !== null
-                  ? ` ${t.coincidencias.tiempoOracion(c.horas_diferencia)}`
-                  : ''}
-              </Texto>
+              <View style={estilos.resumen}>
+                {resumen.motivo ? <Texto variante="cuerpoFuerte">{resumen.motivo}</Texto> : null}
+                <Texto variante={resumen.motivo ? 'secundario' : 'cuerpo'}>{resumen.oracion}</Texto>
+              </View>
             </View>
             {decide ? null : (
               <Mensaje
@@ -178,6 +177,6 @@ const crear = crearEstilos((c) => ({
     backgroundColor: c.superficieSuave,
   },
   fotoSuperpuesta: { marginLeft: -SUPERPOSICION },
-  resumen: { flex: 1 },
+  resumen: { flex: 1, gap: 2 },
   botones: { gap: Espacio.s },
 }));

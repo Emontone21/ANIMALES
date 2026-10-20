@@ -161,6 +161,7 @@ Cualquier combinación nueva de colores se verifica antes de usarla.
 - Nada por debajo de 12.
 - Oraciones en minúscula inicial normal, sin mayúsculas sostenidas.
 - Todo texto visible vive en `src/i18n/es-UY.ts`, con voseo.
+- La app no nombra la marca de la IA: dice "inteligencia artificial" o "IA" (y "el servicio de IA" para la cuenta, el crédito y los errores). Solo la política de privacidad nombra a Anthropic, como proveedor, igual que a Supabase y Vercel. Lo comprueba `__tests__/reconocimiento.test.ts`.
 
 ## 4. Forma, espacio y elevación
 
@@ -211,6 +212,7 @@ Se usa Ionicons, que ya está instalado, siempre en variante de contorno (`-outl
 | Elegir una captura | `image-outline` |
 | Ver el mapa en grande (sobre el mini mapa) | `expand-outline` |
 | Procesar pendientes ahora (moderación) | `refresh-outline` |
+| Reactivar el reconocimiento (moderación) | `play-outline` |
 
 ## 6. Componentes
 
@@ -341,7 +343,9 @@ Pantalla aparte (`/animal/<id>/mapa`), no una hoja: Atrás vuelve al detalle com
 ### 6.10 Posibles coincidencias
 
 - Bloque con fondo `coincidenciaFondo`, radio `xl` y relleno de 18. El título "Posibles coincidencias" va en `tituloTarjeta`.
-- Por cada coincidencia: dos fotos circulares de 64, superpuestas 16 px y con borde del color del fondo, más una oración, por ejemplo "Un perro encontrado a 1,2 km se parece en un 86 %."
+- Por cada coincidencia: dos fotos circulares de 64, superpuestas 16 px y con borde del color del fondo, y al lado el texto:
+  - **Las del reconocimiento con IA** muestran el motivo en vez del porcentaje: arriba, el motivo que dio Claude en `cuerpoFuerte` ("Mismo collar rojo y mancha blanca en el pecho."); debajo, en `secundario`, quién y dónde ("Un perro encontrado a 1,2 km. Con 3 h de diferencia.").
+  - **Las de antes** (las del servicio de embeddings, sin motivo) siguen con una oración en `cuerpo`: "Un perro encontrado a 1,2 km se parece en un 86 %."
 - Se mantienen las tres acciones actuales:
   - "Es el mismo animal": botón `primario`;
   - "No es el mismo": botón `secundario`;
@@ -510,14 +514,19 @@ Contenido centrado, de 420 de ancho como máximo:
 - **Moderación:** arriba, chips "Denuncias", "Errores" y "Reconocimiento" (activo en `inverso`). El aviso de un error nuevo abre "Errores".
   - *Denuncias:* misma lista que Actividad. La marca "Oculta" usa una etiqueta con `peligroSuave` y `peligro`.
   - *Errores:* chips "Pendientes (n)" y "Resueltos (n)". Cada reporte es una fila con la etiqueta "Pendiente" (`avisoFondo` y `texto`) o "Resuelto" (`superficieSuave` y `textoSecundario`), "Sin cuenta" si se mandó así, quién y cuándo en `pequeno`, qué pasó en `cuerpo` y un bloque `superficieSuave` de radio `l` con los datos (cada etiqueta en Figtree 700). "Ver la captura" (botón `fantasma`) la muestra entera, de 320 de alto, sobre `superficieSuave`. Los pendientes terminan con un campo "Nota para quien lo reportó (opcional)" y el botón `primario` "Marcar como resuelto"; los resueltos, con quién lo resolvió, cuándo y la nota.
-  - *Reconocimiento:* el estado del servicio de visión, sin su dirección ni su secreto.
-    - Arriba, una línea en `secundario` que explica qué hace.
+  - *Reconocimiento:* el estado del reconocimiento con IA, sin la dirección de la función ni su secreto.
+    - Arriba, una línea en `secundario` que explica qué hace: "La inteligencia artificial describe cada foto nueva…" (sin nombrar la marca; siempre confirma una persona).
     - Una tarjeta (borde de 1 en `borde`, radio `xl`, relleno de 16) con cada dato: el nombre en `secundario` y, debajo, el valor en `cuerpoFuerte`.
-      - **Estado:** etiqueta "Configurado" (`primarioSuave` y `textoPrimarioSuave`) o "Sin configurar" (`avisoFondo` y `texto`).
+      - **Estado:** etiqueta "Configurado" (`primarioSuave` y `textoPrimarioSuave`), "Sin configurar" o "Apagado" (`avisoFondo` y `texto`), o "Pausado: sin crédito" (`peligroSuave` y `peligro`).
       - **Fotos pendientes,** con "n esperan un nuevo intento" en `pequeno` si hay.
       - **Fotos con error,** en `peligro` si hay, con la ayuda en `pequeno`.
+      - **Llamadas a la IA hoy:** "12 de 300" (el tope del día); al llegar, la ayuda en `pequeno`.
+      - **Costo estimado del mes:** "US$ 0,42" o "Menos de US$ 0,01", con la aclaración en `pequeno`.
+      - **Errores de la IA:** "n hoy" (en `peligro` si hay) y, en `pequeno`, las últimas 5 llamadas que fallaron en la semana ("Hoy a las 14:05 · Comparar · Sin crédito") o "Ninguno en la última semana."
       - **Última foto procesada** y **última coincidencia,** con `diaYHora` o "Todavía ninguna".
-    - Debajo, el botón `secundario` "Procesar pendientes ahora" (ícono `refresh-outline`), apagado si no está configurado, y el resultado en un mensaje.
+    - Debajo, la ayuda del estado en un mensaje si no anda (sin configurar, apagado o pausado).
+    - Si está pausado, el botón `primario` "Reactivar" (ícono `play-outline`) y su resultado en un mensaje.
+    - El botón `secundario` "Procesar pendientes ahora" (ícono `refresh-outline`), apagado si no está configurado, está apagado o pausado, y el resultado en un mensaje.
     - Se actualiza sola cada 15 s mientras está a la vista.
 - **No encontrado:** mensaje centrado con un botón para volver al mapa.
 
@@ -683,6 +692,11 @@ El mapa en grande del recorrido no es una columna: ocupa toda el área de conten
 | `animal.masOpciones` | Más opciones |
 | `animal.avisoEstafa` | Nunca pagues para recuperar a un animal. Si alguien te pide plata o datos de tu tarjeta, denuncialo. |
 | `coincidencias.resumen(especie, km, porcentaje)` | Un perro encontrado a 1,2 km se parece en un 86 %. |
+| `coincidencias.quienYDonde(especie, tipo, nombre, km)` | Un perro encontrado a 1,2 km. (debajo del motivo de la IA) |
+| `reconocimiento.intro` | La inteligencia artificial describe cada foto nueva, la compara con los casos cercanos de la misma especie y sugiere posibles coincidencias. Siempre confirma una persona. |
+| `reconocimiento.pausadoAyuda` | El servicio de IA se quedó sin crédito y el reconocimiento se pausó. Cargá crédito y tocá Reactivar: las fotos que esperan se procesan solas. |
+| `reconocimiento.costo(usd)` | US$ 0,42 / Menos de US$ 0,01 |
+| `reconocimiento.reactivar` | Reactivar |
 | `mensajes.escribir` | Escribir |
 | `mensajes.elegirDestinatario` | ¿A quién le querés escribir? |
 | `perfil.apariencia` | Apariencia |
