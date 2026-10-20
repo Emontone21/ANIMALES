@@ -485,7 +485,7 @@ El servicio de embeddings en Cloud Run (entradas anteriores) no llegó a despleg
 - **"Claramente incompatibles":** los colores se ordenan de claro a oscuro (blanco, dorado y naranja, gris, marrón, negro) y se descarta el par solo si ningún color de un lado (principal o secundario) queda a menos de 3 pasos de alguno del otro: negro con blanco, dorado o naranja; blanco con marrón. Los tamaños, solo chico con grande. Sin datos de un lado, no se descarta: la luz y el ángulo engañan, y descartar de más es perder un reencuentro.
 - **Salida estructurada:** cada paso es una herramienta con esquema JSON estricto (`strict`), con `tool_choice: auto` porque Claude Opus 5.5 y Sonnet 5.5 no aceptan forzar la herramienta y el modelo es configurable. Cada respuesta se valida en la función (largos, rangos, un resultado por candidato): si no valida, cuenta como error y la cola la reintenta.
 - **Esfuerzo:** `low` para describir y `medium` para comparar.
-- **Fotos por URL:** la miniatura de 320 de la Fase 8 (unos 140 tokens por imagen); si no existe (fotos de antes), la original. El nombre de la miniatura se arma en `src/lib/imagenes.ts`; la función, que no puede importar de `src/`, tiene una copia que `__tests__/imagenes.test.ts` compara con la original.
+- **Fotos por URL:** la miniatura de 320 de la Fase 8 (unos 140 tokens por imagen). Las de otros sitios las baja la función (ver "Las fotos de otros sitios las baja la función"). El nombre de la miniatura se arma en `src/lib/imagenes.ts`; la función, que no puede importar de `src/`, tiene una copia que `__tests__/imagenes.test.ts` compara con la original.
 - **Lo que viaja:** solo las fotos y los datos del animal (tipo, tamaño, color y collar declarados, y lo que se vio en las fotos). Nunca nombres, contactos, mensajes ni la descripción libre. Las instrucciones le piden a Claude que ignore cualquier pedido escrito en una foto o en los datos.
 - **Seguridad de la función:** `verify_jwt = false`, porque la llama Postgres, que no tiene un JWT de usuario; la protege `X-Vision-Secret`, que la función compara con `config_app.vision_secret` (lo lee de la base, así no hay que cargarlo en dos lugares). Para escribir, la clave secreta que Supabase pone en su entorno; `ANTHROPIC_API_KEY`, como secreto de la función.
 - **Errores de la API:** 429, 529 y cualquier otro marcan la foto con error y la cola la reintenta con espera creciente. Sin crédito (402), además, se pausa todo (`ia_pausa`) hasta que un moderador toca **Reactivar**: si no, cada foto gastaría sus 8 intentos en minutos.
@@ -494,3 +494,18 @@ El servicio de embeddings en Cloud Run (entradas anteriores) no llegó a despleg
 - **El servicio de embeddings queda desactivado:** `guardar_embedding` no se puede llamar desde la API (se le sacó el permiso a `service_role`), pero sus datos quedan (`avistamientos.embedding` y las coincidencias con `origen = 'embedding'`, que la app sigue mostrando con el porcentaje). Para volver a usarlo: `grant execute on function public.guardar_embedding(uuid, extensions.vector, jsonb) to service_role;`, desplegar `services/vision` y poner su URL en `vision_url`.
 - **Privacidad:** la política (borrador) dice que las fotos las analiza Anthropic y qué se le manda. Cambió el texto, así que subió la versión de los términos (`2026-10-20`) y todos los vuelven a aceptar.
 
+## 2026-10-20 · Las fotos de otros sitios las baja la función
+
+En la primera prueba real del reconocimiento (`docs/reportes/2026-10-20-cierre-reconocimiento-ia.md`), ninguna de las 5 fotos de la cola se procesó. Todas eran datos de demo, con una URL de otro sitio en vez de una ruta del bucket:
+- **placedog.net** sirve sus fotos con el tipo `image/jpg`, que no existe (es `image/jpeg`), y la API las rechazó con `invalid_request_error`.
+- **cataas.com** no respondió bien a la comprobación previa con HEAD, así que sus fotos quedaron como "foto no disponible".
+
+Además, `llamadas_ia.detalle` guardaba solo el tipo de error, así que no se pudo leer el porqué.
+
+**Cambios:**
+- **Las fotos de otros sitios las baja la función** y las manda dentro del pedido (base64), con el tipo que dicen sus bytes: JPEG, PNG, WebP o GIF; cualquier otra cosa es "foto no disponible". Tope de 5 MB (lo que acepta la API por imagen) y de 10 s por foto, todo junto (conectar y leer); las de los candidatos se bajan a la vez. Por pedido van hasta 20 MB de fotos bajadas (la API acepta 32 MB); los candidatos que no entran quedan afuera, como uno sin foto.
+- **Las fotos del bucket siguen yendo por URL,** siempre la miniatura. Ya no se comprueba nada antes: toda foto se sube con su miniatura y no se publica si alguna de las dos falla (`comprimirYSubir`). Si una URL igual no sirve, la API lo dice y queda en el registro.
+- **Sin la comprobación HEAD:** fallaba con sitios que no la contestan bien y, para el bucket, no hace falta.
+- **El texto del error de la API** queda en `llamadas_ia.detalle` junto al tipo y al id del pedido: hasta 300 caracteres (migración 0019) y sin claves, URLs, emails, ids ni números largos (`limpiarDetalle`). La cola sigue guardando solo el código.
+
+**Lo que se resigna:** las fotos de demo pasan por la función (unos 40 KB cada una) y ocupan más tokens que una miniatura de 320 (son de 640 × 480). Solo existen en los datos cargados por SQL: la app nunca guarda una URL de otro sitio.

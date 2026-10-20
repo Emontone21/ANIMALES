@@ -512,7 +512,7 @@ Esperado:
 
 ## 26. Reconocimiento con la API de Claude · 8 min · [Visión]
 
-Cuenta: familia (moderadora) en la computadora; vecina en un celular. Requiere la migración 0018 y la función `reconocer` desplegada (pasos en `docs/reportes/2026-10-20-reconocimiento-ia.md`). Hacen falta dos fotos del mismo perro (de otro ángulo o en otro lugar) y una foto sin animal (una pared, una calle).
+Cuenta: familia (moderadora) en la computadora; vecina en un celular. Requiere las migraciones 0018 y 0019 y la función `reconocer` desplegada (pasos en `docs/reportes/2026-10-20-reconocimiento-ia.md`). Hacen falta dos fotos del mismo perro (de otro ángulo o en otro lugar) y una foto sin animal (una pared, una calle).
 
 1. Familia: **Perfil → Panel de moderación → Reconocimiento**. Mirá el estado, las llamadas de hoy, el costo del mes y los errores.
 2. Familia: publicá un perdido con la primera foto del perro.
@@ -532,6 +532,7 @@ Esperado:
 - El estado dice **Configurado**. No aparecen la URL de la función ni el secreto. Los textos dicen "inteligencia artificial" o "IA", nunca la marca.
 - En menos de un minuto, Toby tiene una coincidencia con el motivo (por ejemplo "Mismo collar rojo y mancha blanca en el pecho.") en vez de un porcentaje, y la familia recibe "Encontraron un animal parecido a…". Si la IA no los ve parecidos, no aparece: probá con fotos más claras.
 - La foto sin animal no genera coincidencias: en `llamadas_ia` tiene solo una llamada (`describir`), sin `comparar`.
+- Si una llamada falla, `detalle` dice el tipo y el texto del error de la API (y el id del pedido), sin claves, URLs, emails ni teléfonos.
 - Cada foto con candidatos suma 2 llamadas (describir y comparar); el costo estimado del mes sube muy poco ("Menos de US$ 0,01" las primeras).
 - Con el interruptor apagado, el estado dice **Apagado**, la foto queda en **Fotos pendientes** y no se agrega ninguna llamada. Al prenderlo, se procesa sola en los 2 minutos siguientes.
 - Con la pausa, el estado dice **Pausado: sin crédito**, "Procesar pendientes ahora" está apagado y aparece **Reactivar**. Al tocarlo, vuelve a **Configurado**.

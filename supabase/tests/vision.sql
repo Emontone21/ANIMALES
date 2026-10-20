@@ -28,6 +28,9 @@ insert into storage.objects (bucket_id, name) values
 
 -- Solo cuenta la cola de la prueba.
 update public.cola_vision set estado = 'hecho' where estado <> 'hecho';
+-- El reconocimiento prendido aunque en la base esté apagado o pausado (0018).
+update public.config_app set valor = 'true' where clave = 'ia_activa';
+update public.config_app set valor = '' where clave = 'ia_pausa';
 
 -- Los pedidos de la prueba van a una URL que no existe (y no salen: rollback).
 create function pg_temp.pedidos(p_ruta text) returns integer language sql as $$

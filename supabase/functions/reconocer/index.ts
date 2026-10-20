@@ -9,7 +9,7 @@
 
 import { BaseSupabase, claveDesdeEntorno } from './base.ts';
 import { crearCliente } from './claude.ts';
-import { existeConHead } from './procesar.ts';
+import { bajarFoto } from './descargar.ts';
 import { crearManejador } from './servidor.ts';
 
 const supabaseUrl = (Deno.env.get('SUPABASE_URL') ?? '').replace(/\/+$/, '');
@@ -20,7 +20,7 @@ Deno.serve(
     base: new BaseSupabase(supabaseUrl, claveDesdeEntorno((nombre) => Deno.env.get(nombre))),
     claude: claveApi ? crearCliente(claveApi) : null,
     supabaseUrl,
-    existe: existeConHead(),
+    bajar: bajarFoto(),
     ahora: () => Date.now(),
     // pg_net espera 150 s a /procesar-pendientes y Supabase corta a los 150 s
     // (plan gratuito): pasados 90 s no se empieza otra foto.

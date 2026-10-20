@@ -315,25 +315,55 @@ export function costoEstimado(modelo: string, uso: Uso): number | null {
   return Math.round(costo * 1_000_000) / 1_000_000;
 }
 
+/** Lo que se guarda del texto de un error (llamadas_ia.detalle, migración 0019). */
+export const TOPE_DETALLE = 300;
+
+/**
+ * Saca de un texto de error lo que no tiene que quedar guardado: claves, URLs
+ * (las de las fotos del bucket llevan el id de quien la subió), emails, ids y
+ * números largos (un teléfono). Y lo corta a TOPE_DETALLE.
+ */
+export function limpiarDetalle(texto: string): string {
+  const limpio = texto
+    .replace(/sk-ant-[\w-]+/g, '[clave]')
+    .replace(/\bsb_(?:secret|publishable)_[\w-]+/g, '[clave]')
+    .replace(/\beyJ[\w-]+\.[\w-]+\.[\w-]+/g, '[clave]')
+    .replace(/\bBearer\s+\S+/gi, '[clave]')
+    .replace(/https?:\/\/\S+/g, '[url]')
+    .replace(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, '[email]')
+    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '[id]')
+    .replace(/(?<!\w)\+?\d(?:[\s-]?\d){7,}(?!\w)/g, '[número]')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return limpio.length > TOPE_DETALLE ? `${limpio.slice(0, TOPE_DETALLE - 1)}…` : limpio;
+}
+
+/** El mensaje de la API (el cuerpo es {type, error: {type, message}}), o el del SDK. */
+function mensajeDe(error: InstanceType<typeof Anthropic.APIError>): string {
+  const mensaje = (error.error as { error?: { message?: unknown } } | undefined)?.error?.message;
+  return typeof mensaje === 'string' ? mensaje : error.message;
+}
+
 /**
  * Qué pasó con una llamada que falló, por la clase y el tipo de error del
  * SDK (nunca por el texto del mensaje). Todos se reintentan con la cola; sin
- * crédito, además, se pausa.
+ * crédito, además, se pausa. `codigo` es corto (va a la cola); `detalle` suma
+ * el texto de la API, limpio, y el id del pedido (va a llamadas_ia).
  */
-export function clasificarError(error: unknown): { resultado: ResultadoLlamada; detalle: string } {
-  if (error instanceof Anthropic.APIConnectionTimeoutError) return { resultado: 'error', detalle: 'tiempo agotado' };
-  if (error instanceof Anthropic.APIConnectionError) return { resultado: 'error', detalle: 'sin conexión' };
+export function clasificarError(error: unknown): { resultado: ResultadoLlamada; codigo: string; detalle: string } {
+  const con = (resultado: ResultadoLlamada, codigo: string, texto?: string) => ({
+    resultado,
+    codigo,
+    detalle: limpiarDetalle(texto ? `${codigo}: ${texto}` : codigo),
+  });
+  if (error instanceof Anthropic.APIConnectionTimeoutError) return con('error', 'tiempo agotado');
+  if (error instanceof Anthropic.APIConnectionError) return con('error', 'sin conexión');
   if (error instanceof Anthropic.APIError) {
-    if (error.type === 'billing_error' || error.status === 402) {
-      return { resultado: 'sin_credito', detalle: 'billing_error' };
-    }
-    if (error.type === 'rate_limit_error' || error.status === 429) {
-      return { resultado: 'limite', detalle: 'rate_limit_error' };
-    }
-    if (error.type === 'overloaded_error' || error.status === 529) {
-      return { resultado: 'sobrecarga', detalle: 'overloaded_error' };
-    }
-    return { resultado: 'error', detalle: error.type ?? `http ${error.status ?? 'sin estado'}` };
+    const texto = error.requestID ? `${mensajeDe(error)} (${error.requestID})` : mensajeDe(error);
+    if (error.type === 'billing_error' || error.status === 402) return con('sin_credito', 'billing_error', texto);
+    if (error.type === 'rate_limit_error' || error.status === 429) return con('limite', 'rate_limit_error', texto);
+    if (error.type === 'overloaded_error' || error.status === 529) return con('sobrecarga', 'overloaded_error', texto);
+    return con('error', error.type ?? `http ${error.status ?? 'sin estado'}`, texto);
   }
-  return { resultado: 'error', detalle: 'inesperado' };
+  return con('error', 'inesperado', error instanceof Error ? error.message : undefined);
 }

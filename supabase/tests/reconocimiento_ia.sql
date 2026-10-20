@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Pruebas del reconocimiento con la API de Claude (0018).
--- Requiere las migraciones 0001 a 0018. Pegalo entero en el SQL Editor y tocá Run.
+-- Requiere las migraciones 0001 a 0019. Pegalo entero en el SQL Editor y tocá Run.
 -- Bien: termina en "Success. No rows returned". Mal: ERROR con "FALLA n: ..." que dice qué.
 -- Todo corre dentro de begin/rollback: no deja usuarios, fotos, casos, llamadas
 -- ni cambios en config_app, y los pedidos a la función no salen (pg_net los
@@ -610,6 +610,37 @@ begin
     raise exception 'FALLA 8h: una foto sin describir trae descripción: %', v;
   end if;
   reset role;
+end;
+$$;
+
+-- -----------------------------------------------------------------------------
+-- 9. El detalle de una llamada guarda hasta 300 caracteres (0019): el texto del
+--    error de la API, que la función ya manda limpio y cortado.
+-- -----------------------------------------------------------------------------
+do $$
+declare
+  v_id bigint;
+begin
+  update public.config_app set valor = '1000' where clave = 'ia_tope_diario';
+  update public.config_app set valor = 'true' where clave = 'ia_activa';
+  update public.config_app set valor = '' where clave = 'ia_pausa';
+  set local role service_role;
+  v_id := public.iniciar_llamada_ia('describir', null, 'claude-haiku-5-5');
+  if v_id is null then
+    raise exception 'FALLA 9: no se pudo reservar la llamada';
+  end if;
+  perform public.terminar_llamada_ia(v_id, 'error', 0, 0, 0, 'invalid_request_error: ' || repeat('x', 400));
+  reset role;
+  if (select char_length(detalle) from public.llamadas_ia where id = v_id) <> 300 then
+    raise exception 'FALLA 9a: el detalle no guarda 300 caracteres: %',
+      (select char_length(detalle) from public.llamadas_ia where id = v_id);
+  end if;
+  begin
+    insert into public.llamadas_ia (tipo, modelo, resultado, detalle) values ('describir', 'prueba', 'error', repeat('x', 301));
+    raise exception 'FALLA 9b: la tabla acepta un detalle de más de 300 caracteres';
+  exception when check_violation then
+    null;
+  end;
 end;
 $$;
 

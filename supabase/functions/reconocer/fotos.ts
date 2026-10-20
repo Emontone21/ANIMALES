@@ -33,14 +33,12 @@ export function urlPublica(supabaseUrl: string, ruta: string): string {
 }
 
 /**
- * Las URLs a probar para una foto, en orden: la miniatura (lo que ve Claude:
- * menos tokens) y la original (las fotos de antes de la Fase 8 no tienen
- * miniatura). Una URL externa va tal cual.
+ * La URL que ve Claude de una foto del bucket: su miniatura de 320 (menos
+ * tokens). Toda foto se sube con su miniatura (comprimirYSubir) y no se
+ * publica si alguna de las dos falla. null si es una URL externa: esas las
+ * baja la función (descargar.ts).
  */
-export function urlsCandidatas(supabaseUrl: string, ruta: string): string[] {
-  if (esUrlExterna(ruta)) return [ruta];
+export function urlDeMiniatura(supabaseUrl: string, ruta: string): string | null {
   const miniatura = rutaMiniatura(ruta);
-  return [miniatura, ruta]
-    .filter((r): r is string => r !== null)
-    .map((r) => urlPublica(supabaseUrl, r));
+  return miniatura === null ? null : urlPublica(supabaseUrl, miniatura);
 }

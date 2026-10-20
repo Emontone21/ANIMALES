@@ -9,6 +9,7 @@ import {
   describir,
   HERRAMIENTA_COMPARAR,
   HERRAMIENTA_DESCRIBIR,
+  limpiarDetalle,
 } from '../claude.ts';
 import {
   apiFalsa,
@@ -158,20 +159,54 @@ Deno.test('a Claude no le llegan datos de personas: solo tipo, tamaño, color y 
   );
 });
 
-Deno.test('los errores de la API se clasifican por su tipo', async () => {
-  const casos: [number, string, string, string][] = [
-    [402, 'billing_error', 'sin_credito', 'billing_error'],
-    [429, 'rate_limit_error', 'limite', 'rate_limit_error'],
-    [529, 'overloaded_error', 'sobrecarga', 'overloaded_error'],
-    [500, 'api_error', 'error', 'api_error'],
-    [400, 'invalid_request_error', 'error', 'invalid_request_error'],
+Deno.test('los errores de la API se clasifican por su tipo y guardan su texto', async () => {
+  const casos: [number, string, string][] = [
+    [402, 'billing_error', 'sin_credito'],
+    [429, 'rate_limit_error', 'limite'],
+    [529, 'overloaded_error', 'sobrecarga'],
+    [500, 'api_error', 'error'],
+    [400, 'invalid_request_error', 'error'],
   ];
-  for (const [estado, tipo, resultado, detalle] of casos) {
-    const api = apiFalsa(() => errorDeApi(estado, tipo));
+  for (const [estado, tipo, resultado] of casos) {
+    const api = apiFalsa(() => errorDeApi(estado, tipo, 'Your credit balance is too low.', 'req_011CPrueba'));
     const error = await assertRejects(() => describir(api.cliente, 'claude-haiku-5-5', FOTO));
-    assertEquals(clasificarError(error), { resultado, detalle }, resultado);
+    assertEquals(clasificarError(error), {
+      resultado,
+      codigo: tipo,
+      detalle: `${tipo}: Your credit balance is too low. (req_011CPrueba)`,
+    }, resultado);
   }
-  assertEquals(clasificarError(new Error('cualquier cosa')), { resultado: 'error', detalle: 'inesperado' });
+  assertEquals(clasificarError(new Error('cualquier cosa')), {
+    resultado: 'error',
+    codigo: 'inesperado',
+    detalle: 'inesperado: cualquier cosa',
+  });
+  assertEquals(clasificarError('ni siquiera un Error'), {
+    resultado: 'error',
+    codigo: 'inesperado',
+    detalle: 'inesperado',
+  });
+});
+
+Deno.test('el texto de un error se guarda sin claves ni datos personales, hasta 300 caracteres', () => {
+  const casos: [string, string][] = [
+    ['invalid x-api-key sk-ant-api03-AbC_123-xyz', 'invalid x-api-key [clave]'],
+    ['token sb_secret_AbC123 y sb_publishable_Xy9', 'token [clave] y [clave]'],
+    ['jwt eyJhbGciOi.eyJzdWIiOi.firma-123', 'jwt [clave]'],
+    ['Authorization: Bearer abc.def', 'Authorization: [clave]'],
+    ['Unable to download https://x.supabase.co/storage/v1/object/public/fotos/u/a.jpg.', 'Unable to download [url]'],
+    ['escribí a ana.perez+perro@correo.com.uy', 'escribí a [email]'],
+    ['avistamiento 1e82ea3c-3533-4e51-aba9-36d27d11b481', 'avistamiento [id]'],
+    ['llamá al 099 123 456 o al +598 2 401-2345', 'llamá al [número] o al [número]'],
+    // Los números cortos (tamaños, tokens) quedan: sirven para entender el error.
+    ['image exceeds 5 MB maximum: 5300000 bytes', 'image exceeds 5 MB maximum: 5300000 bytes'],
+    ['max_tokens: 2000 > 128000', 'max_tokens: 2000 > 128000'],
+    ['  varios\n espacios\t ', 'varios espacios'],
+  ];
+  for (const [entrada, salida] of casos) assertEquals(limpiarDetalle(entrada), salida, entrada);
+  const largo = limpiarDetalle('x'.repeat(500));
+  assertEquals(largo.length, 300);
+  assert(largo.endsWith('…'));
 });
 
 Deno.test('el costo se estima con el precio de cada modelo', () => {

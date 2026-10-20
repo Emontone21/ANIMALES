@@ -14,7 +14,7 @@ Todo corre en la nube: no hace falta Docker ni Android Studio. Solo Node 20+ par
 
 1. Creá un proyecto en [supabase.com](https://supabase.com) (plan gratuito). Guardá la contraseña de la base.
 2. Copiá la **Project URL** (botón **Connect**) y, en **Settings → API Keys**, la clave **anon / publishable**. El reconocimiento no necesita copiar claves de Supabase: la función usa la que Supabase le pone en su entorno (paso 5).
-3. Aplicá las migraciones de `supabase/migrations/` **en orden** (0001 a 0018). Dos formas:
+3. Aplicá las migraciones de `supabase/migrations/` **en orden** (0001 a 0019). Dos formas:
 
    **a) CLI** (sin instalar nada):
 
@@ -63,7 +63,7 @@ Además de la web estática, Vercel publica una función: `api/vista-previa.ts`.
 ### 5. Servicio de reconocimiento
 
 Claude mira las fotos desde la Edge Function `supabase/functions/reconocer` (detalle en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md), "Reconocer"):
-1. Aplicá las migraciones 0017 y 0018 (el trabajo de pg_cron y lo del reconocimiento con IA).
+1. Aplicá las migraciones 0017 a 0019 (el trabajo de pg_cron, lo del reconocimiento con IA y el texto de sus errores).
 2. **Clave de Anthropic:** en [console.anthropic.com](https://console.anthropic.com) → **API Keys**, creá una clave, y cargala en Supabase → **Edge Functions → Secrets** con el nombre `ANTHROPIC_API_KEY`. No la pegues en ningún archivo ni en un chat. Conviene un límite de gasto mensual en la consola de Anthropic.
 3. **Desplegá la función,** desde la raíz del repo (sin Docker):
    ```bash
@@ -189,7 +189,7 @@ Probado en la base: `supabase/tests/errores.sql`. La lógica de la app: `npm run
 
 **Reconocimiento con la API de Claude**
 
-Con las migraciones 0017 y 0018 aplicadas y la función desplegada (paso 5):
+Con las migraciones 0017 a 0019 aplicadas y la función desplegada (paso 5):
 1. **Moderación → Reconocimiento** dice si está configurado, apagado o pausado por falta de crédito; las fotos pendientes y con error; las llamadas a la IA de hoy, el costo estimado del mes y los últimos errores; y cuándo se procesó la última foto y apareció la última coincidencia.
 2. **Procesar pendientes ahora** llama a la función, como el trabajo de pg_cron de cada 2 minutos. Si se pausó sin crédito, **Reactivar**.
 3. En **Posibles coincidencias**, las de la IA muestran por qué se parecen en vez del porcentaje.
@@ -214,7 +214,7 @@ src/features/       auth, reportes, seguimientos, denuncias, coincidencias, noti
 src/lib/            supabase, imágenes (convención de miniaturas), fotos (comprimir, subir, borrar), compartir, ubicación, fechas, errores, env
 src/i18n/es-UY.ts   todos los textos
 src/types/          database.ts (esquema), dominio.ts
-supabase/           migrations/ (0001–0018), tests/ (pruebas SQL por fase, errores.sql, vision.sql y reconocimiento_ia.sql), functions/reconocer (Edge Function del reconocimiento con la API de Claude y sus pruebas), seed.sql, config.toml
+supabase/           migrations/ (0001–0019), tests/ (pruebas SQL por fase, errores.sql, vision.sql y reconocimiento_ia.sql), functions/reconocer (Edge Function del reconocimiento con la API de Claude y sus pruebas), seed.sql, config.toml
 api/                función de Vercel: vista previa del link de un caso (Open Graph)
 __tests__/          pruebas de jest-expo (npm run test)
 services/vision/    alternativa sin desplegar: microservicio Python de embeddings (Google Cloud Run), desplegar.sh, evaluar.py y tests/

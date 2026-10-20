@@ -62,13 +62,10 @@ describe('la copia de la función reconocer', () => {
     }
   });
 
-  test('a Claude le manda primero la miniatura y, si no está, la original', () => {
-    expect(funcion.urlsCandidatas('https://ejemplo.supabase.co', `${UID}/abc.jpg`)).toEqual([
+  test('a la IA le manda la miniatura por URL; una URL externa la baja la función', () => {
+    expect(funcion.urlDeMiniatura('https://ejemplo.supabase.co', `${UID}/abc.jpg`)).toBe(
       urlMiniatura(`${UID}/abc.jpg`),
-      urlFoto(`${UID}/abc.jpg`),
-    ]);
-    expect(funcion.urlsCandidatas('https://ejemplo.supabase.co', 'https://cataas.com/cat')).toEqual(
-      ['https://cataas.com/cat'],
     );
+    expect(funcion.urlDeMiniatura('https://ejemplo.supabase.co', 'https://cataas.com/cat')).toBeNull();
   });
 });

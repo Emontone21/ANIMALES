@@ -19,9 +19,11 @@ import {
   comparar,
   costoEstimado,
   describir,
+  type Imagen,
   type Respuesta,
 } from './claude.ts';
-import { urlsCandidatas } from './fotos.ts';
+import type { FotoBajada } from './descargar.ts';
+import { urlDeMiniatura } from './fotos.ts';
 import type { Descripcion } from './validar.ts';
 
 export type Dependencias = {
@@ -29,8 +31,8 @@ export type Dependencias = {
   /** null si falta ANTHROPIC_API_KEY. */
   claude: Anthropic | null;
   supabaseUrl: string;
-  /** Si una URL de foto responde con una imagen (HEAD). */
-  existe: (url: string) => Promise<boolean>;
+  /** Baja una foto de otro sitio (descargar.ts): null si no se pudo. */
+  bajar: (url: string) => Promise<FotoBajada | null>;
   ahora: () => number;
   /** Tope de /procesar-pendientes: no empieza otra foto pasado este tiempo. */
   topeMs: number;
@@ -47,25 +49,25 @@ export type ResultadoFoto =
 /** Lo que corta la vuelta: la API no se puede usar hasta que algo cambie. */
 const CORTAN_LA_VUELTA = new Set(['apagado', 'pausado', 'tope_diario', 'sin_lugar', 'sin_clave', 'sin_credito']);
 
-/** HEAD a una URL: sirve si responde 200 con una imagen. */
-export function existeConHead(fetchFn: typeof fetch = fetch) {
-  return async (url: string): Promise<boolean> => {
-    try {
-      const respuesta = await fetchFn(url, { method: 'HEAD', signal: AbortSignal.timeout(10_000) });
-      await respuesta.body?.cancel();
-      return respuesta.ok && (respuesta.headers.get('content-type') ?? '').startsWith('image/');
-    } catch {
-      return false;
-    }
-  };
-}
+/**
+ * Lo que la API acepta por pedido son 32 MB: de fotos bajadas (en base64) se
+ * mandan hasta 20 MB y los candidatos que no entran quedan afuera.
+ */
+export const TOPE_PEDIDO_BASE64 = 20 * 1024 * 1024;
 
-/** La primera URL de la foto que existe (la miniatura o la original), o null. */
-async function urlDeFoto(d: Dependencias, ruta: string): Promise<string | null> {
-  for (const url of urlsCandidatas(d.supabaseUrl, ruta)) {
-    if (await d.existe(url)) return url;
-  }
-  return null;
+type FotoParaClaude = { imagen: Imagen; largo: number };
+
+/**
+ * Cómo ve Claude una foto: las del bucket, la miniatura por URL; las de otros
+ * sitios (datos de demo), bajadas por la función y dentro del pedido. null si
+ * no se pudo bajar.
+ */
+async function fotoParaClaude(d: Dependencias, ruta: string): Promise<FotoParaClaude | null> {
+  const url = urlDeMiniatura(d.supabaseUrl, ruta);
+  if (url) return { imagen: { type: 'url', url }, largo: 0 };
+  const foto = await d.bajar(ruta);
+  if (!foto) return null;
+  return { imagen: { type: 'base64', media_type: foto.media_type, data: foto.data }, largo: foto.data.length };
 }
 
 type Llamada<T> = { tipo: 'ok'; valor: T; uso: { entrada: number; salida: number } } | { tipo: 'sin_lugar' } | {
@@ -91,10 +93,10 @@ async function llamar<T>(
   try {
     respuesta = await hacer();
   } catch (error) {
-    const { resultado, detalle } = clasificarError(error);
-    // Una llamada que falló no se cobra.
+    const { resultado, codigo, detalle } = clasificarError(error);
+    // Una llamada que falló no se cobra. El texto del error queda en la llamada; en la cola, solo el código.
     await d.base.terminarLlamada(id, resultado, 0, 0, 0, detalle);
-    await d.base.marcarError(avistamientoId, `${tipo}: ${resultado} (${detalle})`);
+    await d.base.marcarError(avistamientoId, `${tipo}: ${resultado} (${codigo})`);
     if (resultado === 'sin_credito') await d.base.pausar('sin_credito');
     return { tipo: 'fallo', resultado };
   }
@@ -143,8 +145,8 @@ async function procesarTomada(
     return { procesado: true, comparado: false, coincidencias: 0, motivo: 'caso_cerrado' };
   }
 
-  const url = await urlDeFoto(d, p.foto_path);
-  if (!url) {
+  const foto = await fotoParaClaude(d, p.foto_path);
+  if (!foto) {
     await d.base.marcarError(id, 'foto no disponible');
     return { procesado: false, motivo: 'error', error: 'foto_no_disponible' };
   }
@@ -156,7 +158,7 @@ async function procesarTomada(
     descripcion = p.descripcion;
     comparable = descripcion.hay_animal && descripcion.especie === p.especie;
   } else {
-    const r = await llamar(d, modelo, 'describir', id, () => describir(claude, modelo, { type: 'url', url }));
+    const r = await llamar(d, modelo, 'describir', id, () => describir(claude, modelo, foto.imagen));
     if (r.tipo === 'sin_lugar') {
       await d.base.soltarPendiente(id);
       return { procesado: false, motivo: 'sin_lugar' };
@@ -170,22 +172,26 @@ async function procesarTomada(
     return { procesado: true, comparado: false, coincidencias: 0, motivo: 'sin_animal_de_la_especie' };
   }
 
-  // 2. Candidatos, con su foto a la vista.
+  // 2. Candidatos, con su foto a la vista (las de otros sitios se bajan a la vez).
   const candidatos = await d.base.candidatos(id);
-  const conFoto: { c: Candidato; url: string }[] = [];
-  for (const c of candidatos) {
-    const urlCandidato = await urlDeFoto(d, c.foto_path);
-    if (urlCandidato) conFoto.push({ c, url: urlCandidato });
-  }
+  const fotos = await Promise.all(candidatos.map((c) => fotoParaClaude(d, c.foto_path)));
+  const conFoto: { c: Candidato; imagen: Imagen }[] = [];
+  let largo = foto.largo;
+  candidatos.forEach((c, i) => {
+    const f = fotos[i];
+    if (!f || largo + f.largo > TOPE_PEDIDO_BASE64) return;
+    largo += f.largo;
+    conFoto.push({ c, imagen: f.imagen });
+  });
   if (conFoto.length === 0) {
     await d.base.marcarHecho(id);
     return { procesado: true, comparado: false, coincidencias: 0, motivo: 'sin_candidatos' };
   }
 
   // 3. Comparar.
-  const etiquetados: CandidatoParaComparar[] = conFoto.map(({ c, url: u }, i) => ({
+  const etiquetados: CandidatoParaComparar[] = conFoto.map(({ c, imagen }, i) => ({
     etiqueta: `C${i + 1}`,
-    imagen: { type: 'url', url: u },
+    imagen,
     tipo_reporte: c.tipo_reporte,
     tamanio: c.tamanio,
     color: c.color,
@@ -201,7 +207,7 @@ async function procesarTomada(
       comparar(
         claude,
         modelo,
-        { imagen: { type: 'url', url }, tipo_reporte: p.tipo_reporte, descripcion },
+        { imagen: foto.imagen, tipo_reporte: p.tipo_reporte, descripcion },
         etiquetados,
       ),
   );
