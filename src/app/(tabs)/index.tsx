@@ -1,14 +1,19 @@
 import { useRouter } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
-import { useWindowDimensions, View } from 'react-native';
+import { Animated, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FilaFiltros } from '@/components/mapa/FilaFiltros';
-import { ALTO_HOJA_VACIA, altoHojaCercaTuyo, HojaCercaTuyo } from '@/components/mapa/HojaCercaTuyo';
+import {
+  ALTO_HOJA_PLEGADA,
+  altoHojaCercaTuyo,
+  HojaCercaTuyo,
+} from '@/components/mapa/HojaCercaTuyo';
 import { HojaFiltros } from '@/components/mapa/HojaFiltros';
 import { MapaReportes } from '@/components/mapa/MapaReportes';
 import { ANCHO_PANEL, MARGEN_PANEL, PanelCasos } from '@/components/mapa/PanelCasos';
 import type { MapaReportesRef, MargenesMapa } from '@/components/mapa/tipos';
+import { useHojaPlegable } from '@/components/mapa/useHojaPlegable';
 import { BotonRedondo } from '@/components/ui/BotonRedondo';
 import { Mensaje } from '@/components/ui/Mensaje';
 import { Espacio, Margen, Medida } from '@/constants/tema';
@@ -57,7 +62,11 @@ export default function PantallaMapa() {
     [seleccionado, avistamientos.data],
   );
 
-  const altoHoja = isLoading || casos.length > 0 ? altoHojaCercaTuyo(height) : ALTO_HOJA_VACIA;
+  // Celular: la hoja "Cerca tuyo", abierta o plegada (sin casos, solo la barra).
+  const altoHojaAbierta =
+    isLoading || casos.length > 0 ? altoHojaCercaTuyo(height) : ALTO_HOJA_PLEGADA;
+  const hoja = useHojaPlegable(compacto ? altoHojaAbierta - ALTO_HOJA_PLEGADA : 0);
+  const altoHoja = hoja.plegada ? ALTO_HOJA_PLEGADA : altoHojaAbierta;
   const altoControles = insets.top + Espacio.s + Medida.chip + Espacio.s;
   // Lo que tapan los controles, para que el mapa centre en la parte visible.
   const margenes: MargenesMapa = compacto
@@ -79,8 +88,18 @@ export default function PantallaMapa() {
 
   const seleccionar = (id: string) => {
     setSeleccionadoId(id);
+    // Con la hoja plegada, se despliega con esa tarjeta primera: el mapa centra
+    // el marcador por encima de la hoja abierta.
+    const desplegar = compacto && hoja.plegada;
+    if (desplegar) hoja.setPlegada(false);
     const animal = visibles.find((a) => a.id === id);
-    if (animal) mapaRef.current?.irA([animal.lng, animal.lat], Math.max(ZOOM_PUNTO - 1, 13));
+    if (animal) {
+      mapaRef.current?.irA(
+        [animal.lng, animal.lat],
+        Math.max(ZOOM_PUNTO - 1, 13),
+        desplegar ? { ...margenes, bottom: altoHojaAbierta } : undefined,
+      );
+    }
   };
 
   const abrir = (id: string) => router.push(`/animal/${id}`);
@@ -147,27 +166,34 @@ export default function PantallaMapa() {
           onMovimiento={setCentro}
         />
 
-        {/* En celular, justo encima de la hoja; en pantallas anchas, arriba a la derecha (lejos de la atribución). */}
-        <BotonRedondo
-          icono="locate-outline"
-          color="primario"
-          accessibilityLabel={t.mapa.miUbicacion}
-          onPress={() => void irAMiUbicacion()}
-          cargando={buscandoGps}
+        {/* En celular, justo encima de la hoja y baja con ella; en pantallas anchas, arriba a la derecha (lejos de la atribución). */}
+        <Animated.View
           style={[
             estilos.gps,
             compacto
-              ? { bottom: altoHoja + Espacio.sm, right: Margen.mapa + insets.right }
+              ? {
+                  bottom: altoHojaAbierta + Espacio.sm,
+                  right: Margen.mapa + insets.right,
+                  transform: [{ translateY: hoja.desplazamiento }],
+                }
               : { top: insets.top + MARGEN_PANEL, right: MARGEN_PANEL + insets.right },
-          ]}
-        />
+          ]}>
+          <BotonRedondo
+            icono="locate-outline"
+            color="primario"
+            accessibilityLabel={t.mapa.miUbicacion}
+            onPress={() => void irAMiUbicacion()}
+            cargando={buscandoGps}
+          />
+        </Animated.View>
 
         {compacto ? (
           <HojaCercaTuyo
             casos={casos}
-            alto={altoHoja}
+            alto={altoHojaAbierta}
             cargando={isLoading}
             seleccionadoId={seleccionado?.id ?? null}
+            hoja={hoja}
             onAbrir={abrir}
             onVerLista={() => router.push('/casos')}
           />
@@ -187,7 +213,8 @@ export default function PantallaMapa() {
 const crear = crearEstilos((c) => ({
   raiz: { flex: 1, flexDirection: 'row', backgroundColor: c.mapaTierra },
   franjaPanel: { backgroundColor: c.superficie },
-  mapa: { flex: 1 },
+  // La hoja plegada baja: lo que queda fuera del mapa no se ve.
+  mapa: { flex: 1, overflow: 'hidden' },
   // Los controles van antes del mapa en el árbol (orden de Tab en web) y por encima con zIndex.
   controles: {
     position: 'absolute',
@@ -206,5 +233,5 @@ const crear = crearEstilos((c) => ({
     zIndex: 1,
     pointerEvents: 'box-none',
   },
-  gps: { position: 'absolute' },
+  gps: { position: 'absolute', pointerEvents: 'box-none' },
 }));

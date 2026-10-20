@@ -63,10 +63,14 @@ async function leerBytes(uriLocal: string): Promise<ArrayBuffer | Blob> {
   return new File(uriLocal).arrayBuffer();
 }
 
-async function subir(uriLocal: string, ruta: string): Promise<void> {
+/** Bucket privado de las capturas de "Reportar un error" (migración 0016). */
+export const BUCKET_CAPTURAS = 'capturas';
+
+/** Sube un JPEG ya comprimido. Por defecto al bucket público "fotos". */
+export async function subir(uriLocal: string, ruta: string, bucket = BUCKET_FOTOS): Promise<void> {
   const bytes = await leerBytes(uriLocal);
   // El nombre es un UUID y nunca se reescribe (upsert: false): se cachea un año.
-  const { error } = await supabase.storage.from(BUCKET_FOTOS).upload(ruta, bytes, {
+  const { error } = await supabase.storage.from(bucket).upload(ruta, bytes, {
     contentType: 'image/jpeg',
     cacheControl: '31536000',
     upsert: false,
@@ -97,6 +101,15 @@ export async function comprimirYSubir(
   return subirFoto(await comprimirFoto(uri, anchoOriginal), usuarioId);
 }
 
+/** Las capturas son privadas: se ven con un link firmado, que dura una hora. */
+export async function urlCaptura(ruta: string): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(BUCKET_CAPTURAS)
+    .createSignedUrl(ruta, 60 * 60);
+  if (error) throw error;
+  return data.signedUrl;
+}
+
 /** Una foto del bucket y sus variantes (hoy, la miniatura), para borrarlas juntas. */
 export function conVariantes(rutas: string[]): string[] {
   return rutas.flatMap((ruta) => {
@@ -114,12 +127,13 @@ export class ErrorFotos extends Error {}
  * Borra fotos de la carpeta propia con la API de Storage y la sesión del
  * usuario (la política deja borrar lo propio; por SQL no se puede). Las rutas
  * salen de la base (fotos_para_borrar, fotos_del_reporte), que solo devuelve
- * fotos que existen: si se borran menos, algo falló y se corta.
+ * fotos que existen: si se borran menos, algo falló y se corta. Con `bucket`,
+ * las capturas de "Reportar un error" (capturas_para_borrar).
  */
-export async function borrarFotos(rutas: string[]): Promise<void> {
+export async function borrarFotos(rutas: string[], bucket = BUCKET_FOTOS): Promise<void> {
   for (let i = 0; i < rutas.length; i += TANDA) {
     const tanda = rutas.slice(i, i + TANDA);
-    const { data, error } = await supabase.storage.from(BUCKET_FOTOS).remove(tanda);
+    const { data, error } = await supabase.storage.from(bucket).remove(tanda);
     // Storage no da error si no pudo borrar alguna: se comparan las cantidades.
     if (error || data.length !== tanda.length) throw new ErrorFotos(error?.message ?? '');
   }

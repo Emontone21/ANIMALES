@@ -110,13 +110,8 @@ export function MapaReportesGL({
   });
 
   useImperativeHandle(ref, () => ({
-    irA: (centro, zoom) =>
-      mapaRef.current?.flyTo({
-        center: centro,
-        zoom,
-        duration: 600,
-        padding: actual.current.margenes,
-      }),
+    irA: (centro, zoom, otros = actual.current.margenes) =>
+      mapaRef.current?.flyTo({ center: centro, zoom, duration: 600, padding: otros }),
   }));
 
   // Crear el mapa una sola vez, cuando el estilo está listo.

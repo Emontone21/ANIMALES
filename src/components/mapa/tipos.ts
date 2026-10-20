@@ -13,8 +13,11 @@ export type MargenesMapa = { top: number; right: number; bottom: number; left: n
 export const ALTO_MAPA_RECORRIDO = 140;
 
 export type MapaReportesRef = {
-  /** Vuela la cámara a un punto, centrándolo en la parte visible del mapa. */
-  irA: (centro: LngLat, zoom: number) => void;
+  /**
+   * Vuela la cámara a un punto, centrándolo en la parte visible del mapa.
+   * `margenes`, si lo que tapa va a cambiar (la hoja que se despliega).
+   */
+  irA: (centro: LngLat, zoom: number, margenes?: MargenesMapa) => void;
 };
 
 export type MapaReportesProps = {

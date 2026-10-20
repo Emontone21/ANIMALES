@@ -17,6 +17,35 @@
     <link rel="preconnect" href="https://bwqvuttuodwypwxckxgf.supabase.co" crossorigin />
     <link rel="preconnect" href="https://bwqvuttuodwypwxckxgf.supabase.co" />
     <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
+    <!-- Instalar la app (ver docs/ARQUITECTURA.md). Íconos: scripts/iconos-web.py. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/iconos/apple-touch-icon.png" />
+    <meta name="theme-color" content="#F6F6F2" media="(prefers-color-scheme: light)" /><!-- claro.fondo -->
+    <meta name="theme-color" content="#121410" media="(prefers-color-scheme: dark)" /><!-- oscuro.fondo -->
+    <!-- beforeinstallprompt puede llegar antes que la app: se guarda acá (src/features/instalar/). -->
+    <script>
+      (function () {
+        var estado = (window.__instalar = { aviso: null, instalada: false });
+        function avisar() {
+          window.dispatchEvent(new Event('instalar-cambio'));
+        }
+        window.addEventListener('beforeinstallprompt', function (e) {
+          e.preventDefault();
+          estado.aviso = e;
+          avisar();
+        });
+        window.addEventListener('appinstalled', function () {
+          estado.aviso = null;
+          estado.instalada = true;
+          avisar();
+        });
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', function () {
+            navigator.serviceWorker.register('/sw.js').catch(function () {});
+          });
+        }
+      })();
+    </script>
     <!--
       Primer pintado según la apariencia elegida en Perfil (clave "encontrados-apariencia",
       ver src/features/apariencia/preferencia.ts): data-esquema elige los colores de la

@@ -439,6 +439,64 @@ export type Database = {
         };
         Relationships: [];
       };
+      reportes_errores: {
+        Row: {
+          id: string;
+          usuario_id: string | null;
+          /** Se mandó sin cuenta (los de una cuenta borrada quedan sin usuario, pero en false). */
+          sin_cuenta: boolean;
+          que_paso: string;
+          que_hacias: string | null;
+          contacto: string | null;
+          captura_path: string | null;
+          pantalla_anterior: string | null;
+          navegador: string | null;
+          tamanio_pantalla: string | null;
+          plataforma: string | null;
+          version_app: string | null;
+          resuelto_en: string | null;
+          resuelto_por: string | null;
+          nota_resolucion: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          usuario_id?: string | null;
+          sin_cuenta: boolean;
+          que_paso: string;
+          que_hacias?: string | null;
+          contacto?: string | null;
+          captura_path?: string | null;
+          pantalla_anterior?: string | null;
+          navegador?: string | null;
+          tamanio_pantalla?: string | null;
+          plataforma?: string | null;
+          version_app?: string | null;
+          resuelto_en?: string | null;
+          resuelto_por?: string | null;
+          nota_resolucion?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          usuario_id?: string | null;
+          sin_cuenta?: boolean;
+          que_paso?: string;
+          que_hacias?: string | null;
+          contacto?: string | null;
+          captura_path?: string | null;
+          pantalla_anterior?: string | null;
+          navegador?: string | null;
+          tamanio_pantalla?: string | null;
+          plataforma?: string | null;
+          version_app?: string | null;
+          resuelto_en?: string | null;
+          resuelto_por?: string | null;
+          nota_resolucion?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       conversaciones_detalle: {
@@ -471,6 +529,30 @@ export type Database = {
           emisor_nombre: string;
           cuerpo: string;
           leido_en: string | null;
+          created_at: string;
+        };
+        Relationships: [];
+      };
+      reportes_errores_detalle: {
+        Row: {
+          id: string;
+          usuario_id: string | null;
+          sin_cuenta: boolean;
+          /** Null si se mandó sin cuenta o si la cuenta se borró. */
+          usuario_nombre: string | null;
+          que_paso: string;
+          que_hacias: string | null;
+          contacto: string | null;
+          captura_path: string | null;
+          pantalla_anterior: string | null;
+          navegador: string | null;
+          tamanio_pantalla: string | null;
+          plataforma: string | null;
+          version_app: string | null;
+          resuelto_en: string | null;
+          resuelto_por: string | null;
+          resuelto_por_nombre: string | null;
+          nota_resolucion: string | null;
           created_at: string;
         };
         Relationships: [];
@@ -698,6 +780,28 @@ export type Database = {
         };
         Returns: undefined;
       };
+      reportar_error: {
+        Args: {
+          p_que_paso: string;
+          p_que_hacias?: string | null;
+          p_contacto?: string | null;
+          p_captura_path?: string | null;
+          p_pantalla_anterior?: string | null;
+          p_navegador?: string | null;
+          p_tamanio_pantalla?: string | null;
+          p_plataforma?: string | null;
+          p_version_app?: string | null;
+        };
+        Returns: string;
+      };
+      resolver_reporte_error: {
+        Args: { p_id: string; p_nota?: string | null };
+        Returns: undefined;
+      };
+      capturas_para_borrar: {
+        Args: Record<string, never>;
+        Returns: string[];
+      };
       publicar_animal: {
         Args: {
           p_especie: Database['public']['Enums']['especie'];
@@ -717,7 +821,7 @@ export type Database = {
       };
     };
     Enums: {
-      tipo_notificacion: 'coincidencia' | 'avistamiento' | 'estado' | 'mensaje';
+      tipo_notificacion: 'coincidencia' | 'avistamiento' | 'estado' | 'mensaje' | 'error';
       estado_coincidencia: 'pendiente' | 'confirmada' | 'rechazada';
       estado_cola: 'pendiente' | 'procesando' | 'hecho' | 'error';
       motivo_denuncia: 'spam' | 'contenido_inapropiado' | 'informacion_falsa' | 'maltrato' | 'otro';

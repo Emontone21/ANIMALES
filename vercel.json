@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npx expo export -p web",
+  "buildCommand": "EXPO_PUBLIC_COMMIT=$VERCEL_GIT_COMMIT_SHA EXPO_PUBLIC_FECHA_BUILD=$(date -u +%Y-%m-%dT%H:%MZ) npx expo export -p web",
   "outputDirectory": "dist",
   "devCommand": "npx expo start --web",
   "cleanUrls": true,

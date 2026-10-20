@@ -24,12 +24,14 @@ type Props = {
   contenido?: ReactNode;
   opciones: OpcionMenu[];
   error?: string | null;
+  /** El último botón, que cierra: "Cancelar" salvo que se diga otra cosa. */
+  textoCerrar?: string;
   onCerrar: () => void;
 };
 
 /**
  * Lista corta de acciones. En celular sube desde abajo; en pantallas anchas es
- * una tarjeta centrada. Siempre termina con Cancelar.
+ * una tarjeta centrada. Siempre termina con Cancelar (o `textoCerrar`).
  */
 export function MenuOpciones({
   visible,
@@ -38,6 +40,7 @@ export function MenuOpciones({
   contenido,
   opciones,
   error,
+  textoCerrar = t.comunes.cancelar,
   onCerrar,
 }: Props) {
   const estilos = useEstilos(crear);
@@ -72,7 +75,7 @@ export function MenuOpciones({
             {opciones.map((opcion) => (
               <Boton key={opcion.titulo} variante="secundario" {...opcion} />
             ))}
-            <Boton titulo={t.comunes.cancelar} variante="fantasma" onPress={onCerrar} />
+            <Boton titulo={textoCerrar} variante="fantasma" onPress={onCerrar} />
           </View>
         </View>
       </View>

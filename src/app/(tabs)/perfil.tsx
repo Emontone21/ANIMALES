@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { EnlacesLegales } from '@/components/legal/EnlacesLegales';
@@ -20,12 +20,18 @@ import { PREFERENCIAS_APARIENCIA } from '@/features/apariencia/preferencia';
 import { cerrarSesion } from '@/features/auth/acciones';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useAlternarBloqueo, useBloqueados } from '@/features/bloqueos/api';
+import { useInstalar } from '@/features/instalar/useInstalar';
 import { usePerfil } from '@/features/perfil/api';
 import { useMisAnimales } from '@/features/reportes/api';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 import { mensajeDeError } from '@/lib/errores';
 import { haceCuanto } from '@/lib/fechas';
+
+// Las hojas de instalar y el formulario de errores van en bloques aparte: se
+// cargan al tocar sus botones, no con la app.
+const HojaInstalar = lazy(() => import('@/components/instalar/HojaInstalar'));
+const FormularioError = lazy(() => import('@/components/errores/FormularioError'));
 
 const OPCIONES_APARIENCIA = PREFERENCIAS_APARIENCIA.map((valor) => ({
   valor,
@@ -43,9 +49,18 @@ export default function PantallaPerfil() {
   const alternarBloqueo = useAlternarBloqueo(usuario?.id);
   const [saliendo, setSaliendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const instalacion = useInstalar();
+  const [hojaInstalar, setHojaInstalar] = useState(false);
+  const [reportando, setReportando] = useState(false);
+  const [reporteEnviado, setReporteEnviado] = useState(false);
 
   const version = Constants.expoConfig?.version ?? '0.0.0';
   const nombre = perfil?.nombre_publico ?? '…';
+
+  const instalar = () => {
+    if (instalacion.forma === 'aviso') void instalacion.instalar();
+    else setHojaInstalar(true);
+  };
 
   const salir = async () => {
     setSaliendo(true);
@@ -230,6 +245,36 @@ export default function PantallaPerfil() {
 
       <View style={estilos.seccion}>
         <Texto variante="subtitulo" accessibilityRole="header">
+          {t.perfil.laApp}
+        </Texto>
+        {/* Solo en web, si el navegador la puede instalar y todavía no está instalada. */}
+        {instalacion.forma !== 'ninguna' ? (
+          <>
+            <Boton
+              titulo={t.instalar.boton}
+              icono="download-outline"
+              variante="secundario"
+              onPress={instalar}
+            />
+            <Texto variante="secundario">{t.instalar.ayuda}</Texto>
+          </>
+        ) : null}
+        <Boton
+          titulo={t.errores.boton}
+          icono="bug-outline"
+          variante="secundario"
+          onPress={() => {
+            setReporteEnviado(false);
+            setReportando(true);
+          }}
+        />
+        {reporteEnviado ? (
+          <Mensaje texto={usuario ? t.errores.enviadoConCuenta : t.errores.enviado} tipo="exito" />
+        ) : null}
+      </View>
+
+      <View style={estilos.seccion}>
+        <Texto variante="subtitulo" accessibilityRole="header">
           {t.perfil.legal}
         </Texto>
         <EnlacesLegales />
@@ -256,6 +301,27 @@ export default function PantallaPerfil() {
       <Texto variante="pequeno" style={estilos.centrado}>
         {t.perfil.version(version)}
       </Texto>
+
+      <Suspense fallback={null}>
+        {hojaInstalar &&
+        (instalacion.forma === 'pasosIos' || instalacion.forma === 'abrirEnNavegador') ? (
+          <HojaInstalar
+            forma={instalacion.forma}
+            app={instalacion.app}
+            onCerrar={() => setHojaInstalar(false)}
+          />
+        ) : null}
+        {reportando ? (
+          <FormularioError
+            usuarioId={usuario?.id ?? null}
+            onCerrar={() => setReportando(false)}
+            onExito={() => {
+              setReportando(false);
+              setReporteEnviado(true);
+            }}
+          />
+        ) : null}
+      </Suspense>
     </Pantalla>
   );
 }

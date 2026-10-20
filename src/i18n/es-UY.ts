@@ -9,6 +9,7 @@ import type {
   EstadoAnimal,
   EstadoDenuncia,
   MotivoDenuncia,
+  Plataforma,
   Tamanio,
   TipoAvistamiento,
   TipoReporte,
@@ -46,6 +47,12 @@ export const t = {
   mapa: {
     titulo: 'Mapa',
     cercaTuyo: 'Cerca tuyo',
+    /** El botón de la barra de la hoja "Cerca tuyo" (celular). */
+    ocultarCasos: 'Ocultar casos',
+    mostrarCasos: 'Mostrar casos',
+    /** Debajo de "Cerca tuyo": "12 casos". */
+    cantidadCasos: (n: number) =>
+      n === 0 ? 'Ningún caso con estos filtros' : n === 1 ? '1 caso' : `${n} casos`,
     masFiltros: 'Más filtros',
     /** "A 600 m" / "A 1,2 km". */
     distancia: (km: number) =>
@@ -603,6 +610,90 @@ export const t = {
     desbloquear: 'Desbloquear',
     legal: 'Términos y privacidad',
     borrarCuenta: 'Borrar mi cuenta',
+    /** Sección con "Instalar la app" y "Reportar un error". */
+    laApp: 'La app',
+  },
+  instalar: {
+    boton: 'Instalar la app',
+    ayuda: 'Queda en tu pantalla de inicio y se abre como cualquier app.',
+    entendido: 'Entendido',
+    ios: {
+      titulo: 'Agregala a tu pantalla de inicio',
+      compartir: 'Tocá Compartir. En el iPhone está abajo; en el iPad, arriba a la derecha.',
+      agregarAInicio: 'Bajá y elegí "Agregar a inicio".',
+      agregar: 'Tocá "Agregar". Encontrados queda en tu pantalla de inicio.',
+    },
+    navegadorInterno: {
+      titulo: 'Abrila en Chrome o Safari',
+      /** "El navegador de WhatsApp no deja instalar apps…". */
+      explicacion: (app: string) =>
+        `El navegador de ${app} no deja instalar apps. Tocá los tres puntos o Compartir y elegí "Abrir en el navegador", o copiá el link y pegalo en Chrome (Android) o Safari (iPhone).`,
+      /** Si no se sabe cuál es la app. */
+      estaApp: 'esta app',
+    },
+  },
+  errores: {
+    boton: 'Reportar un error',
+    enviado: 'Gracias. Tu reporte le llegó a moderación.',
+    enviadoConCuenta: 'Gracias. Te avisamos en Actividad cuando lo resolvamos.',
+    formulario: {
+      titulo: 'Reportar un error',
+      intro: 'Contanos qué anda mal. Lo leen las personas que moderan Encontrados.',
+      quePaso: '¿Qué pasó?',
+      quePasoPlaceholder: 'Por ejemplo: toqué "Lo vi" y no pasó nada.',
+      queHacias: '¿Qué estabas haciendo? (opcional)',
+      queHaciasPlaceholder: 'Por ejemplo: quería avisar que vi un perro en la rambla.',
+      captura: 'Captura de pantalla (opcional)',
+      elegirCaptura: 'Elegir una captura',
+      cambiarCaptura: 'Cambiar la captura',
+      quitarCaptura: 'Quitar la captura',
+      contacto: 'Tu contacto (opcional)',
+      contactoPlaceholder: 'Email o teléfono, si querés que te respondamos',
+      contactoAyuda: 'Solo lo ven los moderadores, para responderte. No aparece en la app.',
+      seSuma: 'Además mandamos estos datos, para encontrar el error:',
+      ninguna: 'ninguna',
+      enviar: 'Mandar el reporte',
+      quePasoCorto: (n: number) => `Contá qué pasó con al menos ${n} caracteres.`,
+      demasiadoLargo: (n: number) => `Puede tener hasta ${n} caracteres.`,
+      contactoConCuenta: 'Con tu cuenta te avisamos en Actividad: no hace falta un contacto.',
+      errorCaptura: 'No pudimos subir la captura. Probá de nuevo o mandalo sin captura.',
+    },
+    /** Los datos que suma la app, en el formulario y en el panel. */
+    datos: {
+      pantallaAnterior: 'Pantalla anterior',
+      navegador: 'Navegador y sistema',
+      tamanioPantalla: 'Tamaño de pantalla',
+      plataforma: 'Plataforma',
+      version: 'Versión',
+    },
+    plataforma: {
+      web: 'Web',
+      ios: 'iPhone o iPad',
+      android: 'Android',
+    } satisfies Record<Plataforma, string>,
+    moderacion: {
+      denuncias: 'Denuncias',
+      errores: 'Errores',
+      pendientes: 'Pendientes',
+      resueltos: 'Resueltos',
+      /** La etiqueta de cada reporte. */
+      pendiente: 'Pendiente',
+      resueltoEtiqueta: 'Resuelto',
+      sinPendientes: 'No hay errores pendientes.',
+      sinResueltos: 'Todavía no se resolvió ningún error.',
+      sinCuenta: 'Sin cuenta',
+      queHacias: 'Qué estaba haciendo',
+      contacto: 'Contacto',
+      verCaptura: 'Ver la captura',
+      captura: 'Captura de pantalla del reporte',
+      errorCaptura: 'No pudimos mostrar la captura.',
+      nota: 'Nota para quien lo reportó (opcional)',
+      notaAyuda: 'Si lo mandó con su cuenta, le llega en Actividad.',
+      marcarResuelto: 'Marcar como resuelto',
+      /** "Resuelto por Valentina, 20/10 14:05". */
+      resuelto: (quien: string, cuando: string) => `Resuelto por ${quien}, ${cuando}`,
+      notaGuardada: 'Nota',
+    },
   },
   cuenta: {
     editar: {

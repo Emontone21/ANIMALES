@@ -1,6 +1,6 @@
 # Encontrados · Plan de rediseño visual
 
-Actualizado: 19 de octubre de 2026.
+Actualizado: 20 de octubre de 2026.
 
 Este documento es la fuente de verdad del aspecto de la app. Resume la dirección elegida, "Calma oliva", y todo lo que hace falta para aplicarla en cada pantalla, en celulares de cualquier tamaño y en computadoras, en modo claro y oscuro.
 
@@ -205,6 +205,10 @@ Se usa Ionicons, que ya está instalado, siempre en variante de contorno (`-outl
 | Escribir | `chatbubble-outline` |
 | Aviso contra estafas | `shield-outline` |
 | Foto (publicar) | `camera-outline` |
+| Instalar la app | `download-outline` |
+| Reportar un error, y su aviso en Actividad | `bug-outline` |
+| Compartir de Safari (pasos para instalar en iPhone) | `share-outline` |
+| Elegir una captura | `image-outline` |
 
 ## 6. Componentes
 
@@ -265,12 +269,18 @@ De 44 a 52, fondo `superficie` con sombra y ícono en `texto`. El de mi ubicaci�
 
 ### 6.7 Hoja inferior "Cerca tuyo"
 
-- Fondo `superficie`, radio `hoja` solo arriba y manija de 40 × 5 en `borde`.
-- Arriba: título `subtitulo` "Cerca tuyo" y, en el celular, la acción "Ver lista" (botón `fantasma`), que abre la lista de casos con los filtros del mapa.
+- Fondo `superficie`, radio `hoja` solo arriba y manija de 40 × 5 en `borde` (con hover o presionada, `textoSecundario`).
+- **Barra** (75 de alto): la manija y, debajo, el título `subtitulo` "Cerca tuyo" con la cantidad de casos en `secundario` ("7 casos"), y a la derecha la acción "Ver lista" (botón `fantasma`), que abre la lista de casos con los filtros del mapa.
 - Contenido: carrusel horizontal de tarjetas de 224 de ancho, separadas 12.
 - Los casos se ordenan por distancia al centro del mapa, calculada en el cliente.
 - Al tocar un marcador, su tarjeta pasa a ser la primera. Las tarjetas son `TarjetaCaso`.
-- Alto fijo: el menor entre 300 y el 38 % del alto de la pantalla.
+- **Dos posiciones** (solo en el celular; en medio y amplio no hay hoja):
+  - *abierta:* el menor entre 300 y el 38 % del alto de la pantalla;
+  - *plegada:* solo la barra. El mapa usa todo el alto; el botón de mi ubicación baja con la hoja y los créditos del mapa, al soltarla.
+- **Cómo se cambia:** arrastrando la barra hacia abajo o hacia arriba (sigue al dedo; al soltar va a la posición más cercana o, si el gesto fue rápido, hacia donde iba), o tocándola. Toda la barra es el botón, menos "Ver lista". El arrastre no mueve el mapa ni la página. Se anima en 220 ms; con movimiento reducido, sin animación.
+- **Accesible:** el botón se anuncia "Ocultar casos" o "Mostrar casos", con `aria-expanded`, y funciona con Enter y Espacio. Plegada, el carrusel no se dibuja (no se llega a sus tarjetas con Tab).
+- Al tocar un marcador con la hoja plegada, se despliega con esa tarjeta primera.
+- La posición se guarda en el dispositivo, como la apariencia. Sin casos, la hoja es solo la barra.
 
 ### 6.8 Tarjeta de caso
 
@@ -383,7 +393,7 @@ Esta sección describe la versión de celular (compacta). La sección 8 indica c
   - Antes de la Fase 6: Todos, Perros, Gatos.
   - Desde la Fase 6: Todos, Perdidos, Encontrados.
 - A la derecha de los chips, un botón redondo de filtros abre una hoja con el resto: especie, estado y antigüedad. Las tres filas de chips de hoy se mudan ahí.
-- El botón de mi ubicación va a la derecha, justo encima de la hoja inferior.
+- El botón de mi ubicación va a la derecha, justo encima de la hoja inferior, y baja con ella cuando se pliega.
 - Abajo, la hoja "Cerca tuyo" (6.7) y la barra de pestañas.
 - Los errores y el estado vacío ("No hay reportes con estos filtros.") aparecen como un mensaje flotante debajo de los chips.
 
@@ -451,8 +461,11 @@ Esta sección describe la versión de celular (compacta). La sección 8 indica c
   - chips Automático, Claro y Oscuro;
   - ayuda: "Automático sigue la configuración de tu teléfono o computadora."
 - **Mis reportes:** filas con miniatura de radio `s`, etiqueta de estado, texto y chevron.
+- **La app** (sección nueva, con o sin cuenta, antes de "Términos y privacidad"):
+  - "Instalar la app": botón `secundario` con `download-outline` y, debajo, la ayuda en `secundario`. Solo en web, si el navegador la puede instalar y no está instalada (ver 7.10).
+  - "Reportar un error": botón `secundario` con `bug-outline`. Al mandarlo, un mensaje de éxito debajo.
 - **Cerrar sesión:** botón `peligro`.
-- **Sin sesión:** Apariencia sigue visible.
+- **Sin sesión:** Apariencia y La app siguen visibles.
 
 ### 7.7 Ingresar y registrarse
 
@@ -465,7 +478,9 @@ Contenido centrado, de 420 de ancho como máximo:
 
 ### 7.8 Moderación y página no encontrada
 
-- **Moderación:** misma lista que Actividad. La marca "Oculta" usa una etiqueta con `peligroSuave` y `peligro`.
+- **Moderación:** arriba, chips "Denuncias" y "Errores" (activo en `inverso`). El aviso de un error nuevo abre "Errores".
+  - *Denuncias:* misma lista que Actividad. La marca "Oculta" usa una etiqueta con `peligroSuave` y `peligro`.
+  - *Errores:* chips "Pendientes (n)" y "Resueltos (n)". Cada reporte es una fila con la etiqueta "Pendiente" (`avisoFondo` y `texto`) o "Resuelto" (`superficieSuave` y `textoSecundario`), "Sin cuenta" si se mandó así, quién y cuándo en `pequeno`, qué pasó en `cuerpo` y un bloque `superficieSuave` de radio `l` con los datos (cada etiqueta en Figtree 700). "Ver la captura" (botón `fantasma`) la muestra entera, de 320 de alto, sobre `superficieSuave`. Los pendientes terminan con un campo "Nota para quien lo reportó (opcional)" y el botón `primario` "Marcar como resuelto"; los resueltos, con quién lo resolvió, cuándo y la nota.
 - **No encontrado:** mensaje centrado con un botón para volver al mapa.
 
 ### 7.9 Pantalla de carga (web)
@@ -476,6 +491,23 @@ Lo que se ve desde el primer instante, antes de que llegue el JS: es solo HTML y
 - Sigue el esquema elegido en Perfil (lo lee el script de `index.html`) o, si es Automático, el del sistema. Nunca hay destello blanco ni negro: el fondo del documento ya es el de la paleta.
 - Se va cuando la app dibuja su primera pantalla con contenido (`src/lib/pantallaCarga.ts`), no apenas monta el marco, para que no quede un fondo vacío en el medio.
 - Es la única excepción a `tema.ts` y `es-UY.ts`: cada color lleva un comentario con su token y una prueba comprueba que coincidan (`__tests__/indexHtml.test.ts`).
+
+### 7.10 Instalar la app y reportar un error
+
+**Instalar la app** (solo web):
+- En Chrome y Edge (Android y computadora) el botón abre la ventana del navegador; no hay hoja propia.
+- *iPhone y iPad:* una hoja (`MenuOpciones`) "Agregala a tu pantalla de inicio" con tres pasos numerados: un círculo de 28 en `primarioSuave` con el número en `etiqueta` y `textoPrimarioSuave`, y el texto en `cuerpo`. El primero lleva el ícono de Compartir dibujado (`share-outline` de 22 en `primario`, en un cuadrado de 40 en `superficieSuave` de radio `s`). Cierra con "Entendido".
+- *Navegadores de WhatsApp, Instagram y Facebook:* una hoja "Abrila en Chrome o Safari" que nombra la app, con el link del sitio en `cuerpoFuerte` (seleccionable) y "Copiar el link" (`primario`); al copiar, el mensaje de éxito.
+- *Ya instalada, en la app nativa o en un navegador que no la instala:* el botón no aparece.
+
+**La app instalada** usa el manifest (`public/manifest.webmanifest`): nombre "Encontrados", `display: standalone` y `background_color` y `theme_color` en `fondo` del claro. En el navegador, `theme-color` tiñe la barra con `fondo` del esquema del sistema. Los íconos salen de `assets/images/icon.png` (192, 512, uno maskable y el de iPhone de 180); el ícono propio sigue pendiente (sección 10).
+
+**Reportar un error:** una `Hoja` con:
+- "¿Qué pasó?" (obligatorio, de 10 a 1000 caracteres) y "¿Qué estabas haciendo? (opcional)", campos de varias líneas;
+- con cuenta, "Captura de pantalla (opcional)": vista previa entera (`contain`) de 220 de alto sobre `superficieSuave`, radio `m`, con "Elegir una captura" o "Cambiar la captura" (`secundario`) y "Quitar la captura" (`fantasma`);
+- sin cuenta, "Tu contacto (opcional)", con la ayuda de que solo lo ven los moderadores;
+- un bloque `superficieSuave` de radio `l` con lo que se suma solo (pantalla anterior, navegador y sistema, tamaño de pantalla y versión), cada etiqueta en Figtree 700;
+- al pie, "Mandar el reporte" (`primario`, `send-outline`). Los errores de cada campo aparecen al intentar mandarlo.
 
 ## 8. Adaptación a cualquier celular y computadora
 
@@ -595,7 +627,7 @@ En amplio, el riel de navegación queda a la izquierda.
 | Foto en todos los marcadores | Necesitaba miniaturas | Hecho en la Fase 8 |
 | Perdidos, nombre del animal y uso real del naranja | Necesitaba `tipo_reporte` | Hecho en la Fase 6 |
 | "Ver lista" y compartir con vista previa | Eran funciones nuevas | Hecho en la Fase 8 |
-| Ícono de la app y arte de la pantalla de carga | Es trabajo gráfico aparte | Más adelante |
+| Ícono de la app y arte de la pantalla de carga | Es trabajo gráfico aparte. Los íconos de la web instalable salen hoy del ícono de la plantilla de Expo | Más adelante: al cambiar `assets/images/icon.png`, correr `scripts/iconos-web.py` |
 
 ## 11. Textos nuevos o que cambian en `es-UY.ts`
 
@@ -616,6 +648,12 @@ En amplio, el riel de navegación queda a la izquierda.
 | `perfil.apariencia` | Apariencia |
 | `perfil.aparienciaOpciones` | Automático, Claro, Oscuro |
 | `perfil.aparienciaAyuda` | Automático sigue la configuración de tu teléfono o computadora. |
+| `mapa.ocultarCasos` / `mapa.mostrarCasos` | Ocultar casos / Mostrar casos |
+| `mapa.cantidadCasos(n)` | 1 caso / 7 casos / Ningún caso con estos filtros |
+| `perfil.laApp` | La app |
+| `instalar.boton` | Instalar la app |
+| `errores.boton` | Reportar un error |
+| `errores.moderacion.errores` | Errores |
 
 El lema actual sigue en uso para el título de la página web.
 

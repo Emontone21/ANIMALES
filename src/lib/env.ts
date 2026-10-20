@@ -1,7 +1,9 @@
 /**
  * Variables de entorno públicas (prefijo EXPO_PUBLIC_).
  * Se leen acá y en ningún otro lado, así un valor faltante falla temprano
- * con un mensaje claro en vez de un error raro en runtime. La función de la
+ * con un mensaje claro en vez de un error raro en runtime. Única excepción:
+ * EXPO_PUBLIC_COMMIT y EXPO_PUBLIC_FECHA_BUILD, que pone el build y lee solo
+ * el formulario de errores: acá cambiarían el bloque inicial en cada deploy. La función de la
  * vista previa del link (api/) también las lee de acá: este archivo no importa
  * nada de la app.
  */
