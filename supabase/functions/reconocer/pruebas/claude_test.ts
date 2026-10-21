@@ -94,16 +94,16 @@ const candidatos: CandidatoParaComparar[] = [
 const resultados = [
   {
     candidato: 'C1',
-    confianza: 86,
     veredicto: 'mismo',
+    probabilidad_mismo: 86,
     motivo: 'Mismo collar rojo y mancha blanca en el pecho',
     coinciden: ['collar rojo'],
     difieren: [],
   },
   {
     candidato: 'C2',
-    confianza: 12,
     veredicto: 'distinto',
+    probabilidad_mismo: 12,
     motivo: 'El pelo es más largo y no tiene la mancha',
     coinciden: [],
     difieren: ['pelo largo'],
@@ -120,7 +120,7 @@ Deno.test('comparar manda la foto nueva y cada candidato con sus datos y su foto
   );
 
   assertEquals(r.valida, true);
-  if (r.valida) assertEquals(r.valor.map((x) => x.confianza), [86, 12]);
+  if (r.valida) assertEquals(r.valor.map((x) => x.probabilidad_mismo), [86, 12]);
   const pedido = api.pedidos[0];
   assertEquals(urlsDeImagenes(pedido), [
     FOTO.url,
@@ -167,6 +167,35 @@ Deno.test('se le piden motivos de hasta 110 caracteres y rasgos cortos, por deba
     (herramientaDescribir.input_schema.properties as Record<string, { description: string }>).rasgos.description,
     'hasta 60 caracteres',
   );
+});
+
+Deno.test('el pedido explica probabilidad_mismo y qué pesa mucho y qué poco', () => {
+  const propiedades = (herramientaComparar.input_schema.properties as Record<
+    string,
+    { items: { properties: Record<string, { description: string }>; required: string[] } }
+  >).resultados.items;
+  assertEquals(propiedades.required, [
+    'candidato',
+    'veredicto',
+    'probabilidad_mismo',
+    'motivo',
+    'coinciden',
+    'difieren',
+  ]);
+  assertEquals('confianza' in propiedades.properties, false);
+  assertStringIncludes(
+    propiedades.properties.probabilidad_mismo.description,
+    '0 es seguro que no, 100 es seguro que sí',
+  );
+  assertStringIncludes(SISTEMA_COMPARAR, 'probabilidad_mismo: de 0 a 100, la probabilidad de que sea el mismo animal');
+  assertStringIncludes(SISTEMA_COMPARAR, 'No es qué tan seguro estás de tu veredicto');
+  assertStringIncludes(SISTEMA_COMPARAR, 'con "distinto" va por debajo de 50, y con "mismo", de 50 para arriba');
+  assertStringIncludes(
+    SISTEMA_COMPARAR,
+    'Pesa mucho: el pelaje (colores, largo y textura), las manchas y dónde están, la forma de las orejas y la cara',
+  );
+  assertStringIncludes(SISTEMA_COMPARAR, 'Pesa poco: el collar (se pone y se saca), el fondo, la pose');
+  assertStringIncludes(SISTEMA_COMPARAR, 'cada uno describe a su animal como puede');
 });
 
 Deno.test('a Claude no le llegan datos de personas: solo tipo, tamaño, color y collar del caso', () => {

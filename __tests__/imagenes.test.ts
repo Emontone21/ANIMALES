@@ -1,5 +1,13 @@
 import { conVariantes } from '@/lib/fotos';
-import { esUrlExterna, rutaMiniatura, urlFoto, urlMiniatura } from '@/lib/imagenes';
+import {
+  esUrlExterna,
+  LADO_MEDIANA,
+  medidasMediana,
+  rutaMediana,
+  rutaMiniatura,
+  urlFoto,
+  urlMiniatura,
+} from '@/lib/imagenes';
 
 import * as funcion from '../supabase/functions/reconocer/fotos';
 
@@ -19,6 +27,22 @@ describe('rutas de fotos y miniaturas', () => {
     expect(rutaMiniatura(`${UID}/sin-extension`)).toBe(`${UID}/sin-extension.miniatura.jpg`);
   });
 
+  test('la mediana también va al lado, con la misma raíz', () => {
+    expect(rutaMediana(`${UID}/abc.jpg`)).toBe(`${UID}/abc.mediana.jpg`);
+    expect(rutaMediana(`${UID}/abc.miniatura.jpg`)).toBe(`${UID}/abc.mediana.jpg`);
+    expect(rutaMediana('https://cataas.com/cat')).toBeNull();
+  });
+
+  test('la mediana es la foto entera con el lado mayor a 640, sin agrandar ni recortar', () => {
+    expect(LADO_MEDIANA).toBe(640);
+    expect(medidasMediana(1280, 960)).toEqual({ width: 640, height: 480 });
+    expect(medidasMediana(960, 1280)).toEqual({ width: 480, height: 640 });
+    expect(medidasMediana(1280, 577)).toEqual({ width: 640, height: 289 });
+    expect(medidasMediana(1280, 1280)).toEqual({ width: 640, height: 640 });
+    // Una foto chica queda como está.
+    expect(medidasMediana(500, 300)).toEqual({ width: 500, height: 300 });
+  });
+
   test('las URLs de demo no tienen miniatura y se usan tal cual', () => {
     const demo = 'https://cataas.com/cat?width=800';
     expect(esUrlExterna(demo)).toBe(true);
@@ -33,10 +57,11 @@ describe('rutas de fotos y miniaturas', () => {
     expect(urlFoto(`/${UID}/con espacio.jpg`)).toBe(`${BASE}/${UID}/con%20espacio.jpg`);
   });
 
-  test('para borrar: cada foto con su miniatura; las externas no se tocan', () => {
+  test('para borrar: cada foto con su miniatura y su mediana; las externas no se tocan', () => {
     expect(conVariantes([`${UID}/a.jpg`, 'https://cataas.com/cat'])).toEqual([
       `${UID}/a.jpg`,
       `${UID}/a.miniatura.jpg`,
+      `${UID}/a.mediana.jpg`,
     ]);
   });
 });
@@ -52,20 +77,23 @@ describe('la copia de la función reconocer', () => {
     'https://cataas.com/cat?width=800',
   ];
 
-  test('arma la misma miniatura y la misma URL pública', () => {
+  test('arma la misma mediana y la misma URL pública', () => {
     for (const ruta of rutas) {
       expect(funcion.esUrlExterna(ruta)).toBe(esUrlExterna(ruta));
-      expect(funcion.rutaMiniatura(ruta)).toBe(rutaMiniatura(ruta));
+      expect(funcion.rutaMediana(ruta)).toBe(rutaMediana(ruta));
       if (!esUrlExterna(ruta)) {
         expect(funcion.urlPublica('https://ejemplo.supabase.co/', ruta)).toBe(urlFoto(ruta));
       }
     }
   });
 
-  test('a la IA le manda la miniatura por URL; una URL externa la baja la función', () => {
-    expect(funcion.urlDeMiniatura('https://ejemplo.supabase.co', `${UID}/abc.jpg`)).toBe(
-      urlMiniatura(`${UID}/abc.jpg`),
-    );
-    expect(funcion.urlDeMiniatura('https://ejemplo.supabase.co', 'https://cataas.com/cat')).toBeNull();
+  test('la función baja la mediana y, si no está, la original; una URL externa, tal cual', () => {
+    expect(funcion.urlsParaBajar('https://ejemplo.supabase.co', `${UID}/abc.jpg`)).toEqual([
+      urlFoto(`${UID}/abc.mediana.jpg`),
+      urlFoto(`${UID}/abc.jpg`),
+    ]);
+    expect(funcion.urlsParaBajar('https://ejemplo.supabase.co', 'https://cataas.com/cat')).toEqual([
+      'https://cataas.com/cat',
+    ]);
   });
 });

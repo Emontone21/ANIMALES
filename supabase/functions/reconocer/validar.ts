@@ -54,8 +54,9 @@ export type Descripcion = {
 
 export type ResultadoComparacion = {
   candidato: string;
-  confianza: number;
   veredicto: Veredicto;
+  /** De 0 a 100, la probabilidad de que sea el mismo animal: 0 seguro que no, 100 seguro que sí. */
+  probabilidad_mismo: number;
   motivo: string;
   coinciden: string[];
   difieren: string[];
@@ -78,7 +79,14 @@ const CLAVES_DESCRIPCION = [
   'calidad',
 ] as const;
 
-const CLAVES_RESULTADO = ['candidato', 'confianza', 'veredicto', 'motivo', 'coinciden', 'difieren'] as const;
+const CLAVES_RESULTADO = ['candidato', 'veredicto', 'probabilidad_mismo', 'motivo', 'coinciden', 'difieren'] as const;
+
+/**
+ * Desde dónde la probabilidad dice "es el mismo": "distinto" tiene que quedar
+ * por debajo y "mismo", llegar. Si no, la respuesta se contradice (la IA usó
+ * el número como qué tan segura estaba de su veredicto) y no vale.
+ */
+export const PROBABILIDAD_MEDIA = 50;
 
 function esObjeto(x: unknown): x is Record<string, unknown> {
   return typeof x === 'object' && x !== null && !Array.isArray(x);
@@ -219,10 +227,17 @@ export function validarComparacion(
     }
     if (vistos.has(r.candidato)) return { ok: false, motivo: 'candidato repetido' };
     vistos.add(r.candidato);
-    if (!Number.isInteger(r.confianza) || (r.confianza as number) < 0 || (r.confianza as number) > 100) {
-      return { ok: false, motivo: 'confianza' };
-    }
     if (!enLista(r.veredicto, VEREDICTOS)) return { ok: false, motivo: 'veredicto' };
+    const probabilidad = r.probabilidad_mismo;
+    if (typeof probabilidad !== 'number' || !Number.isInteger(probabilidad) || probabilidad < 0 || probabilidad > 100) {
+      return { ok: false, motivo: 'probabilidad_mismo' };
+    }
+    if (
+      (r.veredicto === 'distinto' && probabilidad >= PROBABILIDAD_MEDIA) ||
+      (r.veredicto === 'mismo' && probabilidad < PROBABILIDAD_MEDIA)
+    ) {
+      return { ok: false, motivo: `${r.candidato} ${r.veredicto} con probabilidad_mismo ${probabilidad}` };
+    }
     if (typeof r.motivo !== 'string' || r.motivo.trim().length === 0) return { ok: false, motivo: 'motivo' };
     let motivo = r.motivo.trim();
     if (largo(motivo) > LIMITES.motivo) {
@@ -235,8 +250,8 @@ export function validarComparacion(
     avisos.push(...coinciden.avisos, ...difieren.avisos);
     valores.push({
       candidato: r.candidato,
-      confianza: r.confianza as number,
       veredicto: r.veredicto,
+      probabilidad_mismo: probabilidad,
       motivo,
       coinciden: coinciden.valores,
       difieren: difieren.valores,

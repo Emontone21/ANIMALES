@@ -2,15 +2,20 @@ import { ENV } from './env';
 
 /**
  * Rutas y URLs de las fotos del bucket "fotos". Es el único lugar con la
- * convención del nombre de las miniaturas: lo usan la app y la función de la
- * vista previa del link (api/), así que no importa nada de React ni de Expo.
- * Comprimir, subir y borrar está en fotos.ts.
+ * convención del nombre de las variantes (miniatura y mediana): lo usan la app
+ * y la función de la vista previa del link (api/), así que no importa nada de
+ * React ni de Expo. La función reconocer tiene una copia (fotos.ts), que
+ * __tests__/imagenes.test.ts compara con esta. Comprimir, subir y borrar está
+ * en fotos.ts.
  */
 
 export const BUCKET_FOTOS = 'fotos';
 
 /** Lado de la miniatura cuadrada que se sube junto a cada foto. */
 export const LADO_MINIATURA = 320;
+
+/** Lado mayor de la versión mediana: la foto entera, sin recorte, que ve la IA. */
+export const LADO_MEDIANA = 640;
 
 /**
  * La miniatura va junto a la original, en la misma carpeta:
@@ -20,16 +25,37 @@ export const LADO_MINIATURA = 320;
  */
 const SUFIJO_MINIATURA = '.miniatura.jpg';
 
+/** <uid>/<uuid>.jpg → <uid>/<uuid>.mediana.jpg, con la misma raíz. */
+const SUFIJO_MEDIANA = '.mediana.jpg';
+
 /** Datos de demo cargados por SQL: una URL https en vez de una ruta del bucket. */
 export function esUrlExterna(ruta: string): boolean {
   return /^https?:\/\//.test(ruta);
 }
 
-/** Ruta de la miniatura de una foto del bucket, o null si es una URL externa. */
-export function rutaMiniatura(ruta: string): string | null {
+/** Una variante de una foto del bucket (su raíz más el sufijo), o null si es una URL externa. */
+function variante(ruta: string, sufijo: string): string | null {
   if (esUrlExterna(ruta)) return null;
   const punto = ruta.indexOf('.', ruta.lastIndexOf('/') + 1);
-  return (punto === -1 ? ruta : ruta.slice(0, punto)) + SUFIJO_MINIATURA;
+  return (punto === -1 ? ruta : ruta.slice(0, punto)) + sufijo;
+}
+
+/** Ruta de la miniatura de una foto del bucket, o null si es una URL externa. */
+export function rutaMiniatura(ruta: string): string | null {
+  return variante(ruta, SUFIJO_MINIATURA);
+}
+
+/** Ruta de la versión mediana de una foto del bucket, o null si es una URL externa. */
+export function rutaMediana(ruta: string): string | null {
+  return variante(ruta, SUFIJO_MEDIANA);
+}
+
+/** Medidas de la mediana de una foto de ancho × alto: el lado mayor a LADO_MEDIANA, sin agrandar ni recortar. */
+export function medidasMediana(ancho: number, alto: number): { width: number; height: number } {
+  const mayor = Math.max(ancho, alto);
+  if (mayor <= LADO_MEDIANA) return { width: ancho, height: alto };
+  const escala = LADO_MEDIANA / mayor;
+  return { width: Math.round(ancho * escala), height: Math.round(alto * escala) };
 }
 
 /** URL pública de una ruta del bucket, igual a la que arma supabase-js. */

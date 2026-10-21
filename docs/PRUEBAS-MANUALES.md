@@ -512,7 +512,7 @@ Esperado:
 
 ## 26. Reconocimiento con la API de Claude · 8 min · [Visión]
 
-Cuenta: familia (moderadora) en la computadora; vecina en un celular. Requiere las migraciones 0018 y 0019 y la función `reconocer` desplegada (pasos en `docs/reportes/2026-10-20-reconocimiento-ia.md`). Hacen falta dos fotos del mismo perro (de otro ángulo o en otro lugar) y una foto sin animal (una pared, una calle).
+Cuenta: familia (moderadora) en la computadora; vecina en un celular. Requiere las migraciones 0018 a 0020 y la función `reconocer` desplegada (pasos en `docs/reportes/2026-10-20-reconocimiento-ia.md` y `docs/reportes/2026-10-21-ajuste-reconocimiento.md`). Hacen falta dos fotos del mismo perro (de otro ángulo o en otro lugar) y una foto sin animal (una pared, una calle).
 
 1. Familia: **Perfil → Panel de moderación → Reconocimiento**. Mirá el estado, las llamadas de hoy, el costo del mes y los errores.
 2. Familia: publicá un perdido con la primera foto del perro.
@@ -523,14 +523,17 @@ Cuenta: familia (moderadora) en la computadora; vecina en un celular. Requiere l
    ```sql
    select created_at, tipo, resultado, tokens_entrada, tokens_salida, costo_usd, detalle
    from llamadas_ia order by created_at desc limit 5;
+   select confianza as probabilidad_mismo, veredicto, motivo from comparaciones_ia order by created_at desc limit 5;
    ```
+   Y en **Storage → fotos**, en la carpeta de quien publicó: cada foto tiene al lado su `.miniatura.jpg` y su `.mediana.jpg`.
 7. **Interruptor:** en el SQL Editor, `update config_app set valor = 'false' where clave = 'ia_activa';`. Vecina publica otra foto. Después, `update config_app set valor = 'true' where clave = 'ia_activa';` y esperá 2 minutos.
 8. **Sin crédito (simulado):** `update config_app set valor = 'sin_credito' where clave = 'ia_pausa';`. Familia: volvé a **Reconocimiento** y tocá **Reactivar**.
 9. En Supabase: **Edge Functions → reconocer → Logs**. Y en la consola de Anthropic, **Usage** del día.
 
 Esperado:
 - El estado dice **Configurado**. No aparecen la URL de la función ni el secreto. Los textos dicen "inteligencia artificial" o "IA", nunca la marca.
-- En menos de un minuto, Toby tiene una coincidencia con el motivo (por ejemplo "Mismo collar rojo y mancha blanca en el pecho.") en vez de un porcentaje, y la familia recibe "Encontraron un animal parecido a…". Si la IA no los ve parecidos, no aparece: probá con fotos más claras.
+- En menos de un minuto, Toby tiene una coincidencia con el motivo (por ejemplo "Misma mancha blanca en el pecho y la oreja izquierda caída.") en vez de un porcentaje, y la familia recibe "Encontraron un animal parecido a…". Si la IA no los ve parecidos, no aparece: probá con fotos más claras.
+- Ninguna coincidencia tiene veredicto "distinto": en `comparaciones_ia`, los "distinto" tienen probabilidad menor que 50 y los "mismo", 50 o más.
 - La foto sin animal no genera coincidencias: en `llamadas_ia` tiene solo una llamada (`describir`), sin `comparar`.
 - Si una llamada falla, `detalle` dice el tipo y el texto del error de la API (y el id del pedido), sin claves, URLs, emails ni teléfonos.
 - Si una respuesta se pasó de largo, la llamada queda `ok` y `detalle` dice qué se recortó (por ejemplo "C1 motivo: 163 > 140"); el motivo que se ve en la app termina en "…".

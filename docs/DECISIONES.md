@@ -485,7 +485,7 @@ El servicio de embeddings en Cloud Run (entradas anteriores) no llegó a despleg
 - **"Claramente incompatibles":** los colores se ordenan de claro a oscuro (blanco, dorado y naranja, gris, marrón, negro) y se descarta el par solo si ningún color de un lado (principal o secundario) queda a menos de 3 pasos de alguno del otro: negro con blanco, dorado o naranja; blanco con marrón. Los tamaños, solo chico con grande. Sin datos de un lado, no se descarta: la luz y el ángulo engañan, y descartar de más es perder un reencuentro.
 - **Salida estructurada:** cada paso es una herramienta con esquema JSON estricto (`strict`), con `tool_choice: auto` porque Claude Opus 5.5 y Sonnet 5.5 no aceptan forzar la herramienta y el modelo es configurable. Cada respuesta se valida en la función (largos, rangos, un resultado por candidato): si no valida, cuenta como error y la cola la reintenta.
 - **Esfuerzo:** `low` para describir y `medium` para comparar.
-- **Fotos por URL:** la miniatura de 320 de la Fase 8 (unos 140 tokens por imagen). Las de otros sitios las baja la función (ver "Las fotos de otros sitios las baja la función"). El nombre de la miniatura se arma en `src/lib/imagenes.ts`; la función, que no puede importar de `src/`, tiene una copia que `__tests__/imagenes.test.ts` compara con la original.
+- **Fotos por URL:** la miniatura de 320 de la Fase 8 (unos 140 tokens por imagen). Las de otros sitios las baja la función (ver "Las fotos de otros sitios las baja la función"). Desde el 21/10, la foto entera a 640 px (ver "Coincidencias solo con veredicto mismo o posible"). El nombre de la miniatura se arma en `src/lib/imagenes.ts`; la función, que no puede importar de `src/`, tiene una copia que `__tests__/imagenes.test.ts` compara con la original.
 - **Lo que viaja:** solo las fotos y los datos del animal (tipo, tamaño, color y collar declarados, y lo que se vio en las fotos). Nunca nombres, contactos, mensajes ni la descripción libre. Las instrucciones le piden a Claude que ignore cualquier pedido escrito en una foto o en los datos.
 - **Seguridad de la función:** `verify_jwt = false`, porque la llama Postgres, que no tiene un JWT de usuario; la protege `X-Vision-Secret`, que la función compara con `config_app.vision_secret` (lo lee de la base, así no hay que cargarlo en dos lugares). Para escribir, la clave secreta que Supabase pone en su entorno; `ANTHROPIC_API_KEY`, como secreto de la función.
 - **Errores de la API:** 429, 529 y cualquier otro marcan la foto con error y la cola la reintenta con espera creciente. Sin crédito (402), además, se pausa todo (`ia_pausa`) hasta que un moderador toca **Reactivar**: si no, cada foto gastaría sus 8 intentos en minutos.
@@ -524,3 +524,25 @@ Con la clave de un workspace, la API respondió bien, pero dos respuestas se rec
 - **Se pide menos:** motivos de hasta 110 caracteres y rasgos cortos, de hasta 60 (`OBJETIVOS` en `validar.ts`), por debajo de los topes. Los topes no cambian: son los de la base.
 
 **Cómo se cuenta el largo:** en caracteres, como `char_length` de Postgres (un emoji es uno, y el corte no lo parte).
+
+## 2026-10-21 · Coincidencias solo con veredicto "mismo" o "posible", y la IA ve la foto entera
+
+Con las primeras fotos reales (un beagle publicado dos veces, en "perro beagle" y "perro marron"), pasaron dos cosas:
+- **Coincidencias falsas.** La IA comparó el beagle con tres perros de demo y respondió "distinto" con confianza 95, 95 y 98: tomó el número como qué tan segura estaba de su veredicto. La base creaba la coincidencia mirando solo el número (desde 70), así que creó tres coincidencias falsas, con aviso a las dos cuentas. En otra llamada, la misma IA usó el número al revés (3, 3 y 2 para "distinto").
+- **Una coincidencia que no llegó.** Los dos beagles quedaron en 45 ("posible"). La IA veía la miniatura de 320, un recorte cuadrado del centro de cada foto, y le pesaron el collar (que se veía en una y no en la otra) y el ángulo.
+
+**Cambios:**
+- **El número se llama `probabilidad_mismo`** en lo que devuelve la IA: de 0 a 100, la probabilidad de que sea el mismo animal (0 seguro que no, 100 seguro que sí). El pedido y el esquema lo dicen, y aclaran que no es qué tan segura está de su veredicto. Las columnas `confianza` de la base guardan ese número (no se renombraron: la app y las vistas las usan).
+- **Una respuesta contradictoria no vale** y se reintenta: "distinto" con 50 o más, o "mismo" con menos de 50. "posible" puede tener cualquier número.
+- **La base crea la coincidencia solo con veredicto "mismo" o "posible"** y la probabilidad desde `umbral_ia` (`guardar_comparacion_ia`, migración 0020). Es la segunda barrera: aunque llegara un "distinto" con 95, no sugiere nada. Una función vieja que mande `confianza` no guarda nada.
+- **La IA ve la foto entera, a 640 px de lado mayor,** para describir y para comparar. La app sube una tercera variante, `<uuid>.mediana.jpg` (`medidasMediana`), y la función la baja y la manda dentro del pedido; si no está (las fotos de antes), baja la original de 1280. Se descartaron:
+  - las transformaciones de imagen de Supabase, que no están en este plan (`FeatureNotEnabled`);
+  - achicar en la función, porque decodificar y recomprimir 11 JPEG por pedido no entra en los 2 s de CPU de una Edge Function;
+  - mandar la original, que cuesta unos 1.600 tokens por imagen contra unos 410.
+- **Describir también con la mediana:** medido en producción, una foto de 640 × 480 suma unos 206 tokens de entrada contra la miniatura (2.014 contra 1.808), unos US$ 0,00002. A cambio la descripción ve el animal entero (collar, cuerpo, tamaño), y la función baja una sola imagen por foto para las dos llamadas.
+- **Qué pesa al comparar:** mucho, el pelaje, las manchas, la forma de las orejas y la cara; poco, el collar (se pone y se saca), el fondo, la pose y lo que escribió cada persona (cada uno describe a su animal como puede).
+
+**Lo que se resigna:**
+- **Cada foto se sube una vez más** (unos 50 a 80 KB).
+- **Cuesta un poco más:** unos 206 tokens más por imagen. Comparar con 4 candidatos pasa de unos US$ 0,0011 a unos US$ 0,0012, y una foto con 4 candidatos, de unos US$ 0,0015 a 0,0016.
+- **Las coincidencias falsas de la 0018** (`comparaciones_ia` con "distinto" y número alto) quedan como estaban. Ya están rechazadas y solo sirven para no volver a comparar el par.

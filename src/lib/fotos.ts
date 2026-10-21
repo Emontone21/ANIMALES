@@ -1,11 +1,17 @@
 import { Platform } from 'react-native';
 
-import { BUCKET_FOTOS, LADO_MINIATURA, rutaMiniatura } from '@/lib/imagenes';
+import {
+  BUCKET_FOTOS,
+  LADO_MINIATURA,
+  medidasMediana,
+  rutaMediana,
+  rutaMiniatura,
+} from '@/lib/imagenes';
 import { supabase } from '@/lib/supabase';
 
 /**
  * Comprimir, subir y borrar fotos del bucket "fotos". La convención de los
- * nombres (y la de las miniaturas) está en imagenes.ts.
+ * nombres (y la de las variantes) está en imagenes.ts.
  *
  * expo-image-manipulator, expo-crypto y expo-file-system se importan al
  * usarlos (import dinámico): en web quedan fuera de la carga inicial, porque
@@ -53,6 +59,20 @@ async function miniaturaDe(foto: FotoComprimida): Promise<string> {
   return resultado.uri;
 }
 
+/**
+ * La foto entera a 640 px de lado mayor, sin recorte, unos 50-80 KB: la que ve
+ * la IA del reconocimiento (supabase/functions/reconocer), que con la
+ * miniatura cuadrada perdía lo que quedaba fuera del centro.
+ */
+async function medianaDe(foto: FotoComprimida): Promise<string> {
+  const { ImageManipulator, SaveFormat } = await import('expo-image-manipulator');
+  const render = await ImageManipulator.manipulate(foto.uri)
+    .resize(medidasMediana(foto.width, foto.height))
+    .renderAsync();
+  const resultado = await render.saveAsync({ format: SaveFormat.JPEG, compress: CALIDAD_JPEG });
+  return resultado.uri;
+}
+
 /** Lee la foto local como bytes. En web la URI es blob: o data:, así que se usa fetch. */
 async function leerBytes(uriLocal: string): Promise<ArrayBuffer | Blob> {
   if (Platform.OS === 'web') {
@@ -80,15 +100,19 @@ export async function subir(uriLocal: string, ruta: string, bucket = BUCKET_FOTO
 
 /**
  * Sube una foto ya comprimida al bucket público "fotos", dentro de la carpeta
- * del usuario (lo exige la política de Storage), con su miniatura al lado.
- * Devuelve la ruta de la original, que es la que se guarda en la base.
+ * del usuario (lo exige la política de Storage), con su miniatura y su versión
+ * mediana al lado. Si alguna falla, no se publica nada. Devuelve la ruta de la
+ * original, que es la que se guarda en la base.
  */
 export async function subirFoto(foto: FotoComprimida, usuarioId: string): Promise<string> {
   const Crypto = await import('expo-crypto');
   const ruta = `${usuarioId}/${Crypto.randomUUID()}.jpg`;
-  const miniatura = rutaMiniatura(ruta) as string;
-  const uriMiniatura = await miniaturaDe(foto);
-  await Promise.all([subir(foto.uri, ruta), subir(uriMiniatura, miniatura)]);
+  const [uriMiniatura, uriMediana] = await Promise.all([miniaturaDe(foto), medianaDe(foto)]);
+  await Promise.all([
+    subir(foto.uri, ruta),
+    subir(uriMiniatura, rutaMiniatura(ruta) as string),
+    subir(uriMediana, rutaMediana(ruta) as string),
+  ]);
   return ruta;
 }
 
@@ -110,11 +134,12 @@ export async function urlCaptura(ruta: string): Promise<string> {
   return data.signedUrl;
 }
 
-/** Una foto del bucket y sus variantes (hoy, la miniatura), para borrarlas juntas. */
+/** Una foto del bucket y sus variantes (la miniatura y la mediana), para borrarlas juntas. */
 export function conVariantes(rutas: string[]): string[] {
   return rutas.flatMap((ruta) => {
     const miniatura = rutaMiniatura(ruta);
-    return miniatura ? [ruta, miniatura] : [];
+    const mediana = rutaMediana(ruta);
+    return miniatura && mediana ? [ruta, miniatura, mediana] : [];
   });
 }
 

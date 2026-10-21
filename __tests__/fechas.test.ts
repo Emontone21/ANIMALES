@@ -69,6 +69,23 @@ describe('¿Cuándo lo viste? y ¿Cuándo se perdió?', () => {
     expect(fechaDe('ayer', AHORA).toISOString()).toBe('2026-10-18T12:00:00.000Z');
   });
 
+  test('no dependen de la zona horaria del dispositivo: lo que va a la base es UTC', () => {
+    const zona = process.env.TZ;
+    try {
+      for (const tz of ['America/Montevideo', 'UTC', 'Asia/Tokyo']) {
+        process.env.TZ = tz;
+        expect(fechaDe('ahora', AHORA).toISOString()).toBe('2026-10-19T12:00:00.000Z');
+        expect(fechaDe('hace3h', AHORA).toISOString()).toBe('2026-10-19T09:00:00.000Z');
+        // A las 8:24 en Montevideo, "Recién" llega a la base (p_visto_en) como las 11:24 UTC.
+        expect(fechaDe('ahora', new Date('2026-10-21T08:24:42-03:00')).toISOString()).toBe(
+          '2026-10-21T11:24:42.000Z',
+        );
+      }
+    } finally {
+      process.env.TZ = zona;
+    }
+  });
+
   test('un perdido se cuenta en días', () => {
     expect(fechaPerdidoDe('hoy', AHORA)).toEqual(AHORA);
     expect(fechaPerdidoDe('hace3d', AHORA).toISOString()).toBe('2026-10-16T12:00:00.000Z');
