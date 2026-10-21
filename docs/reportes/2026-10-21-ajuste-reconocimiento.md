@@ -10,12 +10,54 @@ Con las primeras fotos reales, el reconocimiento creó tres coincidencias falsas
   - revisar la hora de "visto";
   - dejar lista la evaluación.
 
-### Lo que se hizo en producción: solo apagarlo
+Después de la revisión del PR #14 se cerró en producción (ver "Cierre", abajo): la 0020 aplicada, la función desplegada, los beagles comparados de nuevo y el reconocimiento prendido.
 
-- **`ia_activa = 'false'`** desde las 11:44:56 UTC del 21/10. Se comprobó de nuevo al cerrar este reporte: sigue en `false`.
-- **Coincidencias de la IA:** quedan las 3 falsas, ya rechazadas. No hay ninguna pendiente.
-- **La función** sigue en la versión 5 (commit `c76161a`). La última migración aplicada es la 0019.
-- **Nada más.** No se aplicó la 0020, no se desplegó y no se prendió nada.
+### Cierre (21/10): el PR #14 en producción
+
+El PR #14 (`fcfdfb0`) se revisó y se aprobó. Se cerró en este orden:
+
+| Paso | Resultado |
+| --- | --- |
+| 1. Migración 0020 | Hecho, con el reconocimiento apagado. Se ejecutó el archivo tal como está en `fcfdfb0`, y en el mismo pedido se registró `('20261021000020', 'probabilidad_mismo')`. El historial tiene 20 versiones distintas, de 0001 a 0020. `guardar_comparacion_ia` lee `probabilidad_mismo`, tiene la regla del veredicto y solo la puede llamar `service_role` (y `postgres`, su dueño). |
+| 2. Pruebas SQL | Hecho. Pasan las 9, de a una, en la base real. Antes y después quedaron iguales los casos (6), avistamientos (7), coincidencias (3), comparaciones (9), descripciones (7), llamadas (25), avisos (9), perfiles (4), configuración (14) y archivos (4). |
+| 3. Función | Hecho. Desplegada con `fcfdfb0` y `verify_jwt` apagado: versión 6, activa. Un pedido sin secreto recibe 401 (`no_autorizado`). La clave, la URL y el secreto no cambiaron. |
+| 4. Beagles | Hecho. 28, "distinto": no se creó la coincidencia. Ver abajo. |
+| 5. Control | Ninguna coincidencia con "distinto" (la consulta de la sección 4 da 0) y ninguna respuesta contradictoria: las dos llamadas salieron `ok`, sin detalle. El reconocimiento quedó **prendido** desde las 12:28:08 UTC. |
+| 6. Reporte | Este commit. |
+| 7. Merge y deploy | Después de este commit: merge del PR #14 con merge commit y deploy de producción de Vercel. |
+
+**Los dos beagles**
+- Se borró la comparación del par (45, "posible", con la miniatura) y la descripción del segundo caso ("perro marron"), y su foto volvió a la cola, con el SQL de la sección 4 (paso 5).
+- Al prender, `despertar_vision` la mandó a la función. Tardó 16 s: describir a las 12:28:11 y comparar a las 12:28:15; la comparación quedó guardada a las 12:28:24.
+- Las dos fotos son de antes y no tienen mediana: la función bajó las originales, enteras.
+- Solo se comparó este par: los demás candidatos de esa foto ya estaban comparados.
+
+| `probabilidad_mismo` | Veredicto | Motivo |
+| --- | --- | --- |
+| 28 | distinto | "Ambos son beagles tricolor con blaze blanco, pero el hocico y el patrón de manchas no coinciden bien; difiere la pose y la luz." |
+
+- **Coinciden,** según la IA: beagle tricolor marrón, blanco y negro; franja blanca en la frente; orejas largas caídas marrones; hocico negro y ojos con contorno oscuro.
+- **Difieren:**
+  - el hocico, casi todo blanco en "perro beagle" y con manchas marrones en "perro marron";
+  - manchas marrones en el lomo y las patas que no se ven en la foto nueva;
+  - el collar negro de una sola, que la IA aclara que pesa poco.
+- **Coincidencia y avisos:** no se creó, porque el veredicto es "distinto" (y 28 tampoco llega al umbral de 70). No le llegó ningún aviso a nadie.
+- **La descripción nueva** del segundo caso: beagle, marrón y blanco, tricolor, mediano, collar que no se ve, foto de calidad buena y 7 rasgos (entre ellos "manchas marrones en el hocico").
+- **Costo:**
+  - describir: 4.470 tokens de entrada y 397 de salida (US$ 0,000646);
+  - comparar con 1 candidato: 7.853 y 973 (US$ 0,001272);
+  - en total, US$ 0,0019.
+
+**Lo que dice el resultado:** son dos publicaciones del mismo beagle, y la IA no lo reconoció: bajó de 45 "posible" a 28 "distinto". Con la foto entera vio diferencias en las manchas del hocico y del lomo que el recorte no mostraba, y pueden ser de la luz y el ángulo. Es un solo par: no alcanza para saber si el cambio ayuda. Lo que falta es la evaluación con varias fotos por perro (sección 4, paso 8), que también calibra el umbral. Mientras tanto, el riesgo que queda es perder reencuentros, no avisar de más.
+
+**El costo de las fotos de antes** fue mayor que el estimado. Describir con la original costó 4.470 tokens de entrada, contra 1.808 con la miniatura. La original tiene 1280 de **ancho** (`comprimirFoto` limita el ancho, no el lado mayor). Si es vertical de 3:4, mide 1280 × 1707: unos 2.900 tokens por imagen, que es lo que da la medición, y no los 1.600 de una apaisada. Se corrigió en "Costo por foto", en "Pendientes y riesgos" y en `docs/DECISIONES.md`. La mediana no cambia: 640 de lado mayor, también en vertical.
+
+### Primera parte: solo apagarlo
+
+- **`ia_activa = 'false'`** desde las 11:44:56 UTC del 21/10 hasta el cierre.
+- **Coincidencias de la IA:** quedaron las 3 falsas, ya rechazadas. No había ninguna pendiente.
+- **La función** quedó en la versión 5 (commit `c76161a`) y la última migración aplicada, en la 0019, hasta la revisión.
+- **Nada más.** Hasta la revisión no se aplicó la 0020, no se desplegó y no se prendió nada.
 
 ### Qué pasó (del diagnóstico)
 
@@ -49,7 +91,7 @@ Con las primeras fotos reales, el reconocimiento creó tres coincidencias falsas
 - Con `--foto mediana`, a 640 × 480: US$ 0,00124 por foto.
 - Es la cota de arriba: por esa cuenta, la mediana sube 273 tokens por imagen, y en producción subió 206.
 
-**Fotos de antes,** sin mediana (las dos del beagle incluidas): la función baja la original de 1280, unos 1.600 tokens por imagen. Una foto que se compara con 4 de esas cuesta unos US$ 0,0007 más, hasta que dejen de ser candidatas.
+**Fotos de antes,** sin mediana (las dos del beagle incluidas): la función baja la original, de 1280 de ancho. Apaisada son unos 1.600 tokens por imagen; vertical (1280 × 1707), unos 2.900. Medido en el cierre: describir con la original de un beagle costó 4.470 tokens de entrada, contra 1.808 con la miniatura. Una foto que se compara con 4 de esas cuesta hasta unos US$ 0,0012 más, hasta que dejen de ser candidatas.
 
 **¿Por qué describir con la mediana y no con la miniatura?** Cuesta US$ 0,00002 más por foto. A cambio:
 - la descripción ve el animal entero: el collar, el cuerpo y el tamaño, que el recorte cuadrado suele cortar;
@@ -191,11 +233,13 @@ Para saberlo, publicá una prueba con "Recién" desde el mismo dispositivo y mir
 
 No mide la calidad: las respuestas eran inventadas.
 
-**No se corrió nada en producción.** Las pruebas SQL de allá van con los pasos de abajo, después de la revisión.
+**En producción,** en el cierre: las 9 pruebas SQL pasan, de a una, sin dejar datos (ver "Cierre").
+
+**Commit del cierre:** solo cambia documentación (este reporte y `docs/DECISIONES.md`). Se volvieron a correr typecheck, lint, test y export, con el mismo resultado.
 
 ## 4. Pasos manuales
 
-Todo esto va **después de revisar el PR.** Hasta entonces el reconocimiento queda apagado. El orden importa:
+Los pasos 1, 2, 3, 5 y 6 ya se hicieron en el cierre (ver "Cierre"); el 4 es el merge del PR #14, que va después de este commit. Quedan como referencia. **Falta el 8:** la evaluación, que ahora es lo más importante. El paso 7 sirve para seguir lo que pasa. El orden importa:
 - la función nueva con la 0018, o la vieja con la 0020, no guardan ninguna comparación: cada foto gastaría sus 8 intentos;
 - por eso la 0020 y la función van juntas, con `ia_activa` en `false`.
 
@@ -372,12 +416,14 @@ update public.config_app set valor = '<umbral>', updated_at = now() where clave 
 
 ## 5. Pendientes y riesgos
 
-- **El orden del despliegue (sección 4, pasos 1 a 3).** La 0020 y la función nueva tienen que estar las dos antes de prender. Con una sola, cada comparación falla, se reintenta 8 veces y gasta llamadas del tope.
+- **El reconocimiento quedó prendido.** Para apagarlo, el SQL de la sección 4 (paso 7).
+- **Los beagles no se reconocieron** (28, "distinto"). Con un solo par no se sabe si la foto entera ayuda o perjudica: hace falta la evaluación (sección 4, paso 8). Mientras tanto, la IA puede perder reencuentros. Las familias igual ven el caso en el mapa y en "Ver lista".
+- **El orden del despliegue se respetó:** la 0020 y la función nueva quedaron las dos antes de prender. Con una sola, cada comparación falla, se reintenta 8 veces y gasta llamadas del tope.
 - **El umbral (70) sigue sin calibrar.** Falta la evaluación con fotos reales (paso 8). Con la regla nueva, solo "posible" y "mismo" desde 70 crean coincidencias. Igual, una "posible" con 70 o más llega como aviso a una familia, y siempre confirma una persona.
 - **El modelo puede seguir equivocándose de número.** La función rechaza las contradicciones y la base no sugiere "distinto". Un "posible" con un número alto mal puesto todavía pasa.
 - **Una contradicción se reintenta y se cobra:** cada intento cuesta como una comparación. Si se repite, la foto queda con error después de 8 intentos, y queda el detalle para revisar el pedido.
 - **Fotos sin mediana:**
-  - las subidas antes de este cambio (todas las de producción): la función baja la original de 1280, unos US$ 0,0007 más por foto que las tenga como candidatas;
+  - las subidas antes de este cambio (todas las de producción): la función baja la original, de 1280 de ancho. Cuesta hasta unos US$ 0,0012 más por foto que las tenga como candidatas; describir con una costó 4.470 tokens de entrada;
   - las de demo, de otros sitios: tal cual.
 - **Una variante más por foto:**
   - cada foto sube un archivo más, de unos 50 a 80 KB, y tarda un poco más con mala señal;
@@ -386,5 +432,10 @@ update public.config_app set valor = '<umbral>', updated_at = now() where clave 
 - **La hora de "visto" depende del reloj del dispositivo.** No se cambió. Si se confirma que el reloj estaba mal, hay una forma de que no importe (no se hizo):
   - con "Recién", que la app no mande la hora y la base use `now()`;
   - con "hace X", que mande las horas en vez de la fecha.
-- **No se probó contra la API real** con la mediana ni con el pedido nuevo. Las pruebas simulan la API; la evaluación (paso 8) y el paso 5 lo prueban.
-- **El costo** sube unos US$ 0,0001 por foto, a unos US$ 0,0016. Con el tope de 300 llamadas por día, el máximo queda por debajo de US$ 0,30 por día.
+- **Con la API real hubo una sola comparación:** la de los beagles, con el pedido nuevo y las originales.
+  - **La mediana todavía no se probó con la API:** la sube la app nueva, que sale con el deploy del merge. Lo prueba el flujo 26 de `docs/PRUEBAS-MANUALES.md`: una foto nueva tiene que dejar su `.mediana.jpg` en Storage.
+  - **La evaluación** (paso 8) prueba las dos cosas con más fotos.
+- **El costo:**
+  - con la mediana, sube unos US$ 0,0001 por foto, a unos US$ 0,0016;
+  - mientras las candidatas sean fotos de antes, llega hasta unos US$ 0,0025 por foto;
+  - con el tope de 300 llamadas por día, el máximo queda en unos US$ 0,45 por día.

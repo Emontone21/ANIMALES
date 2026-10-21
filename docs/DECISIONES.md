@@ -535,10 +535,10 @@ Con las primeras fotos reales (un beagle publicado dos veces, en "perro beagle" 
 - **El número se llama `probabilidad_mismo`** en lo que devuelve la IA: de 0 a 100, la probabilidad de que sea el mismo animal (0 seguro que no, 100 seguro que sí). El pedido y el esquema lo dicen, y aclaran que no es qué tan segura está de su veredicto. Las columnas `confianza` de la base guardan ese número (no se renombraron: la app y las vistas las usan).
 - **Una respuesta contradictoria no vale** y se reintenta: "distinto" con 50 o más, o "mismo" con menos de 50. "posible" puede tener cualquier número.
 - **La base crea la coincidencia solo con veredicto "mismo" o "posible"** y la probabilidad desde `umbral_ia` (`guardar_comparacion_ia`, migración 0020). Es la segunda barrera: aunque llegara un "distinto" con 95, no sugiere nada. Una función vieja que mande `confianza` no guarda nada.
-- **La IA ve la foto entera, a 640 px de lado mayor,** para describir y para comparar. La app sube una tercera variante, `<uuid>.mediana.jpg` (`medidasMediana`), y la función la baja y la manda dentro del pedido; si no está (las fotos de antes), baja la original de 1280. Se descartaron:
+- **La IA ve la foto entera, a 640 px de lado mayor,** para describir y para comparar. La app sube una tercera variante, `<uuid>.mediana.jpg` (`medidasMediana`), y la función la baja y la manda dentro del pedido; si no está (las fotos de antes), baja la original (1280 de ancho). Se descartaron:
   - las transformaciones de imagen de Supabase, que no están en este plan (`FeatureNotEnabled`);
   - achicar en la función, porque decodificar y recomprimir 11 JPEG por pedido no entra en los 2 s de CPU de una Edge Function;
-  - mandar la original, que cuesta unos 1.600 tokens por imagen contra unos 410.
+  - mandar la original, de 1280 de ancho: unos 1.600 tokens por imagen apaisada y unos 2.900 vertical (1280 × 1707), contra unos 410. Medido el 21/10: describir con la original de un beagle costó 4.470 tokens de entrada, contra 1.808 con la miniatura.
 - **Describir también con la mediana:** medido en producción, una foto de 640 × 480 suma unos 206 tokens de entrada contra la miniatura (2.014 contra 1.808), unos US$ 0,00002. A cambio la descripción ve el animal entero (collar, cuerpo, tamaño), y la función baja una sola imagen por foto para las dos llamadas.
 - **Qué pesa al comparar:** mucho, el pelaje, las manchas, la forma de las orejas y la cara; poco, el collar (se pone y se saca), el fondo, la pose y lo que escribió cada persona (cada uno describe a su animal como puede).
 
