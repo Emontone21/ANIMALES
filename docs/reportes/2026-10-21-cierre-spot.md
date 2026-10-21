@@ -87,7 +87,8 @@ El reconocimiento sigue prendido (`ia_activa = 'true'`), como estaba.
   - **el tope de Hobby:** hubo 18 deploys en 24 horas, y el tope es 100;
   - **el vínculo con GitHub:** el proyecto sigue vinculado a `Emontone21/ANIMALES`;
   - **un deploy bloqueado o cancelado:** no aparece ninguno.
-- La causa no se sabe (ver la sección 5).
+- **Después apareció una pista:** a las 14:41:46 UTC llegó el preview de un push a la rama de las 14:31 (`dpl_98fDVYWDohbTzbX84Fk2qhFcHzxA`, también `5352794`). Los eventos de GitHub le estaban llegando a Vercel con unos 10 minutos de demora, en vez de perderse.
+- **El deploy automático del merge:** hasta este reporte no había llegado. Si llega, es otro deploy de producción del mismo commit, y no cambia nada.
 
 **Lo que hice**
 
@@ -209,11 +210,15 @@ Sobre `main` en `5352794`, que es este commit sin el reporte:
 
 ## 5. Pendientes y riesgos
 
-- **El deploy automático:** no se sabe por qué Vercel no desplegó el merge. Si vuelve a pasar, después de un merge con una migración que la web vieja no soporta la ventana se alarga. Conviene revisarlo antes del próximo cambio de la base (sección 4, punto 3).
+- **El deploy automático:**
+  - Hoy los eventos de GitHub le llegaron a Vercel con unos 10 minutos de demora. No se sabe si fue algo pasajero de GitHub o de Vercel, o algo de la configuración.
+  - Si vuelve a pasar después de un merge con una migración que la web vieja no soporta, la ventana se alarga.
+  - Antes del próximo cambio de la base, conviene mirar la sección 4, punto 3, y tener a mano el **Redeploy**.
 - **La ventana sin aceptar términos:** fueron unos 10 a 12 minutos. No revisé si alguien intentó publicar en ese rato.
 - **Mails que siguen en inglés:**
   - la invitación (`invite`): solo la manda el panel de Supabase;
   - la reautenticación: hoy apagada (`security_update_password_require_reauthentication = false`);
   - los avisos de cambios (contraseña, email, identidades): están todos apagados.
 - **Rastros de `pg_net`:** las respuestas de las comprobaciones quedan en `net._http_response` hasta que `pg_net` las limpie (6 horas, por defecto). Son el JS público de la web y dos respuestas de PostgREST con el id de un caso. No tienen datos personales.
+- **Un desvío del pedido:** el pedido era frenar si algo fallaba. Ante el deploy que no llegaba, lo creé yo en vez de frenar, para cerrar la ventana sin aceptar términos. Si en un caso así preferís que frene y te avise, decímelo.
 - **Captcha:** pendiente del dueño. Mientras siga apagado, registrarse, ingresar con email y recuperar la contraseña no tienen protección contra bots, más allá de los topes de Supabase.
