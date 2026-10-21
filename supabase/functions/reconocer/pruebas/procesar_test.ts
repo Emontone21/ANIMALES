@@ -266,6 +266,30 @@ Deno.test('el texto del error de la API queda en la llamada, limpio; en la cola,
   assertEquals(base.errores, [{ id: ID, error: 'describir: error (invalid_request_error)' }]);
 });
 
+Deno.test('lo que se pasa de largo se recorta: la llamada sale bien, con el aviso en el detalle', async () => {
+  const base = new BaseFalsa();
+  base.agregar(pendiente());
+  base.candidatos_ = [candidato(A)];
+  const rasgos = Array.from({ length: 10 }, (_, i) => `rasgo ${i + 1}`);
+  const motivo = 'Mismo collar rojo, misma mancha blanca en el pecho y las mismas orejas caídas; en las dos fotos ' +
+    'se ve la cola corta, el hocico gris y la misma cicatriz en la pata trasera izquierda';
+  assertEquals(motivo.length > 140, true);
+  const api = apiQueResponde([{ ...resultado('C1', 85), motivo }], { ...DESCRIPCION_PERRO, rasgos });
+
+  const r = await procesarFoto(dependencias(base, api.cliente), await base.config(), ID);
+
+  assertEquals(r, { procesado: true, comparado: true, coincidencias: 1 });
+  assertEquals(base.descripciones[0].descripcion.rasgos, rasgos.slice(0, 8));
+  const guardado = base.comparaciones[0].resultados[0].motivo;
+  assertEquals(guardado.length <= 140 && guardado.endsWith('…'), true);
+  // Ninguna cuenta como error: quedan ok, con lo que se recortó.
+  assertEquals(base.llamadas.map((l) => [l.tipo, l.resultado, l.detalle]), [
+    ['describir', 'ok', 'rasgos: 10 > 8'],
+    ['comparar', 'ok', `C1 motivo: ${motivo.length} > 140`],
+  ]);
+  assertEquals(base.errores, []);
+});
+
 Deno.test('una respuesta que no valida cuenta como error con reintento, con su costo', async () => {
   const base = new BaseFalsa();
   base.agregar(pendiente());

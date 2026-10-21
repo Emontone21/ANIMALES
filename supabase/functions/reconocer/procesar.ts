@@ -20,6 +20,7 @@ import {
   costoEstimado,
   describir,
   type Imagen,
+  limpiarDetalle,
   type Respuesta,
 } from './claude.ts';
 import type { FotoBajada } from './descargar.ts';
@@ -101,12 +102,15 @@ async function llamar<T>(
     return { tipo: 'fallo', resultado };
   }
   const costo = costoEstimado(modelo, respuesta.uso);
+  const { entrada, salida } = respuesta.uso;
   if (!respuesta.valida) {
-    await d.base.terminarLlamada(id, 'invalida', respuesta.uso.entrada, respuesta.uso.salida, costo, respuesta.motivo);
+    await d.base.terminarLlamada(id, 'invalida', entrada, salida, costo, limpiarDetalle(respuesta.motivo));
     await d.base.marcarError(avistamientoId, `${tipo}: respuesta inválida (${respuesta.motivo})`);
     return { tipo: 'fallo', resultado: 'invalida' };
   }
-  await d.base.terminarLlamada(id, 'ok', respuesta.uso.entrada, respuesta.uso.salida, costo, null);
+  // Lo que se recortó queda como aviso en la llamada, que igual sale bien (no es un error).
+  const avisos = respuesta.avisos.length > 0 ? limpiarDetalle(respuesta.avisos.join('; ')) : null;
+  await d.base.terminarLlamada(id, 'ok', entrada, salida, costo, avisos);
   return { tipo: 'ok', valor: respuesta.valor, uso: respuesta.uso };
 }
 

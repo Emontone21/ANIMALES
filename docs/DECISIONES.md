@@ -509,3 +509,18 @@ Además, `llamadas_ia.detalle` guardaba solo el tipo de error, así que no se pu
 - **El texto del error de la API** queda en `llamadas_ia.detalle` junto al tipo y al id del pedido: hasta 300 caracteres (migración 0019) y sin claves, URLs, emails, ids ni números largos (`limpiarDetalle`). La cola sigue guardando solo el código.
 
 **Lo que se resigna:** las fotos de demo pasan por la función (unos 40 KB cada una) y ocupan más tokens que una miniatura de 320 (son de 640 × 480). Solo existen en los datos cargados por SQL: la app nunca guarda una URL de otro sitio.
+
+## 2026-10-21 · Los largos se recortan en vez de rechazar la respuesta
+
+Con la clave de un workspace, la API respondió bien, pero dos respuestas se rechazaron una y otra vez por largo: el motivo de la comparación de Toby (más de 140 caracteres) y los rasgos de la foto de Parque Rodó. El modelo escribe pegado a los topes (el único motivo guardado tenía 139) y el esquema estricto no puede limitar largos (`maxLength` no se acepta). Cada reintento se cobra y vuelve a fallar.
+
+**Cambios:**
+- **Recortar si lo único mal es el largo:**
+  - el motivo, a 140 en el último espacio, con "…" (que cuenta);
+  - los rasgos (y `coinciden` y `difieren`, que son listas de rasgos con los mismos topes), los primeros 8 y cada uno a 80, de la misma forma.
+  Los largos son un tope de pantalla, no de seguridad.
+- **Lo demás se sigue rechazando:** valores fuera de lista, candidatos desconocidos o repetidos, confianza fuera de rango o con decimales, claves que faltan o sobran, textos vacíos, elementos que no son texto (también después del octavo), y `collar_color` y `raza_aproximada` largos.
+- **Aviso, no error:** lo que se recortó queda en `llamadas_ia.detalle` ("C1 motivo: 163 > 140", "rasgos: 11 > 8", "rasgos[3]: 95 > 80"), y la llamada queda `ok`. Sirve para ajustar el pedido después. Cuando se rechaza un campo por largo, el detalle también dice cuánto ("collar_color: 45 > 40").
+- **Se pide menos:** motivos de hasta 110 caracteres y rasgos cortos, de hasta 60 (`OBJETIVOS` en `validar.ts`), por debajo de los topes. Los topes no cambian: son los de la base.
+
+**Cómo se cuenta el largo:** en caracteres, como `char_length` de Postgres (un emoji es uno, y el corte no lo parte).

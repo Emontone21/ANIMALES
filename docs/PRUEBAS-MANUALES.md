@@ -533,6 +533,7 @@ Esperado:
 - En menos de un minuto, Toby tiene una coincidencia con el motivo (por ejemplo "Mismo collar rojo y mancha blanca en el pecho.") en vez de un porcentaje, y la familia recibe "Encontraron un animal parecido a…". Si la IA no los ve parecidos, no aparece: probá con fotos más claras.
 - La foto sin animal no genera coincidencias: en `llamadas_ia` tiene solo una llamada (`describir`), sin `comparar`.
 - Si una llamada falla, `detalle` dice el tipo y el texto del error de la API (y el id del pedido), sin claves, URLs, emails ni teléfonos.
+- Si una respuesta se pasó de largo, la llamada queda `ok` y `detalle` dice qué se recortó (por ejemplo "C1 motivo: 163 > 140"); el motivo que se ve en la app termina en "…".
 - Cada foto con candidatos suma 2 llamadas (describir y comparar); el costo estimado del mes sube muy poco ("Menos de US$ 0,01" las primeras).
 - Con el interruptor apagado, el estado dice **Apagado**, la foto queda en **Fotos pendientes** y no se agrega ninguna llamada. Al prenderlo, se procesa sola en los 2 minutos siguientes.
 - Con la pausa, el estado dice **Pausado: sin crédito**, "Procesar pendientes ahora" está apagado y aparece **Reactivar**. Al tocarlo, vuelve a **Configurado**.

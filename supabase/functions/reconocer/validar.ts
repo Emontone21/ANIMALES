@@ -3,6 +3,12 @@
  * ya restringe la forma (herramientas con strict), pero no los largos ni los
  * rangos, y una respuesta cortada o rara no tiene por qué cumplir: lo que no
  * valida cuenta como error y la foto se reintenta (la cola).
+ *
+ * Los largos del motivo y de las listas de rasgos (rasgos, coinciden y
+ * difieren) son un tope de pantalla, no de seguridad: si lo único mal es que
+ * se pasan, se recortan y la respuesta vale, con un aviso de cuánto se pasó
+ * (queda en llamadas_ia.detalle). El modelo escribe pegado al tope y el
+ * esquema estricto no puede limitar largos.
  */
 
 export const ESPECIES = ['perro', 'gato', 'otro', 'ninguno'] as const;
@@ -21,6 +27,12 @@ export const LIMITES = {
   rasgos: 8,
   collarColor: 40,
   raza: 60,
+} as const;
+
+/** Lo que se le pide al modelo, por debajo de los topes, así no vive pegado a ellos. */
+export const OBJETIVOS = {
+  motivo: 110,
+  rasgo: 60,
 } as const;
 
 export type Especie = (typeof ESPECIES)[number];
@@ -49,7 +61,8 @@ export type ResultadoComparacion = {
   difieren: string[];
 };
 
-export type Validacion<T> = { ok: true; valor: T } | { ok: false; motivo: string };
+/** `avisos`: lo que se recortó y cuánto se pasaba ("C1 motivo: 163 > 140"). */
+export type Validacion<T> = { ok: true; valor: T; avisos: string[] } | { ok: false; motivo: string };
 
 const CLAVES_DESCRIPCION = [
   'hay_animal',
@@ -82,27 +95,63 @@ function enLista<T extends string>(x: unknown, lista: readonly T[]): x is T {
   return typeof x === 'string' && (lista as readonly string[]).includes(x);
 }
 
-/** null, o un texto de hasta `maximo` caracteres; uno vacío cuenta como null. */
-function textoOpcional(x: unknown, maximo: number): { ok: true; valor: string | null } | { ok: false } {
+/** Caracteres como los cuenta char_length en Postgres (un emoji es uno). */
+export function largo(texto: string): number {
+  return Array.from(texto).length;
+}
+
+/**
+ * Corta un texto a `maximo` caracteres contando el "…": en el último espacio
+ * antes del tope, sin la puntuación que quede colgando. Sin espacios, justo.
+ */
+export function recortar(texto: string, maximo: number): string {
+  const letras = Array.from(texto);
+  if (letras.length <= maximo) return texto;
+  const corte = letras.slice(0, maximo - 1).join('');
+  const espacio = corte.lastIndexOf(' ');
+  const base = (espacio > 0 ? corte.slice(0, espacio) : corte).replace(/[\s,;:.\-–—]+$/u, '');
+  return `${base === '' ? corte : base}…`;
+}
+
+/** null, o un texto de hasta `maximo` caracteres; uno vacío cuenta como null. Uno largo no vale. */
+function textoOpcional(
+  x: unknown,
+  maximo: number,
+): { ok: true; valor: string | null } | { ok: false; largo?: number } {
   if (x === null) return { ok: true, valor: null };
   if (typeof x !== 'string') return { ok: false };
   const valor = x.trim();
-  if (valor.length > maximo) return { ok: false };
+  if (largo(valor) > maximo) return { ok: false, largo: largo(valor) };
   return { ok: true, valor: valor === '' ? null : valor };
 }
 
-/** Una lista de hasta `cantidad` textos de 1 a `largo` caracteres. */
-function listaDeTextos(x: unknown, cantidad: number, largo: number): string[] | null {
-  if (!Array.isArray(x) || x.length > cantidad) return null;
+/**
+ * Una lista de textos no vacíos. Si trae más de LIMITES.rasgos se queda con
+ * los primeros, y los de más de LIMITES.rasgo se recortan; cada cosa, con su
+ * aviso. Un elemento que no es texto, o vacío, no vale.
+ */
+function listaDeTextos(x: unknown, campo: string): { valores: string[]; avisos: string[] } | null {
+  if (!Array.isArray(x)) return null;
+  const avisos: string[] = [];
   const valores: string[] = [];
   for (const item of x) {
     if (typeof item !== 'string') return null;
     const valor = item.trim();
-    if (valor.length === 0 || valor.length > largo) return null;
+    if (valor.length === 0) return null;
     valores.push(valor);
   }
-  return valores;
+  if (valores.length > LIMITES.rasgos) avisos.push(`${campo}: ${valores.length} > ${LIMITES.rasgos}`);
+  const primeros = valores.slice(0, LIMITES.rasgos).map((valor, i) => {
+    if (largo(valor) <= LIMITES.rasgo) return valor;
+    avisos.push(`${campo}[${i + 1}]: ${largo(valor)} > ${LIMITES.rasgo}`);
+    return recortar(valor, LIMITES.rasgo);
+  });
+  return { valores: primeros, avisos };
 }
+
+/** "collar_color" o, si se pasó de largo, "collar_color: 45 > 40". */
+const conLargo = (campo: string, maximo: number, r: { largo?: number }) =>
+  r.largo === undefined ? campo : `${campo}: ${r.largo} > ${maximo}`;
 
 export function validarDescripcion(x: unknown): Validacion<Descripcion> {
   if (!esObjeto(x)) return { ok: false, motivo: 'no es un objeto' };
@@ -119,10 +168,10 @@ export function validarDescripcion(x: unknown): Validacion<Descripcion> {
   if (!enLista(x.tamanio, TAMANIOS)) return { ok: false, motivo: 'tamanio' };
   if (!enLista(x.collar, COLLARES)) return { ok: false, motivo: 'collar' };
   const collarColor = textoOpcional(x.collar_color, LIMITES.collarColor);
-  if (!collarColor.ok) return { ok: false, motivo: 'collar_color' };
+  if (!collarColor.ok) return { ok: false, motivo: conLargo('collar_color', LIMITES.collarColor, collarColor) };
   const raza = textoOpcional(x.raza_aproximada, LIMITES.raza);
-  if (!raza.ok) return { ok: false, motivo: 'raza_aproximada' };
-  const rasgos = listaDeTextos(x.rasgos, LIMITES.rasgos, LIMITES.rasgo);
+  if (!raza.ok) return { ok: false, motivo: conLargo('raza_aproximada', LIMITES.raza, raza) };
+  const rasgos = listaDeTextos(x.rasgos, 'rasgos');
   if (!rasgos) return { ok: false, motivo: 'rasgos' };
   if (!enLista(x.calidad, CALIDADES)) return { ok: false, motivo: 'calidad' };
 
@@ -138,9 +187,10 @@ export function validarDescripcion(x: unknown): Validacion<Descripcion> {
       collar: x.collar,
       collar_color: collarColor.valor,
       raza_aproximada: raza.valor,
-      rasgos,
+      rasgos: rasgos.valores,
       calidad: x.calidad,
     },
+    avisos: rasgos.avisos,
   };
 }
 
@@ -159,6 +209,7 @@ export function validarComparacion(
 
   const vistos = new Set<string>();
   const valores: ResultadoComparacion[] = [];
+  const avisos: string[] = [];
   for (const r of x.resultados) {
     if (!esObjeto(r)) return { ok: false, motivo: 'resultado' };
     const faltan = clavesExactas(r, CLAVES_RESULTADO);
@@ -172,19 +223,24 @@ export function validarComparacion(
       return { ok: false, motivo: 'confianza' };
     }
     if (!enLista(r.veredicto, VEREDICTOS)) return { ok: false, motivo: 'veredicto' };
-    const motivo = typeof r.motivo === 'string' ? r.motivo.trim() : '';
-    if (motivo.length === 0 || motivo.length > LIMITES.motivo) return { ok: false, motivo: 'motivo' };
-    const coinciden = listaDeTextos(r.coinciden, LIMITES.rasgos, LIMITES.rasgo);
-    const difieren = listaDeTextos(r.difieren, LIMITES.rasgos, LIMITES.rasgo);
+    if (typeof r.motivo !== 'string' || r.motivo.trim().length === 0) return { ok: false, motivo: 'motivo' };
+    let motivo = r.motivo.trim();
+    if (largo(motivo) > LIMITES.motivo) {
+      avisos.push(`${r.candidato} motivo: ${largo(motivo)} > ${LIMITES.motivo}`);
+      motivo = recortar(motivo, LIMITES.motivo);
+    }
+    const coinciden = listaDeTextos(r.coinciden, `${r.candidato} coinciden`);
+    const difieren = listaDeTextos(r.difieren, `${r.candidato} difieren`);
     if (!coinciden || !difieren) return { ok: false, motivo: 'coinciden o difieren' };
+    avisos.push(...coinciden.avisos, ...difieren.avisos);
     valores.push({
       candidato: r.candidato,
       confianza: r.confianza as number,
       veredicto: r.veredicto,
       motivo,
-      coinciden,
-      difieren,
+      coinciden: coinciden.valores,
+      difieren: difieren.valores,
     });
   }
-  return { ok: true, valor: valores };
+  return { ok: true, valor: valores, avisos };
 }
