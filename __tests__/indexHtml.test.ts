@@ -36,6 +36,9 @@ describe('public/index.html', () => {
 
   test('los textos son los de es-UY.ts', () => {
     expect(html).toContain(`<p class="carga-nombre">${t.app.nombre}</p>`);
+    expect(html).toContain(
+      `<noscript>Necesitás activar JavaScript para usar ${t.app.nombre}.</noscript>`,
+    );
     expect(html).toContain(`<span class="carga-texto">${t.comunes.cargando}</span>`);
     expect(html).toContain(
       `<meta name="description" content="${t.compartir.vistaPrevia.descripcionGenerica}" />`,

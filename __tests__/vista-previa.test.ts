@@ -6,7 +6,7 @@
 const ID = 'b0000000-0000-4000-8000-000000000004';
 const SITIO = 'https://animales.test';
 const PLANTILLA =
-  '<!doctype html><html><head><title>Encontrados</title><meta name="description" content="La genérica de index.html." /></head><body><div id="root"></div></body></html>';
+  '<!doctype html><html><head><title>Spot</title><meta name="description" content="La genérica de index.html." /></head><body><div id="root"></div></body></html>';
 const FOTO = '00000000-0000-4000-8000-0000000000f1/abc.jpg';
 
 type Caso = Record<string, unknown>;
@@ -70,20 +70,50 @@ describe('vista previa del link de un caso', () => {
     expect(respuesta.headers.get('content-type')).toContain('text/html');
     expect(respuesta.headers.get('cache-control')).toBe('public, max-age=0, s-maxage=300');
     expect(html).toContain('<div id="root"></div>');
-    expect(html).toContain('<title>Se perdió Toby · Encontrados</title>');
+    expect(html).toContain('<title>Se perdió Toby · Spot</title>');
     expect(html).toContain('<meta property="og:title" content="Se perdió Toby" />');
     expect(html).toContain(
-      '<meta property="og:description" content="Perro marrón, mediano, con collar. Si lo viste, avisá en Encontrados." />',
+      '<meta property="og:description" content="Perro marrón, mediano, con collar. Si lo viste, avisá en Spot." />',
     );
-    expect(html).toContain(
-      `<meta property="og:url" content="https://encontrados.test/animal/${ID}" />`,
-    );
+    expect(html).toContain(`<meta property="og:url" content="https://spot.test/animal/${ID}" />`);
     expect(html).toContain('abc.miniatura.jpg');
     expect(html).toContain('<meta property="og:image:width" content="320" />');
     expect(html.match(/<title>/g)).toHaveLength(1);
     // La descripción genérica de index.html se reemplaza: queda una sola, la del caso.
     expect(html.match(/name="description"/g)).toHaveLength(1);
     expect(html).not.toContain('La genérica de index.html.');
+  });
+
+  test('un color con números (podría ser un teléfono) no aparece (B37)', async () => {
+    simularRed({ caso: { ...toby, color: 'negro, llamar al 099 123 456' } });
+    const { html } = await pedir(`/animal/${ID}`);
+    expect(html).toContain(
+      '<meta property="og:description" content="Perro, mediano, con collar. Si lo viste, avisá en Spot." />',
+    );
+    expect(html).not.toContain('099');
+  });
+
+  test('con la clave anon legacy la manda en apikey y en Authorization', async () => {
+    const pedidos = simularRed();
+    await pedir(`/animal/${ID}`);
+    const consulta = pedidos.find((p) => p.url.includes('/rest/v1/animales'));
+    expect(consulta!.init!.headers).toEqual({
+      apikey: 'clave-de-prueba',
+      authorization: 'Bearer clave-de-prueba',
+    });
+  });
+
+  test('con la publishable la manda solo en apikey: no es un JWT', async () => {
+    process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_prueba';
+    try {
+      const pedidos = simularRed();
+      const { html } = await pedir(`/animal/${ID}`);
+      const consulta = pedidos.find((p) => p.url.includes('/rest/v1/animales'));
+      expect(consulta!.init!.headers).toEqual({ apikey: 'sb_publishable_prueba' });
+      expect(html).toContain('<meta property="og:title" content="Se perdió Toby" />');
+    } finally {
+      delete process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    }
   });
 
   test('a la base solo le pide columnas sin datos personales', async () => {
@@ -118,7 +148,7 @@ describe('vista previa del link de un caso', () => {
   ])('un caso %s lleva la vista previa genérica', async (_nombre, caso) => {
     simularRed({ caso });
     const { html } = await pedir(`/api/vista-previa?id=${ID}`);
-    expect(html).toContain('<title>Encontrados</title>');
+    expect(html).toContain('<title>Spot</title>');
     expect(html).not.toContain('Toby');
     expect(html).not.toContain('og:image');
   });
@@ -127,7 +157,7 @@ describe('vista previa del link de un caso', () => {
     const pedidos = simularRed();
     const { html } = await pedir('/api/vista-previa?id=no-es-un-id');
     expect(pedidos.some((p) => p.url.includes('/rest/v1/'))).toBe(false);
-    expect(html).toContain('<meta property="og:url" content="https://encontrados.test" />');
+    expect(html).toContain('<meta property="og:url" content="https://spot.test" />');
   });
 
   test('sin miniatura (fotos de antes de la Fase 8) usa la original, sin medidas', async () => {

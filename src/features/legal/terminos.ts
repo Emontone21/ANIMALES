@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
  * config_app.terminos_version: al cambiar los textos, subí las dos, y todos los
  * usuarios los vuelven a aceptar antes de publicar, escribir o denunciar.
  */
-export const VERSION_TERMINOS = '2026-10-20';
+export const VERSION_TERMINOS = '2026-10-21';
 
 export type EstadoTerminos = {
   version: string | null;

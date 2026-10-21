@@ -7,7 +7,7 @@ type Entrada = { estado: Record<string, unknown> | null; url: string };
  * popstate pasa primero por la escucha en captura y después por la del
  * "router", como en el navegador con Expo Router.
  */
-function crearNavegador(url = 'https://encontrados.test/animal/1') {
+function crearNavegador(url = 'https://spot.test/animal/1') {
   const entradas: Entrada[] = [{ estado: { id: 'r:0' }, url }];
   let indice = 0;
   let captura: Parameters<Ventana['alVolver']>[0] | null = null;
@@ -113,7 +113,7 @@ describe('Atrás cierra la hoja abierta en web (historialHojas)', () => {
     n.atras();
     n.avanzar();
     expect(n.entradas()).toEqual(['/animal/1']);
-    expect(n.router).toEqual([{ id: 'r:0', url: 'https://encontrados.test/animal/1' }]);
+    expect(n.router).toEqual([{ id: 'r:0', url: 'https://spot.test/animal/1' }]);
   });
 
   test('cerrar y navegar enseguida no deja una entrada huérfana', () => {
@@ -219,7 +219,7 @@ describe('Atrás cierra la hoja abierta en web (historialHojas)', () => {
     n.avanzar();
     expect(n.entradas()).toEqual(['/animal/1']);
     // Solo le llega al router su propio retroceso.
-    expect(n.router).toEqual([{ id: 'r:0', url: 'https://encontrados.test/animal/1' }]);
+    expect(n.router).toEqual([{ id: 'r:0', url: 'https://spot.test/animal/1' }]);
   });
 
   test('si el popstate propio no llega, lo pendiente se aplica igual', () => {
@@ -241,6 +241,6 @@ describe('Atrás cierra la hoja abierta en web (historialHojas)', () => {
     n.avanzar();
     expect(cerrar).toHaveBeenCalledTimes(1);
     expect(n.entradas()).toEqual(['/animal/1']);
-    expect(n.router).toEqual([{ id: 'r:0', url: 'https://encontrados.test/animal/1' }]);
+    expect(n.router).toEqual([{ id: 'r:0', url: 'https://spot.test/animal/1' }]);
   });
 });

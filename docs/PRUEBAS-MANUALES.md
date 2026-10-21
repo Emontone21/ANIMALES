@@ -1,11 +1,12 @@
 # Pruebas manuales
 
-Recorrido de toda la app, paso a paso, para hacer en la web publicada (https://animales-blue.vercel.app). Lleva unos 77 minutos en un dispositivo; en los otros dos se repite marcando la casilla de cada uno.
+Recorrido de toda la app, paso a paso, para hacer en la web publicada (https://animales-blue.vercel.app). Lleva unos 85 minutos en un dispositivo; en los otros dos se repite marcando la casilla de cada uno.
 
 - **Dispositivos:** Android con Chrome, iPhone con Safari y una computadora (cualquier navegador). Cada flujo tiene una casilla por dispositivo.
 - **Cuentas:** dos, que en esta lista se llaman **familia** (publica un perro perdido) y **vecina** (lo encuentra y lo ve). Para probar de a una persona: familia en el celular y vecina en la computadora, o una en una ventana privada.
 - **Marcas:**
   - **[SMTP]** necesita SMTP propio en Supabase. Sin eso, Supabase solo manda mails a las direcciones del equipo del proyecto (y pocos por hora).
+  - **[Captcha]** necesita el captcha configurado: la clave del sitio de Cloudflare Turnstile en Vercel (`EXPO_PUBLIC_TURNSTILE_SITE_KEY`) y la secreta en Supabase. Sin eso, ingresar y registrarse no muestran la comprobación.
   - **[Visión]** necesita el reconocimiento con IA configurado: la función `reconocer` desplegada y su dirección en `config_app.vision_url`. Sin eso, ese paso se simula con el SQL que está ahí mismo.
 - **Si algo falla:** anotá el número del paso, el dispositivo y una captura. Los problemas que ya se conocen están al final.
 
@@ -24,6 +25,7 @@ where id = (select id from auth.users where email = '<email de familia>');
 
 Esperado:
 - Al crear la cuenta desde la app, la casilla de términos es obligatoria y después dice que revises tu email.
+- El mail llega en español: "Confirmá tu cuenta en Spot", con el botón verde **Confirmar mi cuenta** [SMTP].
 - Al ingresar, Perfil muestra el nombre.
 
 - [ ] Android · Chrome
@@ -211,7 +213,7 @@ Esperado:
 - **En la computadora:** aparecen **Mandar por WhatsApp** y **Copiar el link**, con el link a la vista.
 - **Vista previa:** la tarjeta dice "Se perdió Prueba Toby", tiene una descripción corta y la foto. No muestra el contacto ni la dirección.
 - El link abre la app en el caso.
-- **Primera carga** (abrilo desde WhatsApp en el celular, que no comparte la caché del navegador): desde el primer instante se ve "Encontrados" con un indicador sobre el fondo de la app, nunca una pantalla blanca ni negra. Después aparecen la foto, los datos y las acciones del caso. El mini mapa llega al final, y la tipografía puede cambiar un momento después (antes se ve con la del sistema).
+- **Primera carga** (abrilo desde WhatsApp en el celular, que no comparte la caché del navegador): desde el primer instante se ve "Spot" con un indicador sobre el fondo de la app, nunca una pantalla blanca ni negra. Después aparecen la foto, los datos y las acciones del caso. El mini mapa llega al final, y la tipografía puede cambiar un momento después (antes se ve con la del sistema).
 - Solo funciona con la URL de producción: las previews piden login de Vercel y los bots no entran.
 
 - [ ] Android · Chrome
@@ -227,7 +229,8 @@ Cuenta: vecina y familia.
 3. Vecina: tocá la pata del encabezado (abre el caso) y volvé con **Volver**.
 
 Esperado:
-- Los mensajes llegan en unos segundos.
+- Los mensajes llegan en unos segundos, sin perder los anteriores.
+- En la computadora, en las herramientas del navegador (**Red**), cada 4 s el pedido a `mensajes_detalle` trae solo lo nuevo (`created_at=gte.…`), no toda la conversación.
 - El campo de texto queda a la vista con el teclado abierto.
 - Desde el caso, **Volver** regresa a la conversación.
 - Familia recibe "Mensaje de …" en Novedades.
@@ -348,6 +351,7 @@ Cuenta: familia.
 
 Esperado:
 - El caso se cierra ("¡Volvió con su familia!") y deja de estar en los activos del mapa.
+- El contacto que mostraba la familia ya no aparece en el caso. Si la familia lo reabre, lo puede volver a cargar al editarlo.
 - Vecina recibe "¡Volvió con su familia!".
 - Vecina no ve **Se volvió a escapar**: solo familia puede reabrir un perdido.
 
@@ -380,6 +384,7 @@ Cuenta: vecina (o familia, si es del equipo de Supabase).
 
 Esperado:
 - El mensaje es el mismo exista o no la cuenta.
+- El mail llega en español: "Elegí una contraseña nueva para Spot", y se ve bien en Gmail del celular.
 - Con la contraseña nueva quedás adentro.
 - Usado de nuevo, el link dice que ya no sirve y ofrece pedir otro.
 - Si se piden varios seguidos: "Pediste varios links seguidos…", nunca "email inválido".
@@ -425,7 +430,7 @@ Cuenta: ninguna.
 4. Mandate el link del sitio por WhatsApp, abrilo desde WhatsApp (Android) o desde Instagram, y andá a **Perfil → Instalar la app**. Tocá **Copiar el link**.
 
 Esperado:
-- En Android y en la computadora se abre la ventana del navegador para instalar, con el nombre Encontrados y su ícono.
+- En Android y en la computadora se abre la ventana del navegador para instalar, con el nombre Spot y su ícono (el pin con la huella).
 - En iPhone, la hoja muestra los tres pasos con el ícono de Compartir dibujado, y Atrás o **Entendido** la cierran.
 - Ya instalada, se abre sin la barra del navegador y en **Perfil** no aparece **Instalar la app**. Después de instalar en Chrome, tampoco aparece en el navegador.
 - En el navegador de WhatsApp o Instagram, explica que hay que abrir el link en Chrome o Safari y copia el link del sitio.
@@ -541,6 +546,29 @@ Esperado:
 - Con el interruptor apagado, el estado dice **Apagado**, la foto queda en **Fotos pendientes** y no se agrega ninguna llamada. Al prenderlo, se procesa sola en los 2 minutos siguientes.
 - Con la pausa, el estado dice **Pausado: sin crédito**, "Procesar pendientes ahora" está apagado y aparece **Reactivar**. Al tocarlo, vuelve a **Configurado**.
 - En los registros de la función no aparece ninguna clave. El uso en la consola de Anthropic se parece al costo estimado.
+
+- [ ] Android · Chrome
+- [ ] iPhone · Safari
+- [ ] Computadora
+
+## 27. Spot y el piloto · 8 min · [Captcha]
+
+Cuenta: vecina, sin sesión.
+
+1. Abrí la web en una pestaña nueva.
+2. **Perfil → Ingresar**. Esperá la comprobación de seguridad, arriba de **Ingresar**, e ingresá con email.
+3. Cerrá sesión e ingresá con una contraseña equivocada dos veces seguidas, y después con la correcta.
+4. Mirá **Crear cuenta** y **¿Olvidaste tu contraseña?**.
+5. Mandate el link de la web por WhatsApp y abrilo desde ahí (navegador de WhatsApp). Repetí el paso 2. Lo mismo desde Instagram.
+6. Con la sesión de familia: publicá un encontrado con el color "negro 099 123 456" y compartilo por WhatsApp.
+
+Esperado:
+- La pestaña dice "Spot · Animales perdidos y encontrados en Montevideo", con el ícono del pin y la huella; la pantalla de carga dice "Spot".
+- La comprobación de Cloudflare aparece en el esquema de la app (claro u oscuro). Casi siempre se completa sola en unos segundos; a veces pide tocar una casilla.
+- Cada intento de ingresar pide una comprobación nueva: la tercera vez, con la contraseña correcta, entra. Con Google no aparece.
+- En los navegadores de WhatsApp e Instagram también se completa y deja ingresar.
+- Si no carga (sin conexión o bloqueada): "No pudimos cargar la comprobación de seguridad…" y **Reintentar**.
+- La vista previa y el texto de compartir dicen "Perro encontrado", sin el color ni el número.
 
 - [ ] Android · Chrome
 - [ ] iPhone · Safari

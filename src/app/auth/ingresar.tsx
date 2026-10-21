@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { CambiarAcceso, MarcaAcceso } from '@/components/auth/Acceso';
+import { Captcha } from '@/components/auth/Captcha';
 import { Boton } from '@/components/ui/Boton';
 import { CampoTexto } from '@/components/ui/CampoTexto';
 import { Mensaje } from '@/components/ui/Mensaje';
@@ -10,6 +11,7 @@ import { Pantalla } from '@/components/ui/Pantalla';
 import { Texto } from '@/components/ui/Texto';
 import { AnchoMaximo, Espacio } from '@/constants/tema';
 import { ingresarConEmail, ingresarConGoogle } from '@/features/auth/acciones';
+import { useCaptcha } from '@/features/auth/useCaptcha';
 import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 import { mensajeDeError } from '@/lib/errores';
@@ -21,6 +23,7 @@ export default function PantallaIngresar() {
   const [contrasena, setContrasena] = useState('');
   const [cargando, setCargando] = useState<'email' | 'google' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const captcha = useCaptcha();
 
   // Al abrir sesión, Stack.Protected cierra esta pantalla solo.
   const ejecutar = async (tipo: 'email' | 'google', accion: () => Promise<void>) => {
@@ -34,6 +37,12 @@ export default function PantallaIngresar() {
       setCargando(null);
     }
   };
+
+  // Con email, cada intento usa el token del captcha; Google no lo lleva.
+  const conEmail = () =>
+    void ejecutar('email', () =>
+      ingresarConEmail(email, contrasena, captcha.token).finally(captcha.reiniciar),
+    );
 
   return (
     <Pantalla scroll bordes={['left', 'right', 'bottom']} ancho={AnchoMaximo.acceso}>
@@ -57,16 +66,17 @@ export default function PantallaIngresar() {
         secureTextEntry
         autoComplete="current-password"
         textContentType="password"
-        onSubmitEditing={() => void ejecutar('email', () => ingresarConEmail(email, contrasena))}
+        onSubmitEditing={conEmail}
       />
 
+      <Captcha {...captcha.props} />
       {error ? <Mensaje texto={error} tipo="error" /> : null}
 
       <Boton
         titulo={t.auth.ingresar}
         cargando={cargando === 'email'}
         deshabilitado={cargando !== null}
-        onPress={() => void ejecutar('email', () => ingresarConEmail(email, contrasena))}
+        onPress={conEmail}
       />
       <Boton
         titulo={t.auth.olvidaste}

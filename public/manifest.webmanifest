@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "Encontrados",
-  "short_name": "Encontrados",
+  "name": "Spot",
+  "short_name": "Spot",
   "description": "Animales perdidos y encontrados en Montevideo. Si viste uno, avisá: así vuelve a casa.",
   "lang": "es-UY",
   "dir": "ltr",

@@ -250,6 +250,8 @@ Las pantallas mostraban `error.message` tal cual: "Failed to fetch" sin conexió
 
 Las pestañas quedan montadas, así que la lista de conversaciones y la de novedades se seguían pidiendo fuera de Actividad, y una conversación tapada por otra pantalla seguía pidiendo todos sus mensajes cada 4 s. Ahora cada una se refresca solo mientras su pantalla está en foco (`useIsFocused`), y el punto de "sin leer" de la pestaña pide si hay alguna (una fila), no las últimas 100. Se descartó por ahora pedir solo los mensajes nuevos: cambia cómo se arma la caché y los "leído" de los mensajes viejos dejarían de actualizarse.
 
+> **Nota:** desde el 21/10 la conversación pide solo lo nuevo (ver "Mensajes: pedir solo lo nuevo, sin Realtime").
+
 ## 2026-10-19 · Ubicación en web directo del navegador
 
 En web, `expo-location` pide la posición con antigüedad máxima infinita: con la página abierta, el navegador devuelve la primera posición que obtuvo (por ejemplo, la de casa) aunque la persona se haya movido, y "Usar mi ubicación" guardaba ese punto. Además consulta `navigator.permissions`, que Safari de iPhone anterior a iOS 16 no tiene, y ahí el botón quedaba cargando para siempre. En web, `obtenerPosicionActual` usa `navigator.geolocation` con alta precisión, una antigüedad máxima de 10 s y 15 s de espera; en nativo sigue con `expo-location`.
@@ -331,6 +333,8 @@ La hoja del celular tenía alto fijo y tapaba parte del mapa. Ahora tiene dos po
 - **El aviso se guarda en `index.html`:** Chrome lo manda una sola vez y a veces antes de que cargue la app. Un script en el `<head>` lo guarda en `window.__instalar` (con `preventDefault`, que reemplaza la barrita automática de Chrome por el botón de Perfil). También anota `appinstalled`, para no volver a ofrecerla. La app lo lee con `useSyncExternalStore`.
 - **iPhone con otros navegadores:** desde iOS 16.4, Chrome y Firefox también agregan a inicio desde Compartir, así que ven los mismos pasos que Safari.
 - **Manifest:** nombre y descripción de `es-UY.ts` y colores de `tema.ts` (el `fondo` del claro). Como el JSON no admite comentarios, una prueba comprueba que coincidan. Los íconos (192, 512, maskable de 512 y el de iPhone de 180) los genera `scripts/iconos-web.py` desde `assets/images/icon.png`. Ese ícono sigue siendo el de la plantilla de Expo: el ícono propio es trabajo gráfico pendiente (DISENO.md, sección 10).
+
+> **Nota:** desde el 21/10 es el ícono provisorio de Spot (ver "Ícono provisorio: un pin con una huella").
 
 ## 2026-10-20 · Reportar un error: solo lo lee moderación y la base pone los límites
 
@@ -546,3 +550,56 @@ Con las primeras fotos reales (un beagle publicado dos veces, en "perro beagle" 
 - **Cada foto se sube una vez más** (unos 50 a 80 KB).
 - **Cuesta un poco más:** unos 206 tokens más por imagen. Comparar con 4 candidatos pasa de unos US$ 0,0011 a unos US$ 0,0012, y una foto con 4 candidatos, de unos US$ 0,0015 a 0,0016.
 - **Las coincidencias falsas de la 0018** (`comparaciones_ia` con "distinto" y número alto) quedan como estaban. Ya están rechazadas y solo sirven para no volver a comparar el par.
+
+## 2026-10-21 · La app pasa a llamarse Spot
+
+Para el piloto, el nombre visible es Spot en todos lados: la app (`t.app.nombre`, con un solo `NOMBRE` en `es-UY.ts`), el título y la pantalla de carga de `index.html`, el manifest, la vista previa del link, los términos y la privacidad, `app.json` y los mails.
+- **Términos:** nombran la app, así que cambió su texto. Sube la versión a `2026-10-21` (`VERSION_TERMINOS` y la migración 0021): todos vuelven a aceptarlos. Una prueba comprueba que la app y la última migración digan la misma versión.
+- **Identificadores nativos:** `slug` `spot-mvd`, esquema `spotmvd` y `uy.spotmvd.app` en iOS y Android. Se cambiaron ahora porque todavía no hay ninguna app publicada ni proyecto de EAS: una vez en las tiendas no se pueden cambiar. El esquema no es `spot` a secas, que es fácil que use otra app (B33). Lo único que toca afuera son las Redirect URLs de Supabase (`spotmvd://**` en vez de `encontrados://**`), que solo usa la app nativa.
+- **Lo que queda con el nombre viejo, a propósito:** lo que nadie ve y cambiarlo rompería algo. Las claves de `localStorage` (`encontrados-apariencia`, `encontrados-hoja-cerca`: cambiarlas borra las preferencias guardadas), los ids internos de `index.html` y del historial, el email de la cuenta demo, los emails de prueba de `supabase/tests/`, el texto que la función `reconocer` le manda a la API (cambiarlo pide desplegarla de nuevo) y el servicio sin desplegar (`services/vision`). "Encontrados" como tipo de reporte (el chip "Encontrados") no es el nombre: queda.
+
+## 2026-10-21 · Ícono provisorio: un pin con una huella
+
+Hasta tener uno definitivo, el ícono es un pin de mapa blanco con una huella calada, sobre el `primario` del claro. Se lee a 48 px, en claro y en oscuro, porque lleva su propio fondo.
+- **Lo dibuja el script que ya armaba los de la web,** `scripts/iconos-web.py --provisorio`, con Pillow y los colores de `tema.ts` (una prueba comprueba que coincidan): `icon.png` de 1024 sin transparencias, los tres de Android (frente, fondo y monocromo, dentro de la zona segura de 66 de 108), el de la pantalla de carga nativa y, sin la opción, los de la web y el favicon.
+- **iOS** usa `icon.png`: se sacó el `.icon` de la plantilla de Expo, que mostraba su logo.
+- **Para reemplazarlo:** los archivos nuevos en `assets/images/` con los mismos nombres y medidas, y `python3 scripts/iconos-web.py` sin la opción (`docs/DISENO.md`, "Ícono de la app").
+
+## 2026-10-21 · Plantillas de mail en el repo, sin datos de quien se registra
+
+Las plantillas de Supabase Auth (confirmar la cuenta, recuperar la contraseña, cambiar el email y enlace mágico) están en `supabase/templates/`, con el asunto en su `<title>` y en `config.toml`. Se cargan en el proyecto con la API de gestión (`scripts/plantillas-mail.js` arma el JSON).
+- **HTML para Gmail y el celular:** tablas, estilos en línea, sin imágenes ni fuentes externas (los clientes de correo las bloquean o las piden a terceros), colores de la paleta clara. Una prueba comprueba los colores, los asuntos y que no haya nada externo.
+- **Sin el nombre público:** cualquiera puede registrarse con el email de otra persona y un "nombre" con un link; si el mail lo repitiera, Spot le mandaría ese texto. Por eso los mails dicen "Hola." y nada que escriba la persona.
+- **Enlace mágico:** la app no lo usa, pero el botón "Send magic link" del panel de Supabase sí. Está en español por si alguien lo toca.
+- **Links de un solo uso:** algunos correos (Outlook con Safe Links) abren los links antes que la persona y los gastan. La app ya lo muestra ("Este link ya no sirve…") y deja pedir otro; si pasa seguido, la alternativa es un código (`{{ .Token }}`).
+
+## 2026-10-21 · Clave publishable de Supabase, con la anon de respaldo
+
+Supabase deja de aceptar la clave anon (un JWT) a fin de 2026. La app y la vista previa leen `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (`sb_publishable_…`) y, si no está, la anon (`elegirClave`). Así el cambio en Vercel se hace cuando el dueño quiere, sin cortar nada.
+- **supabase-js 2.118** acepta la publishable en `createClient`: la manda en `apikey` y, sin sesión, también como `Authorization: Bearer`, que Supabase permite cuando es igual a `apikey`.
+- **La vista previa** pide a PostgREST con `fetch`. Con la publishable la manda solo en `apikey`: la documentación dice que no es un JWT y no va en `Authorization`. Con la anon, en los dos, como antes.
+- **Las sesiones no se pierden:** supabase-js las guarda con una clave que sale de la URL del proyecto, no de la clave.
+
+## 2026-10-21 · Mensajes: pedir solo lo nuevo, sin Realtime
+
+La conversación abierta pedía todo el historial cada 4 s (M20): con 100 mensajes, unos 32 KB por pedido. Ahora la primera vez pide todo y después solo desde el último mensaje recibido (`created_at >= último - 10 s`), y lo suma a la caché sin repetir ids (`src/features/mensajes/incremental.ts`). Con 100 mensajes y nada nuevo, cada pedido trae 348 bytes.
+- **El margen de 10 s:** `created_at` es la hora en que empieza la transacción. Dos mensajes casi simultáneos pueden guardarse en otro orden, y uno con una hora apenas anterior al último que llegó se perdería con un `>` exacto. Lo que vuelve a llegar por el margen se reemplaza por id.
+- **Los "leído":** como los mensajes viejos ya no se vuelven a pedir, al marcarlos leídos se anotan también en la caché. Si no, la pantalla volvería a marcarlos y no vería los nuevos sin leer.
+- **Se descartó Realtime,** aunque no suma peso (supabase-js ya lo trae): pide sumar `mensajes` a la publicación `supabase_realtime` (una migración), la base evalúa la RLS de cada cambio por cada suscripción, hay que reconectar y volver a pedir lo perdido al cortarse la conexión (algo que el sondeo ya hace) y las conexiones sin sesión duran 24 horas. Para el piloto, el sondeo con lo nuevo alcanza y no cambia la base.
+
+## 2026-10-21 · Captcha con Cloudflare Turnstile, solo si está configurado
+
+Registrarse, ingresar con email y recuperar la contraseña muestran Turnstile (B32) y mandan el token a Supabase Auth, que lo verifica con la clave secreta. Turnstile es gratis y suele resolverse solo, sin elegir imágenes.
+- **Opcional:** sin `EXPO_PUBLIC_TURNSTILE_SITE_KEY`, la app funciona como antes. El orden de alta importa: primero el deploy con la clave del sitio y después el captcha en Supabase. Al revés, Supabase pide un token que la app no manda y nadie ingresa.
+- **Solo en web:** la app nativa todavía no tiene el widget (pide una WebView). Antes de publicarla con el captcha activado hay que sumarlo.
+- **El script de Cloudflare** se baja solo al abrir esas pantallas, no en la carga inicial. Cada token sirve una vez: después de cada intento se pide otro.
+- **Google no lleva captcha:** Supabase no lo pide para OAuth.
+- **Navegadores internos:** Cloudflare avisa que las WebViews pueden tener menos funciones. Se probó con un Turnstile simulado (la red de la sesión no llega a Cloudflare) y queda para probar a mano en WhatsApp e Instagram (`docs/PRUEBAS-MANUALES.md`, 27).
+
+## 2026-10-21 · El contacto de la familia se borra al cerrar el caso
+
+`contacto_familia` seguía público por la API después de que el perdido volvía a casa (B10). Ahora un trigger lo vacía cuando el caso pasa a reunido o vinculado (migración 0022), venga de donde venga el cambio, y la misma migración lo vacía en los que ya estaban cerrados. Si la familia reabre el caso, no vuelve solo: lo carga de nuevo al editarlo. Se eligió el trigger, y no filtrarlo en las vistas, porque la columna se lee también directo de `animales`.
+
+## 2026-10-21 · El color con números no se comparte
+
+El color es texto libre y entraba en la vista previa del link y en el texto de compartir: alguien podía escribir un teléfono (B37). Si tiene algún dígito, `colorParaCompartir` lo deja afuera. Va en `datosParaCompartir`, que usan las dos, así el texto que se manda por WhatsApp tampoco lo lleva.

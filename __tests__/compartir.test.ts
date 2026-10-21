@@ -1,5 +1,10 @@
 import { t } from '@/i18n/es-UY';
-import { datosParaCompartir, linkDelCaso, mensajeParaCompartir } from '@/lib/compartir';
+import {
+  colorParaCompartir,
+  datosParaCompartir,
+  linkDelCaso,
+  mensajeParaCompartir,
+} from '@/lib/compartir';
 import { mensajeCompleto } from '@/lib/hojaCompartir';
 import type { DatosCompartir } from '@/types/dominio';
 
@@ -14,7 +19,7 @@ const encontrado = (cambios: Partial<DatosCompartir> = {}): DatosCompartir => ({
 });
 
 test('el link usa EXPO_PUBLIC_SITE_URL sin la barra final', () => {
-  expect(linkDelCaso('abc')).toBe('https://encontrados.test/animal/abc');
+  expect(linkDelCaso('abc')).toBe('https://spot.test/animal/abc');
 });
 
 test('datosParaCompartir toma solo datos del animal, nunca el contacto ni la descripción', () => {
@@ -26,6 +31,29 @@ test('datosParaCompartir toma solo datos del animal, nunca el contacto ni la des
     color: 'Marrón',
     tamanio: 'mediano',
     tieneCollar: true,
+  });
+});
+
+describe('el color con números no se comparte (B37: podría ser un teléfono)', () => {
+  test.each<[string | null, string | null]>([
+    ['Marrón', 'Marrón'],
+    ['  negro y blanco ', 'negro y blanco'],
+    ['099 123 456', null],
+    ['negro, llamar al 099123456', null],
+    ['marrón 2', null],
+    ['   ', null],
+    [null, null],
+  ])('%p → %p', (color, esperado) => {
+    expect(colorParaCompartir(color)).toBe(esperado);
+  });
+
+  test('datosParaCompartir lo saca, y el texto y la vista previa quedan sin color', () => {
+    const conTelefono = datosParaCompartir({ ...casoEnMapa(), color: 'negro 099 123 456' });
+    expect(conTelefono.color).toBeNull();
+    expect(t.compartir.texto(conTelefono)).toBe(
+      'Se perdió Toby, perro mediano. Si lo viste, avisá acá:',
+    );
+    expect(t.compartir.vistaPrevia.descripcion(conTelefono)).not.toMatch(/\d/);
   });
 });
 
@@ -65,7 +93,7 @@ describe('texto para compartir', () => {
     const mensaje = mensajeParaCompartir('abc', toby);
     expect(mensaje.titulo).toBe('Se perdió Toby');
     expect(mensajeCompleto(mensaje)).toBe(
-      'Se perdió Toby, perro marrón. Si lo viste, avisá acá: https://encontrados.test/animal/abc',
+      'Se perdió Toby, perro marrón. Si lo viste, avisá acá: https://spot.test/animal/abc',
     );
   });
 });
@@ -84,13 +112,13 @@ describe('textos de la vista previa', () => {
 
   test('descripción con los datos estructurados y el pedido según el caso', () => {
     expect(t.compartir.vistaPrevia.descripcion(toby)).toBe(
-      'Perro marrón, mediano, con collar. Si lo viste, avisá en Encontrados.',
+      'Perro marrón, mediano, con collar. Si lo viste, avisá en Spot.',
     );
     expect(
       t.compartir.vistaPrevia.descripcion(
         encontrado({ color: null, tamanio: null, tieneCollar: false }),
       ),
-    ).toBe('Perro. Si sabés de quién es, avisá en Encontrados.');
+    ).toBe('Perro. Si sabés de quién es, avisá en Spot.');
     expect(t.compartir.vistaPrevia.descripcion({ ...toby, estado: 'reunido' })).toContain(
       'Gracias a todos',
     );
