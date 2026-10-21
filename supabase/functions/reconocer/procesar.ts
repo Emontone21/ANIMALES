@@ -24,7 +24,7 @@ import {
   type Respuesta,
 } from './claude.ts';
 import type { FotoBajada } from './descargar.ts';
-import { urlDeMiniatura } from './fotos.ts';
+import { urlsParaBajar } from './fotos.ts';
 import type { Descripcion } from './validar.ts';
 
 export type Dependencias = {
@@ -32,7 +32,7 @@ export type Dependencias = {
   /** null si falta ANTHROPIC_API_KEY. */
   claude: Anthropic | null;
   supabaseUrl: string;
-  /** Baja una foto de otro sitio (descargar.ts): null si no se pudo. */
+  /** Baja una foto (descargar.ts): null si no se pudo. */
   bajar: (url: string) => Promise<FotoBajada | null>;
   ahora: () => number;
   /** Tope de /procesar-pendientes: no empieza otra foto pasado este tiempo. */
@@ -59,16 +59,20 @@ export const TOPE_PEDIDO_BASE64 = 20 * 1024 * 1024;
 type FotoParaClaude = { imagen: Imagen; largo: number };
 
 /**
- * Cómo ve Claude una foto: las del bucket, la miniatura por URL; las de otros
- * sitios (datos de demo), bajadas por la función y dentro del pedido. null si
- * no se pudo bajar.
+ * Cómo ve Claude una foto: entera, a unos 640 px de lado mayor, sin recorte.
+ * La función la baja y la manda dentro del pedido: del bucket, la versión
+ * mediana o, si no está, la original; de otros sitios (datos de demo), la que
+ * hay. La misma imagen sirve para describir y para comparar. null si no se
+ * pudo bajar ninguna.
  */
 async function fotoParaClaude(d: Dependencias, ruta: string): Promise<FotoParaClaude | null> {
-  const url = urlDeMiniatura(d.supabaseUrl, ruta);
-  if (url) return { imagen: { type: 'url', url }, largo: 0 };
-  const foto = await d.bajar(ruta);
-  if (!foto) return null;
-  return { imagen: { type: 'base64', media_type: foto.media_type, data: foto.data }, largo: foto.data.length };
+  for (const url of urlsParaBajar(d.supabaseUrl, ruta)) {
+    const foto = await d.bajar(url);
+    if (foto) {
+      return { imagen: { type: 'base64', media_type: foto.media_type, data: foto.data }, largo: foto.data.length };
+    }
+  }
+  return null;
 }
 
 type Llamada<T> = { tipo: 'ok'; valor: T; uso: { entrada: number; salida: number } } | { tipo: 'sin_lugar' } | {

@@ -18,12 +18,19 @@
  * Por cada animal hace lo mismo que la función (supabase/functions/reconocer,
  * con su mismo código): la primera foto es la "nueva" y se compara con otra
  * foto del mismo animal y con fotos de otros animales, hasta --candidatos.
- * Cada foto se describe una vez. Antes de mandarlas, las recorta cuadradas y
- * las lleva a 320 px, como la miniatura que ve Claude en la app (--lado 0 las
- * manda como están).
+ * Cada foto se describe una vez, con la misma imagen que se compara.
  *
- * Mide, para cada umbral de confianza: qué parte de las fotos reconoce a su
+ * --foto elige cómo se preparan, para medir antes y después:
+ * - mediana (por defecto): entera, a 640 px de lado mayor, sin recorte, como
+ *   la versión mediana que baja la función;
+ * - miniatura: recortada cuadrada a 320 px, como la veía la función hasta el
+ *   21 de octubre de 2026;
+ * - original: como está el archivo.
+ *
+ * Mide, para cada umbral de probabilidad: qué parte de las fotos reconoce a su
  * animal y cuántas coincidencias falsas tendría cada foto; y cuánto cuesta.
+ * Una coincidencia se cuenta como la crea la base (guardar_comparacion_ia,
+ * 0020): veredicto "mismo" o "posible" y probabilidad_mismo desde el umbral.
  * Recomienda el umbral que más reconoce sin pasar de --falsos-max
  * coincidencias falsas por foto. No guarda las fotos ni las sube a ningún lado
  * fuera de la API.
@@ -43,7 +50,7 @@ import {
   type Imagen,
   type Respuesta,
 } from '../supabase/functions/reconocer/claude.ts';
-import type { Descripcion } from '../supabase/functions/reconocer/validar.ts';
+import type { Descripcion, Veredicto } from '../supabase/functions/reconocer/validar.ts';
 
 const EXTENSIONES: Record<string, 'image/jpeg' | 'image/png' | 'image/webp'> = {
   '.jpg': 'image/jpeg',
@@ -52,16 +59,20 @@ const EXTENSIONES: Record<string, 'image/jpeg' | 'image/png' | 'image/webp'> = {
   '.webp': 'image/webp',
 };
 
+/** Lo que dijo la comparación de un candidato. */
+export type Resultado = { probabilidad: number; veredicto: Veredicto };
+
 /** El resultado de comparar una foto nueva con sus candidatos. */
 export type Consulta = {
   animal: string;
-  /** null si la foto nueva no se comparó (sin animal, otra especie o error). */
-  mismo: number | null;
-  /** La confianza con cada animal distinto. */
-  otros: number[];
-  veredictoMismo: string | null;
-  veredictosOtros: string[];
+  /** El de la otra foto del mismo animal; null si la foto nueva no se comparó (sin animal, otra especie o error). */
+  mismo: Resultado | null;
+  /** El de cada animal distinto. */
+  otros: Resultado[];
 };
+
+/** Cómo se preparan las fotos (ver arriba). */
+export type ModoFoto = 'mediana' | 'miniatura' | 'original';
 
 export type Fila = {
   umbral: number;
@@ -75,12 +86,17 @@ export type Fila = {
 
 // --- Cálculos (sin la API: los usan las pruebas) ----------------------------------
 
+/** Si la base crearía la coincidencia (guardar_comparacion_ia, 0020): "distinto" nunca, aunque el número sea alto. */
+export function sugiere(r: Resultado, umbral: number): boolean {
+  return r.veredicto !== 'distinto' && r.probabilidad >= umbral;
+}
+
 export function tabla(consultas: Consulta[], umbrales: number[]): Fila[] {
   const n = Math.max(consultas.length, 1);
   const totalFalsos = consultas.reduce((s, c) => s + c.otros.length, 0);
   return umbrales.map((umbral) => {
-    const encontradas = consultas.filter((c) => c.mismo !== null && c.mismo >= umbral).length;
-    const falsos = consultas.reduce((s, c) => s + c.otros.filter((x) => x >= umbral).length, 0);
+    const encontradas = consultas.filter((c) => c.mismo !== null && sugiere(c.mismo, umbral)).length;
+    const falsos = consultas.reduce((s, c) => s + c.otros.filter((x) => sugiere(x, umbral)).length, 0);
     return { umbral, reconoce: encontradas / n, falsosPorFoto: falsos / n, paresFalsos: falsos, totalFalsos };
   });
 }
@@ -92,6 +108,12 @@ export function recomendar(filas: Fila[], falsosMax: number): Fila | null {
   return aceptables.reduce((mejor, f) =>
     f.reconoce > mejor.reconoce || (f.reconoce === mejor.reconoce && f.umbral > mejor.umbral) ? f : mejor
   );
+}
+
+/** Medidas para que el lado mayor quede en `lado`, sin agrandar. */
+export function medidasConLadoMayor(ancho: number, alto: number, lado: number): { w: number; h: number } {
+  const escala = Math.min(1, lado / Math.max(ancho, alto));
+  return { w: Math.round(ancho * escala), h: Math.round(alto * escala) };
 }
 
 /** "50:95:5" → [50, 55, …, 95]. */
@@ -136,7 +158,7 @@ type Opciones = {
   umbrales: number[];
   falsosMax: number;
   semilla: number;
-  lado: number;
+  foto: ModoFoto;
   salida: string | null;
 };
 
@@ -149,7 +171,11 @@ function leerOpciones(args: string[]): Opciones {
   }
   const especie = valores.get('especie');
   if (sueltos.length !== 1 || (especie !== 'perro' && especie !== 'gato' && especie !== 'otro')) {
-    throw new Error('Uso: evaluar-ia.ts CARPETA --especie perro|gato|otro [--candidatos 10] [--max-animales 30]');
+    throw new Error('Uso: evaluar-ia.ts CARPETA --especie perro|gato|otro [--foto mediana|miniatura|original]');
+  }
+  const foto = valores.get('foto') ?? 'mediana';
+  if (foto !== 'mediana' && foto !== 'miniatura' && foto !== 'original') {
+    throw new Error('--foto tiene que ser mediana, miniatura u original');
   }
   const numero = (clave: string, defecto: number) => {
     const v = Number(valores.get(clave) ?? defecto);
@@ -166,7 +192,7 @@ function leerOpciones(args: string[]): Opciones {
     umbrales: rango(valores.get('umbrales') ?? '50:95:5'),
     falsosMax: numero('falsos-max', 0.2),
     semilla: numero('semilla', 1),
-    lado: numero('lado', 320),
+    foto,
     salida: valores.get('salida') ?? null,
   };
 }
@@ -187,13 +213,18 @@ async function leerCarpeta(carpeta: string, maxFotos: number): Promise<Map<strin
   return animales;
 }
 
-/** La foto en base64: recortada cuadrada y a `lado` px como la miniatura de la app, o tal cual. */
-async function imagenDe(ruta: string, lado: number): Promise<Imagen> {
+/** Como la versión mediana de la app (src/lib/imagenes.ts) y la miniatura de antes. */
+const LADO_MEDIANA = 640;
+const LADO_MINIATURA = 320;
+
+/** La foto en base64, preparada según `modo` (ver arriba). */
+async function imagenDe(ruta: string, modo: ModoFoto): Promise<Imagen> {
   const datos = await Deno.readFile(ruta);
-  if (lado > 0) {
+  if (modo !== 'original') {
     const foto = await Jimp.fromBuffer(datos.buffer.slice(datos.byteOffset, datos.byteOffset + datos.byteLength));
-    foto.cover({ w: lado, h: lado });
-    const jpeg = await foto.getBuffer('image/jpeg', { quality: 85 });
+    if (modo === 'miniatura') foto.cover({ w: LADO_MINIATURA, h: LADO_MINIATURA });
+    else foto.resize(medidasConLadoMayor(foto.width, foto.height, LADO_MEDIANA));
+    const jpeg = await foto.getBuffer('image/jpeg', { quality: 75 });
     return { type: 'base64', media_type: 'image/jpeg', data: base64(new Uint8Array(jpeg)) };
   }
   const ext = ruta.slice(ruta.lastIndexOf('.')).toLowerCase();
@@ -249,13 +280,15 @@ async function main(args: string[]): Promise<number> {
   }
   const r = azar(o.semilla);
   const nombres = mezclar([...todos.keys()], r).slice(0, o.maxAnimales);
-  console.error(`${nombres.length} animales de ${todos.size}, ${o.candidatos} candidatos por foto, modelo ${o.modelo}`);
+  console.error(
+    `${nombres.length} animales de ${todos.size}, ${o.candidatos} candidatos por foto, modelo ${o.modelo}, fotos ${o.foto}`,
+  );
 
   const gasto: Gasto = { llamadas: 0, entrada: 0, salida: 0, costo: 0, fallidas: 0 };
   const imagenes = new Map<string, Imagen>();
   const descripciones = new Map<string, Descripcion | null>();
   const imagen = async (ruta: string) => {
-    if (!imagenes.has(ruta)) imagenes.set(ruta, await imagenDe(ruta, o.lado));
+    if (!imagenes.has(ruta)) imagenes.set(ruta, await imagenDe(ruta, o.foto));
     return imagenes.get(ruta) as Imagen;
   };
   const descripcion = async (ruta: string) => {
@@ -276,7 +309,7 @@ async function main(args: string[]): Promise<number> {
     const dNueva = await descripcion(nueva);
     if (!comparable(dNueva)) {
       sinComparar += 1;
-      consultas.push({ animal: nombre, mismo: null, otros: [], veredictoMismo: null, veredictosOtros: [] });
+      consultas.push({ animal: nombre, mismo: null, otros: [] });
       continue;
     }
     const distintos = mezclar(nombres.filter((x) => x !== nombre), r)
@@ -310,18 +343,19 @@ async function main(args: string[]): Promise<number> {
     );
     if (!resultados) {
       sinComparar += 1;
-      consultas.push({ animal: nombre, mismo: null, otros: [], veredictoMismo: null, veredictosOtros: [] });
+      consultas.push({ animal: nombre, mismo: null, otros: [] });
       continue;
     }
     const animalDe = new Map(candidatos.map((c) => [c.etiqueta, c.animal]));
+    const resultado = (x: { probabilidad_mismo: number; veredicto: Veredicto }): Resultado => ({
+      probabilidad: x.probabilidad_mismo,
+      veredicto: x.veredicto,
+    });
     const delMismo = resultados.find((x) => animalDe.get(x.candidato) === nombre);
-    const deOtros = resultados.filter((x) => animalDe.get(x.candidato) !== nombre);
     consultas.push({
       animal: nombre,
-      mismo: delMismo?.confianza ?? null,
-      otros: deOtros.map((x) => x.confianza),
-      veredictoMismo: delMismo?.veredicto ?? null,
-      veredictosOtros: deOtros.map((x) => x.veredicto),
+      mismo: delMismo ? resultado(delMismo) : null,
+      otros: resultados.filter((x) => animalDe.get(x.candidato) !== nombre).map(resultado),
     });
   }
 
@@ -337,8 +371,8 @@ async function main(args: string[]): Promise<number> {
   }
   const cuenta = (lista: (string | null)[]) =>
     ['mismo', 'posible', 'distinto'].map((v) => `${v} ${lista.filter((x) => x === v).length}`).join(', ');
-  console.log(`\nVeredictos con su animal: ${cuenta(consultas.map((c) => c.veredictoMismo))}`);
-  console.log(`Veredictos con otros: ${cuenta(consultas.flatMap((c) => c.veredictosOtros))}`);
+  console.log(`\nVeredictos con su animal: ${cuenta(consultas.map((c) => c.mismo?.veredicto ?? null))}`);
+  console.log(`Veredictos con otros: ${cuenta(consultas.flatMap((c) => c.otros.map((x) => x.veredicto)))}`);
 
   const n = Math.max(consultas.length, 1);
   console.log(

@@ -16,13 +16,23 @@ import {
   pendiente,
   soloTexto,
   SUPABASE,
-  urlsDeImagenes,
 } from './ayudas.ts';
 
 const ID = pendiente().avistamiento_id;
 const A = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const B = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
-const MINIATURA_NUEVA = `${SUPABASE}/storage/v1/object/public/fotos/uid-familia/foto-nueva.miniatura.jpg`;
+const BUCKET = `${SUPABASE}/storage/v1/object/public/fotos`;
+const JPEG: FotoBajada = { media_type: 'image/jpeg', data: '/9j/4AAQ', bytes: 6 };
+
+/** Un bajar() falso: anota qué se pidió y devuelve un JPEG, salvo para las URLs que no están. */
+function bajarSalvo(faltan: string[] = []) {
+  const pedidas: string[] = [];
+  const bajar = (url: string): Promise<FotoBajada | null> => {
+    pedidas.push(url);
+    return Promise.resolve(faltan.includes(url) ? null : JPEG);
+  };
+  return { pedidas, bajar };
+}
 
 /** La API responde a describir y a comparar según la herramienta del pedido. */
 function apiQueResponde(resultados: unknown[] = [], descripcion: unknown = DESCRIPCION_PERRO) {
@@ -34,11 +44,11 @@ function apiQueResponde(resultados: unknown[] = [], descripcion: unknown = DESCR
   });
 }
 
-const resultado = (candidatoEtiqueta: string, confianza: number) => ({
+const resultado = (candidatoEtiqueta: string, probabilidad: number) => ({
   candidato: candidatoEtiqueta,
-  confianza,
-  veredicto: confianza >= 70 ? 'mismo' : 'distinto',
-  motivo: confianza >= 70 ? 'Mismo collar rojo y mancha blanca en el pecho' : 'Otra forma de orejas',
+  veredicto: probabilidad >= 70 ? 'mismo' : 'distinto',
+  probabilidad_mismo: probabilidad,
+  motivo: probabilidad >= 70 ? 'Misma mancha blanca en el pecho' : 'Otra forma de orejas',
   coinciden: [],
   difieren: [],
 });
@@ -48,18 +58,21 @@ Deno.test('una foto nueva: la describe, la compara con los candidatos y guarda c
   base.agregar(pendiente());
   base.candidatos_ = [candidato(A), candidato(B, { descripcion: DESCRIPCION_PERRO })];
   const api = apiQueResponde([resultado('C2', 20), resultado('C1', 85)]);
+  const { pedidas, bajar } = bajarSalvo();
 
-  const r = await procesarFoto(dependencias(base, api.cliente), await base.config(), ID);
+  const r = await procesarFoto(dependencias(base, api.cliente, { bajar }), await base.config(), ID);
 
   assertEquals(r, { procesado: true, comparado: true, coincidencias: 1 });
   assertEquals(api.pedidos.length, 2);
-  // Describe la miniatura de la foto nueva y compara con la miniatura de cada candidato.
-  assertEquals(urlsDeImagenes(api.pedidos[0]), [MINIATURA_NUEVA]);
-  assertEquals(urlsDeImagenes(api.pedidos[1]), [
-    MINIATURA_NUEVA,
-    `${SUPABASE}/storage/v1/object/public/fotos/uid-hallazgo/${A}.miniatura.jpg`,
-    `${SUPABASE}/storage/v1/object/public/fotos/uid-hallazgo/${B}.miniatura.jpg`,
+  // Baja la versión mediana (la foto entera a 640) de la nueva, una vez, y la de cada candidato.
+  assertEquals(pedidas, [
+    `${BUCKET}/uid-familia/foto-nueva.mediana.jpg`,
+    `${BUCKET}/uid-hallazgo/${A}.mediana.jpg`,
+    `${BUCKET}/uid-hallazgo/${B}.mediana.jpg`,
   ]);
+  // La misma imagen sirve para describir y para comparar; todas van dentro del pedido.
+  assertEquals(imagenesDe(api.pedidos[0]), ['base64:image/jpeg']);
+  assertEquals(imagenesDe(api.pedidos[1]), ['base64:image/jpeg', 'base64:image/jpeg', 'base64:image/jpeg']);
   assertEquals(base.descripciones, [{
     id: ID,
     descripcion: DESCRIPCION_PERRO,
@@ -67,8 +80,8 @@ Deno.test('una foto nueva: la describe, la compara con los candidatos y guarda c
     tokensSalida: 250,
   }]);
   assertEquals(
-    base.comparaciones[0].resultados.map((x) => [x.animal_id, x.confianza]),
-    [[B, 20], [A, 85]],
+    base.comparaciones[0].resultados.map((x) => [x.animal_id, x.veredicto, x.probabilidad_mismo]),
+    [[B, 'distinto', 20], [A, 'mismo', 85]],
   );
   // Las dos llamadas quedan registradas, con tokens y costo.
   assertEquals(
@@ -93,25 +106,78 @@ Deno.test('una foto de otro sitio la baja la función y va dentro del pedido; un
     candidato(C, { foto_path: 'https://cataas.com/cat?id=1' }),
   ];
   const api = apiQueResponde([resultado('C1', 10), resultado('C2', 90)]);
-  const bajadas: string[] = [];
-  const bajar = (url: string): Promise<FotoBajada | null> => {
-    bajadas.push(url);
-    return Promise.resolve(url === PERRO ? { media_type: 'image/jpeg', data: '/9j/4AAQ', bytes: 6 } : null);
-  };
+  const { pedidas, bajar } = bajarSalvo(['https://cataas.com/cat?id=1']);
 
   const r = await procesarFoto(dependencias(base, api.cliente, { bajar }), await base.config(), ID);
 
   assertEquals(r, { procesado: true, comparado: true, coincidencias: 1 });
-  // Las fotos de otros sitios se bajan (nunca las del bucket) y llegan en base64 con el tipo de sus bytes.
-  assertEquals(bajadas.sort(), [PERRO, PERRO, 'https://cataas.com/cat?id=1'].sort());
+  // Las de otros sitios se bajan tal cual; la del bucket, en su versión mediana.
+  assertEquals(
+    pedidas.sort(),
+    [PERRO, PERRO, 'https://cataas.com/cat?id=1', `${BUCKET}/uid-hallazgo/${A}.mediana.jpg`].sort(),
+  );
   assertEquals(imagenesDe(api.pedidos[0]), ['base64:image/jpeg']);
-  assertEquals(imagenesDe(api.pedidos[1]), [
-    'base64:image/jpeg',
-    `url:${SUPABASE}/storage/v1/object/public/fotos/uid-hallazgo/${A}.miniatura.jpg`,
-    'base64:image/jpeg',
-  ]);
+  assertEquals(imagenesDe(api.pedidos[1]), ['base64:image/jpeg', 'base64:image/jpeg', 'base64:image/jpeg']);
   // C, sin foto, no se comparó: C1 es A y C2 es B.
-  assertEquals(base.comparaciones[0].resultados.map((x) => [x.animal_id, x.confianza]), [[A, 10], [B, 90]]);
+  assertEquals(base.comparaciones[0].resultados.map((x) => [x.animal_id, x.probabilidad_mismo]), [[A, 10], [B, 90]]);
+});
+
+Deno.test('una foto del bucket sin versión mediana (de antes) se manda con la original', async () => {
+  const base = new BaseFalsa();
+  base.agregar(pendiente());
+  base.candidatos_ = [candidato(A)];
+  const api = apiQueResponde([resultado('C1', 85)]);
+  const { pedidas, bajar } = bajarSalvo([
+    `${BUCKET}/uid-familia/foto-nueva.mediana.jpg`,
+    `${BUCKET}/uid-hallazgo/${A}.mediana.jpg`,
+  ]);
+
+  const r = await procesarFoto(dependencias(base, api.cliente, { bajar }), await base.config(), ID);
+
+  assertEquals(r, { procesado: true, comparado: true, coincidencias: 1 });
+  assertEquals(pedidas, [
+    `${BUCKET}/uid-familia/foto-nueva.mediana.jpg`,
+    `${BUCKET}/uid-familia/foto-nueva.jpg`,
+    `${BUCKET}/uid-hallazgo/${A}.mediana.jpg`,
+    `${BUCKET}/uid-hallazgo/${A}.jpg`,
+  ]);
+  assertEquals(imagenesDe(api.pedidos[1]).length, 2);
+});
+
+Deno.test('una foto del bucket que no se puede bajar (ni la mediana ni la original) no llama a la API', async () => {
+  const base = new BaseFalsa();
+  base.agregar(pendiente());
+  const api = apiQueResponde();
+  const { bajar } = bajarSalvo([
+    `${BUCKET}/uid-familia/foto-nueva.mediana.jpg`,
+    `${BUCKET}/uid-familia/foto-nueva.jpg`,
+  ]);
+
+  const r = await procesarFoto(dependencias(base, api.cliente, { bajar }), await base.config(), ID);
+
+  assertEquals(r, { procesado: false, motivo: 'error', error: 'foto_no_disponible' });
+  assertEquals(api.pedidos.length, 0);
+  assertEquals(base.errores, [{ id: ID, error: 'foto no disponible' }]);
+});
+
+Deno.test('una comparación contradictoria ("distinto" con 95) no se guarda: error con reintento', async () => {
+  const base = new BaseFalsa();
+  base.agregar(pendiente());
+  base.candidatos_ = [candidato(A)];
+  const api = apiQueResponde([{ ...resultado('C1', 10), probabilidad_mismo: 95 }]);
+
+  const r = await procesarFoto(dependencias(base, api.cliente), await base.config(), ID);
+
+  assertEquals(r, { procesado: false, motivo: 'error', error: 'invalida' });
+  assertEquals(base.comparaciones, []);
+  assertEquals(base.llamadas.map((l) => [l.tipo, l.resultado, l.detalle]), [
+    ['describir', 'ok', null],
+    ['comparar', 'invalida', 'C1 distinto con probabilidad_mismo 95'],
+  ]);
+  assertEquals(base.errores, [{
+    id: ID,
+    error: 'comparar: respuesta inválida (C1 distinto con probabilidad_mismo 95)',
+  }]);
 });
 
 Deno.test('las fotos bajadas no pasan de 20 MB por pedido: los candidatos que no entran quedan afuera', async () => {

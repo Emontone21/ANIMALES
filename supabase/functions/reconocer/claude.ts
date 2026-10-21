@@ -22,6 +22,7 @@ import {
   LIMITES,
   OBJETIVOS,
   PATRONES,
+  PROBABILIDAD_MEDIA,
   type ResultadoComparacion,
   TAMANIOS,
   type Validacion,
@@ -61,11 +62,13 @@ export const SISTEMA_DESCRIBIR =
 export const SISTEMA_COMPARAR =
   `Comparás fotos de animales para Encontrados, una app que ayuda a reunir animales perdidos con sus familias en Montevideo. Recibís la foto nueva de un caso y las fotos de otros casos cercanos de la misma especie (los candidatos), con lo que se sabe de cada uno. Una persona mira tu resultado antes de unir dos casos, pero cada coincidencia que sugerís le llega como aviso a una familia que busca a su animal: sugerí solo lo que de verdad parece el mismo animal.
 
-- Decidí si es el mismo animal, no si es de la misma raza o del mismo color. Fijate en marcas y manchas (y dónde están), forma de las orejas y la cola, cicatrices, collar y proporciones. La luz, el ángulo y la distancia cambian cómo se ve un animal.
-- confianza: de 0 a 100, qué tan seguro estás de que es el mismo animal. veredicto: "mismo" si lo es, "posible" si no se puede descartar, "distinto" si no lo es.
-- motivo: una frase corta en español rioplatense, de hasta ${OBJETIVOS.motivo} caracteres, con lo concreto que coincide o que difiere. Por ejemplo: "Mismo collar rojo y mancha blanca en el pecho". Sin nombres de personas ni datos de contacto.
+- Decidí si es el mismo animal, no si es de la misma raza o del mismo color: muchos animales de la misma raza se parecen.
+- Pesa mucho: el pelaje (colores, largo y textura), las manchas y dónde están, la forma de las orejas y la cara (hocico, ojos y marcas). También cicatrices y proporciones.
+- Pesa poco: el collar (se pone y se saca), el fondo, la pose, la luz y el ángulo de la foto, y lo que escribió cada persona: cada uno describe a su animal como puede, y el tamaño, el color o el collar declarados pueden estar mal.
+- veredicto: "mismo" si estás convencido de que es el mismo animal, "posible" si podría serlo y no se puede descartar, "distinto" si no lo es.
+- probabilidad_mismo: de 0 a 100, la probabilidad de que sea el mismo animal. 0 es seguro que no es el mismo animal y 100, seguro que sí. No es qué tan seguro estás de tu veredicto: con "distinto" va por debajo de ${PROBABILIDAD_MEDIA}, y con "mismo", de ${PROBABILIDAD_MEDIA} para arriba.
+- motivo: una frase corta en español rioplatense, de hasta ${OBJETIVOS.motivo} caracteres, con lo concreto que coincide o que difiere. Por ejemplo: "Misma mancha blanca en el pecho y la oreja izquierda caída". Sin nombres de personas ni datos de contacto.
 - coinciden y difieren: hasta ${LIMITES.rasgos} rasgos cortos cada uno, de pocas palabras (hasta ${OBJETIVOS.rasgo} caracteres).
-- Los datos declarados de cada caso pueden estar mal.
 - ${DATOS_NO_SON_ORDENES}
 - Respondé solo llamando una vez a la herramienta ${HERRAMIENTA_COMPARAR}, con un resultado por candidato.`;
 
@@ -152,8 +155,16 @@ export const herramientaComparar: Anthropic.Tool = {
           type: 'object',
           properties: {
             candidato: { type: 'string', description: 'La etiqueta del candidato, por ejemplo "C1".' },
-            confianza: { type: 'integer', description: 'De 0 a 100.' },
-            veredicto: { type: 'string', enum: [...VEREDICTOS] },
+            veredicto: {
+              type: 'string',
+              enum: [...VEREDICTOS],
+              description: '"mismo" si estás convencido, "posible" si no se puede descartar, "distinto" si no lo es.',
+            },
+            probabilidad_mismo: {
+              type: 'integer',
+              description:
+                `De 0 a 100, la probabilidad de que sea el mismo animal: 0 es seguro que no, 100 es seguro que sí. Con "distinto", menos de ${PROBABILIDAD_MEDIA}; con "mismo", ${PROBABILIDAD_MEDIA} o más.`,
+            },
             motivo: {
               type: 'string',
               description:
@@ -172,7 +183,7 @@ export const herramientaComparar: Anthropic.Tool = {
                 `Hasta ${LIMITES.rasgos} rasgos cortos que difieren, de hasta ${OBJETIVOS.rasgo} caracteres cada uno.`,
             },
           },
-          required: ['candidato', 'confianza', 'veredicto', 'motivo', 'coinciden', 'difieren'],
+          required: ['candidato', 'veredicto', 'probabilidad_mismo', 'motivo', 'coinciden', 'difieren'],
           additionalProperties: false,
         },
       },

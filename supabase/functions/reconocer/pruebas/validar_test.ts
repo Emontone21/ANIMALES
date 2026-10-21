@@ -50,8 +50,8 @@ Deno.test('una descripción que no cumple el esquema no valida', () => {
 
 const resultado = (candidato: string, cambios: Record<string, unknown> = {}) => ({
   candidato,
-  confianza: 80,
   veredicto: 'mismo',
+  probabilidad_mismo: 80,
   motivo: 'Mismo collar rojo y mancha blanca en el pecho',
   coinciden: ['collar rojo'],
   difieren: [],
@@ -59,7 +59,9 @@ const resultado = (candidato: string, cambios: Record<string, unknown> = {}) => 
 });
 
 Deno.test('una comparación con un resultado por candidato valida, en cualquier orden', () => {
-  const v = validarComparacion({ resultados: [resultado('C2'), resultado('C1', { confianza: 0 })] }, ['C1', 'C2']);
+  const v = validarComparacion({
+    resultados: [resultado('C2'), resultado('C1', { veredicto: 'distinto', probabilidad_mismo: 0 })],
+  }, ['C1', 'C2']);
   assertEquals(v.ok, true);
   if (v.ok) assertEquals(v.valor.map((r) => r.candidato), ['C2', 'C1']);
 });
@@ -70,8 +72,9 @@ Deno.test('una comparación que no cumple el esquema no valida', () => {
     ['1 resultados para 2 candidatos', { resultados: [resultado('C1')] }],
     ['candidato desconocido', { resultados: [resultado('C1'), resultado('C3')] }],
     ['candidato repetido', { resultados: [resultado('C1'), resultado('C1')] }],
-    ['confianza', { resultados: [resultado('C1', { confianza: 101 }), resultado('C2')] }],
-    ['confianza', { resultados: [resultado('C1', { confianza: 70.5 }), resultado('C2')] }],
+    ['probabilidad_mismo', { resultados: [resultado('C1', { probabilidad_mismo: 101 }), resultado('C2')] }],
+    ['probabilidad_mismo', { resultados: [resultado('C1', { probabilidad_mismo: 70.5 }), resultado('C2')] }],
+    ['probabilidad_mismo', { resultados: [resultado('C1', { probabilidad_mismo: '80' }), resultado('C2')] }],
     ['veredicto', { resultados: [resultado('C1', { veredicto: 'quizas' }), resultado('C2')] }],
     ['motivo', { resultados: [resultado('C1', { motivo: '   ' }), resultado('C2')] }],
     ['motivo', { resultados: [resultado('C1', { motivo: 7 }), resultado('C2')] }],
@@ -147,7 +150,10 @@ Deno.test('lo inseguro se sigue rechazando aunque también haya algo para recort
   const comparaciones: [string, unknown][] = [
     ['candidato desconocido', { resultados: [resultado('C9', largoMotivo), otro] }],
     ['candidato repetido', { resultados: [resultado('C2', largoMotivo), otro] }],
-    ['confianza', { resultados: [resultado('C1', { ...largoMotivo, confianza: 101 }), otro] }],
+    ['probabilidad_mismo', { resultados: [resultado('C1', { ...largoMotivo, probabilidad_mismo: 101 }), otro] }],
+    ['C1 distinto con probabilidad_mismo 95', {
+      resultados: [resultado('C1', { ...largoMotivo, veredicto: 'distinto', probabilidad_mismo: 95 }), otro],
+    }],
     ['veredicto', { resultados: [resultado('C1', { ...largoMotivo, veredicto: 'seguro' }), otro] }],
     ['sobra telefono', { resultados: [resultado('C1', { ...largoMotivo, telefono: '099' }), otro] }],
     ['coinciden o difieren', { resultados: [resultado('C1', { coinciden: [...Array(10).fill('a'), ''] }), otro] }],
@@ -168,4 +174,37 @@ Deno.test('lo inseguro se sigue rechazando aunque también haya algo para recort
   for (const [motivo, entrada] of descripciones) {
     assertEquals(validarDescripcion(entrada), { ok: false, motivo }, motivo);
   }
+});
+
+Deno.test('una respuesta contradictoria no vale: "distinto" con 50 o más, "mismo" con menos de 50', () => {
+  const con = (veredicto: string, probabilidad_mismo: number) =>
+    validarComparacion({ resultados: [resultado('C1', { veredicto, probabilidad_mismo })] }, ['C1']);
+  // Lo que pasó en producción el 21/10: "distinto" con 95 (qué tan segura estaba de que no era).
+  assertEquals(con('distinto', 95), { ok: false, motivo: 'C1 distinto con probabilidad_mismo 95' });
+  assertEquals(con('distinto', 50), { ok: false, motivo: 'C1 distinto con probabilidad_mismo 50' });
+  assertEquals(con('mismo', 49), { ok: false, motivo: 'C1 mismo con probabilidad_mismo 49' });
+  assertEquals(con('mismo', 0), { ok: false, motivo: 'C1 mismo con probabilidad_mismo 0' });
+  // Lo coherente vale; "posible" puede tener cualquier número.
+  for (
+    const [veredicto, p] of [['distinto', 49], ['distinto', 0], ['mismo', 50], ['mismo', 100], ['posible', 0], [
+      'posible',
+      100,
+    ]] as const
+  ) {
+    const v = con(veredicto, p);
+    assert(v.ok, `${veredicto} ${p}`);
+    assertEquals(v.valor[0].probabilidad_mismo, p);
+  }
+});
+
+Deno.test('una respuesta con "confianza" (el nombre viejo) en vez de probabilidad_mismo no vale', () => {
+  const vieja = {
+    candidato: 'C1',
+    confianza: 95,
+    veredicto: 'distinto',
+    motivo: 'Otro perro',
+    coinciden: [],
+    difieren: [],
+  };
+  assertEquals(validarComparacion({ resultados: [vieja] }, ['C1']), { ok: false, motivo: 'falta probabilidad_mismo' });
 });

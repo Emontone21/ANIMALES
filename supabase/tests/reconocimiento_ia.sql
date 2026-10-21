@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Pruebas del reconocimiento con la API de Claude (0018).
--- Requiere las migraciones 0001 a 0019. Pegalo entero en el SQL Editor y tocá Run.
+-- Requiere las migraciones 0001 a 0020. Pegalo entero en el SQL Editor y tocá Run.
 -- Bien: termina en "Success. No rows returned". Mal: ERROR con "FALLA n: ..." que dice qué.
 -- Todo corre dentro de begin/rollback: no deja usuarios, fotos, casos, llamadas
 -- ni cambios en config_app, y los pedidos a la función no salen (pg_net los
@@ -237,8 +237,8 @@ $$;
 
 -- -----------------------------------------------------------------------------
 -- 3. Guardar la comparación: desde umbral_ia se crea la coincidencia (con
---    confianza, motivo y origen) y avisa a la familia; los pares quedan
---    comparados y lo que no era candidato se ignora.
+--    probabilidad_mismo en confianza, motivo y origen) y avisa a la familia;
+--    los pares quedan comparados y lo que no era candidato se ignora.
 -- -----------------------------------------------------------------------------
 do $$
 declare
@@ -250,13 +250,13 @@ begin
   v_creadas := public.guardar_comparacion_ia(
     pg_temp.foto('P'),
     jsonb_build_array(
-      jsonb_build_object('animal_id', pg_temp.caso('E2'), 'confianza', 70, 'veredicto', 'posible',
+      jsonb_build_object('animal_id', pg_temp.caso('E2'), 'probabilidad_mismo', 70, 'veredicto', 'posible',
         'motivo', 'Mismo collar rojo y mancha blanca en el pecho',
         'coinciden', jsonb_build_array('collar rojo', 'mancha blanca'), 'difieren', jsonb_build_array()),
-      jsonb_build_object('animal_id', pg_temp.caso('E1'), 'confianza', 69, 'veredicto', 'distinto',
+      jsonb_build_object('animal_id', pg_temp.caso('E1'), 'probabilidad_mismo', 69, 'veredicto', 'posible',
         'motivo', 'El hocico es más largo', 'coinciden', jsonb_build_array(), 'difieren', jsonb_build_array('hocico')),
       -- No es candidato de P (está a 20 km): se ignora.
-      jsonb_build_object('animal_id', pg_temp.caso('Elejos'), 'confianza', 99, 'veredicto', 'mismo',
+      jsonb_build_object('animal_id', pg_temp.caso('Elejos'), 'probabilidad_mismo', 99, 'veredicto', 'mismo',
         'motivo', 'Igual', 'coinciden', jsonb_build_array(), 'difieren', jsonb_build_array())
     ),
     'prueba'
@@ -271,7 +271,7 @@ begin
     and animal_candidato = greatest(pg_temp.caso('P'), pg_temp.caso('E2'));
   if c.id is null or c.origen <> 'ia' or c.confianza <> 70 or abs(c.similitud - 0.70) > 0.001
      or c.motivo <> 'Mismo collar rojo y mancha blanca en el pecho' or c.estado <> 'pendiente' then
-    raise exception 'FALLA 3b: la coincidencia con confianza 70 (el umbral) no quedó bien: %', row_to_json(c);
+    raise exception 'FALLA 3b: la coincidencia con probabilidad 70 (el umbral) no quedó bien: %', row_to_json(c);
   end if;
   if exists (select 1 from public.coincidencias where animal_origen = least(pg_temp.caso('P'), pg_temp.caso('E1'))
                and animal_candidato = greatest(pg_temp.caso('P'), pg_temp.caso('E1')))
@@ -641,6 +641,116 @@ begin
   exception when check_violation then
     null;
   end;
+end;
+$$;
+
+-- -----------------------------------------------------------------------------
+-- 10. Solo "mismo" o "posible" sugieren (0020). "distinto" nunca, aunque el
+--     número sea alto: el 21/10, en producción, la IA dijo "distinto" con 95 y
+--     98 y se crearon coincidencias falsas. Y una función vieja, que todavía
+--     manda "confianza", no guarda nada.
+-- -----------------------------------------------------------------------------
+do $$
+declare
+  f constant uuid := '00000000-0000-4000-8000-000000000d01';
+  h constant uuid := '00000000-0000-4000-8000-000000000d02';
+  foto_f constant text := '00000000-0000-4000-8000-000000000d01/ia-1.jpg';
+  foto_h constant text := '00000000-0000-4000-8000-000000000d02/ia-1.jpg';
+  -- Lejos de los casos de la parte 2 (unos 30 km al este).
+  lat constant float := -34.900;
+  lng constant float := -55.830;
+  v_creadas integer;
+  v_q uuid;
+  n integer;
+  resultado jsonb;
+begin
+  update public.config_app set valor = '70' where clave = 'umbral_ia';
+  perform set_config('request.jwt.claims', json_build_object('sub', f, 'role', 'authenticated')::text, true);
+  insert into casos (nombre, animal) values
+    ('Q', public.publicar_animal('perro', foto_f, lat, lng, now() - interval '2 days', null, null, false, null, 'perdido', 'Beagle'));
+  perform set_config('request.jwt.claims', json_build_object('sub', h, 'role', 'authenticated')::text, true);
+  insert into casos (nombre, animal) values
+    ('Qdistinto', public.publicar_animal('perro', foto_h, lat + 0.001, lng, now() - interval '1 hour')),
+    ('Qmismo', public.publicar_animal('perro', foto_h, lat + 0.002, lng, now() - interval '1 hour')),
+    ('Qmismo69', public.publicar_animal('perro', foto_h, lat + 0.003, lng, now() - interval '1 hour')),
+    ('Qposible', public.publicar_animal('perro', foto_h, lat + 0.004, lng, now() - interval '1 hour')),
+    ('Qposible69', public.publicar_animal('perro', foto_h, lat + 0.005, lng, now() - interval '1 hour')),
+    ('Qvieja', public.publicar_animal('perro', foto_h, lat + 0.006, lng, now() - interval '1 hour'));
+  perform set_config('request.jwt.claims', '', true);
+  update casos set avistamiento = (
+    select av.id from public.avistamientos av where av.animal_id = casos.animal order by av.created_at limit 1
+  ) where avistamiento is null;
+  v_q := pg_temp.caso('Q');
+
+  resultado := jsonb_build_object('motivo', 'Mismo blaze blanco', 'coinciden', jsonb_build_array(), 'difieren', jsonb_build_array());
+  set local role service_role;
+  v_creadas := public.guardar_comparacion_ia(
+    pg_temp.foto('Q'),
+    jsonb_build_array(
+      resultado || jsonb_build_object('animal_id', pg_temp.caso('Qdistinto'), 'veredicto', 'distinto', 'probabilidad_mismo', 95),
+      resultado || jsonb_build_object('animal_id', pg_temp.caso('Qmismo'), 'veredicto', 'mismo', 'probabilidad_mismo', 100),
+      resultado || jsonb_build_object('animal_id', pg_temp.caso('Qmismo69'), 'veredicto', 'mismo', 'probabilidad_mismo', 69),
+      resultado || jsonb_build_object('animal_id', pg_temp.caso('Qposible'), 'veredicto', 'posible', 'probabilidad_mismo', 70),
+      resultado || jsonb_build_object('animal_id', pg_temp.caso('Qposible69'), 'veredicto', 'posible', 'probabilidad_mismo', 69)
+    ),
+    'prueba'
+  );
+  reset role;
+
+  if v_creadas <> 2 then
+    raise exception 'FALLA 10a: se esperaban 2 coincidencias (mismo 100 y posible 70) y hubo %', v_creadas;
+  end if;
+  if exists (
+    select 1 from public.coincidencias
+    where animal_origen = least(v_q, pg_temp.caso('Qdistinto')) and animal_candidato = greatest(v_q, pg_temp.caso('Qdistinto'))
+  ) then
+    raise exception 'FALLA 10b: un "distinto" con probabilidad 95 creó una coincidencia';
+  end if;
+  if exists (
+    select 1 from public.coincidencias
+    where (animal_origen, animal_candidato) in (
+      (least(v_q, pg_temp.caso('Qmismo69')), greatest(v_q, pg_temp.caso('Qmismo69'))),
+      (least(v_q, pg_temp.caso('Qposible69')), greatest(v_q, pg_temp.caso('Qposible69')))
+    )
+  ) then
+    raise exception 'FALLA 10c: un "mismo" o un "posible" con 69 (bajo el umbral) creó una coincidencia';
+  end if;
+  if not exists (
+    select 1 from public.coincidencias
+    where animal_origen = least(v_q, pg_temp.caso('Qmismo')) and animal_candidato = greatest(v_q, pg_temp.caso('Qmismo'))
+      and confianza = 100 and origen = 'ia'
+  ) or not exists (
+    select 1 from public.coincidencias
+    where animal_origen = least(v_q, pg_temp.caso('Qposible')) and animal_candidato = greatest(v_q, pg_temp.caso('Qposible'))
+      and confianza = 70 and abs(similitud - 0.70) < 0.001
+  ) then
+    raise exception 'FALLA 10d: "mismo" con 100 o "posible" con 70 no creó su coincidencia con la probabilidad';
+  end if;
+  -- Las cinco quedan comparadas, también la "distinta": no se vuelven a comparar.
+  select count(*) into n from public.comparaciones_ia where avistamiento_id = pg_temp.foto('Q');
+  if n <> 5 then
+    raise exception 'FALLA 10e: se esperaban 5 comparaciones guardadas y hubo %', n;
+  end if;
+
+  -- Una función vieja manda "confianza" en vez de "probabilidad_mismo": no guarda nada.
+  set local role service_role;
+  begin
+    perform public.guardar_comparacion_ia(
+      pg_temp.foto('Q'),
+      jsonb_build_array(resultado || jsonb_build_object('animal_id', pg_temp.caso('Qvieja'), 'veredicto', 'mismo', 'confianza', 99)),
+      'prueba'
+    );
+    raise exception 'FALLA 10f: un resultado sin probabilidad_mismo se guardó';
+  exception when not_null_violation then
+    null;
+  end;
+  reset role;
+  if exists (
+    select 1 from public.coincidencias
+    where animal_origen = least(v_q, pg_temp.caso('Qvieja')) and animal_candidato = greatest(v_q, pg_temp.caso('Qvieja'))
+  ) then
+    raise exception 'FALLA 10g: un resultado con "confianza" (función vieja) creó una coincidencia';
+  end if;
 end;
 $$;
 

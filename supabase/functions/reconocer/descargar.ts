@@ -1,11 +1,10 @@
 /**
- * Las fotos de otros sitios (los datos de demo cargados por SQL, que guardan
- * una URL https en vez de una ruta del bucket) las baja la función y las manda
- * dentro del pedido: no dependen de que la API pueda bajarlas ni de lo que el
- * sitio diga del tipo (placedog.net responde "image/jpg", que no existe). El
- * tipo sale de los primeros bytes. Con topes de tamaño y de tiempo.
- *
- * Las fotos del bucket no pasan por acá: van por URL (la miniatura de 320).
+ * La función baja cada foto y la manda dentro del pedido: del bucket, la
+ * versión mediana (o la original, si es de antes); de otros sitios (los datos
+ * de demo cargados por SQL, que guardan una URL https), la que hay. Así no
+ * depende de que la API pueda bajarla ni de lo que el sitio diga del tipo
+ * (placedog.net responde "image/jpg", que no existe): el tipo sale de los
+ * primeros bytes. Con topes de tamaño y de tiempo.
  */
 
 /** Los tipos que acepta la API. */
