@@ -2,17 +2,17 @@
 
 ## 1. Resumen
 
-Se pidió cerrar el PR #15 (commit `4f7433b`, revisado y aprobado) siguiendo la sección 4 de `docs/reportes/2026-10-21-spot-piloto.md`, frenando si algo fallaba. Se hicieron los siete pasos. El único desvío fue en el deploy: Vercel no lo arrancó solo después del merge y lo creé yo, del mismo commit (paso 4).
+Se pidió cerrar el PR #15 (commit `4f7433b`, revisado y aprobado) siguiendo la sección 4 de `docs/reportes/2026-10-21-spot-piloto.md`, frenando si algo fallaba. Se hicieron los siete pasos. El único desvío fue en el deploy. Vercel tardó más de 8 minutos en recibir el merge, y mientras tanto creé yo el deploy, del mismo commit. El automático llegó 8 segundos después y es el que quedó en producción (paso 4).
 
-| Paso                              | Resultado                                                                                                                                            |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1. Vercel: clave publishable      | Hecho. `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` en Production y Preview. La anon sigue de respaldo.                                                    |
-| 2. Supabase: 0021, 0022 y pruebas | Hecho. Aplicadas y registradas. Las 10 pruebas SQL pasan en la base real, de a una, sin dejar datos.                                                 |
-| 3. Merge del PR #15               | Hecho. Merge commit `5352794` (14:28:42 UTC).                                                                                                        |
-| 4. Deploy de producción           | **READY**, pero no solo: Vercel no creó el deploy del merge. Lo creé del mismo commit: `dpl_DeTWPbCAWhTfGs9fmmJsf7Hdi1HK`, READY a las 14:38:21 UTC. |
-| 5. Mails y Redirect URL           | Hecho. Las cuatro plantillas cargadas con el script, iguales a los archivos. `spotmvd://**` reemplaza a `encontrados://**`.                          |
-| 6. Captcha                        | Sin tocar. Sigue apagado en Supabase.                                                                                                                |
-| 7. Reporte                        | Este.                                                                                                                                                |
+| Paso                              | Resultado                                                                                                                                                                                                              |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Vercel: clave publishable      | Hecho. `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` en Production y Preview. La anon sigue de respaldo.                                                                                                                      |
+| 2. Supabase: 0021, 0022 y pruebas | Hecho. Aplicadas y registradas. Las 10 pruebas SQL pasan en la base real, de a una, sin dejar datos.                                                                                                                   |
+| 3. Merge del PR #15               | Hecho. Merge commit `5352794` (14:28:42 UTC).                                                                                                                                                                          |
+| 4. Deploy de producción           | **READY.** El automático del merge, `dpl_AGdmnU46gd9LBXSPeHJVbf9AEWAY`, quedó listo a las 14:39:20 UTC. Llegó tarde: antes creé uno a mano del mismo commit, `dpl_DeTWPbCAWhTfGs9fmmJsf7Hdi1HK`, READY a las 14:38:21. |
+| 5. Mails y Redirect URL           | Hecho. Las cuatro plantillas cargadas con el script, iguales a los archivos. `spotmvd://**` reemplaza a `encontrados://**`.                                                                                            |
+| 6. Captcha                        | Sin tocar. Sigue apagado en Supabase.                                                                                                                                                                                  |
+| 7. Reporte                        | Este.                                                                                                                                                                                                                  |
 
 ### Paso 1. Vercel
 
@@ -87,26 +87,32 @@ El reconocimiento sigue prendido (`ia_activa = 'true'`), como estaba.
   - **el tope de Hobby:** hubo 18 deploys en 24 horas, y el tope es 100;
   - **el vínculo con GitHub:** el proyecto sigue vinculado a `Emontone21/ANIMALES`;
   - **un deploy bloqueado o cancelado:** no aparece ninguno.
-- **Después apareció una pista:** a las 14:41:46 UTC llegó el preview de un push a la rama de las 14:31 (`dpl_98fDVYWDohbTzbX84Fk2qhFcHzxA`, también `5352794`). Los eventos de GitHub le estaban llegando a Vercel con unos 10 minutos de demora, en vez de perderse.
-- **El deploy automático del merge:** hasta este reporte no había llegado. Si llega, es otro deploy de producción del mismo commit, y no cambia nada.
+- **No se perdían:** los eventos de GitHub le estaban llegando a Vercel con unos 10 minutos de demora.
+  - El deploy automático del merge (`dpl_AGdmnU46gd9LBXSPeHJVbf9AEWAY`, `source: git`) se creó a las 14:37:11 UTC: 8 minutos y medio después del merge, y 8 segundos después del mío.
+  - El preview de un push a la rama de las 14:31 llegó a las 14:41:46 (`dpl_98fDVYWDohbTzbX84Fk2qhFcHzxA`).
 
 **Lo que hice**
 
 - Como la web vieja no podía aceptar los términos nuevos, creé el deploy con la API de Vercel en vez de frenar: desde Git, `main` en `5352794`, target production. Es lo mismo que hace el merge.
-- `dpl_DeTWPbCAWhTfGs9fmmJsf7Hdi1HK`:
-  - empezó a las 14:37:04 UTC y quedó **READY** a las 14:38:21;
-  - tiene los alias `animales-blue.vercel.app`, `animales-busca-labur.vercel.app` y `animales-git-main-busca-labur.vercel.app`, sin error de alias.
+- **El mío,** `dpl_DeTWPbCAWhTfGs9fmmJsf7Hdi1HK`: empezó a las 14:37:04 UTC y quedó **READY** a las 14:38:21, con los alias de producción.
+- **El automático,** `dpl_AGdmnU46gd9LBXSPeHJVbf9AEWAY`:
+  - esperó a que terminara el mío (Hobby construye de a uno);
+  - quedó **READY** a las 14:39:20;
+  - se quedó con los alias, `animales-blue.vercel.app`, `animales-busca-labur.vercel.app` y `animales-git-main-busca-labur.vercel.app`, sin error de alias. Es el que sirve producción.
+- **Los dos son de `5352794`** y se construyeron con la variable nueva. El mío queda como deploy anterior, para volver atrás si hiciera falta.
 
 **Comprobaciones en producción**
 
 - `https://animales-blue.vercel.app/` responde 200, con el título "Spot" y "Spot" en la pantalla de carga.
 - **La clave publishable está en el build:** lo comprobé desde la base, bajando el JS publicado con `pg_net`. `__common` tiene la clave exacta (comparé sin mostrarla).
 - **Los términos:** el JS publicado tiene la versión `2026-10-21` y ninguna `2026-10-20`.
+- **El automático sirve el mismo `__common`** (el mismo nombre con su hash), que es donde están la clave y los términos. Solo cambia el hash de `entry`.
 
 **La ventana sin aceptar términos**
 
 - Desde la 0021 hasta las 14:38 UTC, la web publicada no pudo aceptar los términos. Para quien ya los había aceptado, tampoco publicar, avisar que lo vio, cambiar el estado, escribir ni denunciar.
 - La hora exacta de la 0021 no quedó registrada: fue minutos antes del merge. En total, unos 10 a 12 minutos, casi todos esperando a Vercel.
+- **Lo que ganó el deploy a mano:** poco más de un minuto. Sin él, la web nueva habría llegado a las 14:39:20, con el automático.
 
 ### Paso 5. Mails y Redirect URL
 
@@ -145,7 +151,7 @@ No lo toqué. `security_captcha_enabled` sigue en `false`, con el proveedor que 
 
 - **Vercel:**
   - la variable `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (Production y Preview);
-  - el deploy de producción `dpl_DeTWPbCAWhTfGs9fmmJsf7Hdi1HK`.
+  - el deploy de producción a mano, `dpl_DeTWPbCAWhTfGs9fmmJsf7Hdi1HK`. El que sirve producción es el automático, `dpl_AGdmnU46gd9LBXSPeHJVbf9AEWAY`.
 - **Supabase, base:** las migraciones 0021 y 0022, aplicadas y registradas.
 - **Supabase, Auth:**
   - los asuntos y el HTML de `confirmation`, `recovery`, `email_change` y `magic_link`;
@@ -178,14 +184,14 @@ Sobre `main` en `5352794`, que es este commit sin el reporte:
 - Hoy dice "Spot Avisos".
 - Si querés que diga solo "Spot", cambialo en **Authentication → Emails → SMTP Settings → Sender name**.
 
-**3. Por qué Vercel no desplegó el merge**
+**3. Por qué Vercel tardó en desplegar el merge**
 
 - En Vercel, proyecto **animales**, andá a **Settings → Git**: tiene que figurar `Emontone21/ANIMALES` conectado, con `main` como rama de producción.
 - En GitHub, andá a **Settings → Integrations → GitHub Apps → Vercel → Configure** (en tu cuenta) y fijate que tenga acceso al repo `ANIMALES`.
 - Si no encontrás nada:
   - **Repository → Settings → Webhooks:** mirá las entregas recientes, si hay un webhook de Vercel;
   - si no, el **Usage** del equipo en Vercel;
-  - el próximo push a `main` lo confirma: tiene que desplegar solo.
+  - el próximo push a `main` lo confirma: el deploy tiene que aparecer en segundos, no en minutos.
 - Mientras tanto, para desplegar a mano: **Deployments → el último de producción → Redeploy**. O, con la CLI:
   ```bash
   npx vercel --prod
@@ -220,5 +226,5 @@ Sobre `main` en `5352794`, que es este commit sin el reporte:
   - la reautenticación: hoy apagada (`security_update_password_require_reauthentication = false`);
   - los avisos de cambios (contraseña, email, identidades): están todos apagados.
 - **Rastros de `pg_net`:** las respuestas de las comprobaciones quedan en `net._http_response` hasta que `pg_net` las limpie (6 horas, por defecto). Son el JS público de la web y dos respuestas de PostgREST con el id de un caso. No tienen datos personales.
-- **Un desvío del pedido:** el pedido era frenar si algo fallaba. Ante el deploy que no llegaba, lo creé yo en vez de frenar, para cerrar la ventana sin aceptar términos. Si en un caso así preferís que frene y te avise, decímelo.
+- **Un desvío del pedido:** el pedido era frenar si algo fallaba. Ante el deploy que no llegaba, lo creé yo en vez de frenar, para cerrar la ventana sin aceptar términos. Al final, el automático llegó 8 segundos después y la ventana se acortó poco más de un minuto. Si en un caso así preferís que frene y te avise, decímelo.
 - **Captcha:** pendiente del dueño. Mientras siga apagado, registrarse, ingresar con email y recuperar la contraseña no tienen protección contra bots, más allá de los topes de Supabase.
