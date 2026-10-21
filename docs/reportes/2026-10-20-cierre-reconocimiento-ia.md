@@ -2,7 +2,7 @@
 
 ## 1. Resumen
 
-El reconocimiento con la API de Claude se cerró en dos rondas, y las dos frenaron en la prueba real.
+El reconocimiento con la API de Claude se cerró en tres rondas. Las dos primeras frenaron en la prueba real, por la clave y por el largo de las respuestas. En la tercera todo anduvo, pero la coincidencia de Toby no llegó al umbral, y se decidió dejarlo así hasta probar con fotos reales.
 
 ### Primera ronda: el PR #12 (20 de octubre)
 
@@ -49,7 +49,7 @@ Para la falla se armó el PR #13, primer commit (`8872184`):
 - No hubo coincidencia, así que no hay motivo de Toby.
 - Se apagó el reconocimiento (00:52 UTC) para que no siguiera en bucle.
 
-### Este commit, el segundo del PR #13: recortar en vez de rechazar
+### Segundo commit del PR #13 (`c76161a`): recortar en vez de rechazar
 
 - **Recorte:** si lo único mal es el largo, se recorta:
   - el motivo, a 140 en el último espacio, con "…";
@@ -59,6 +59,40 @@ Para la falla se armó el PR #13, primer commit (`8872184`):
 - **Al modelo** se le piden motivos de hasta 110 caracteres y rasgos de hasta 60.
 
 **Para revisar:** `coinciden` y `difieren` de la comparación se recortan igual que los rasgos. Son listas de rasgos con los mismos topes, y si no se recortaran podrían frenar la comparación por la misma razón.
+
+### Tercera ronda: el commit `c76161a` (21 de octubre)
+
+| Paso | Resultado |
+| --- | --- |
+| 1. Función | Hecho. Desplegada con `c76161a`: versión 5, activa, `verify_jwt` apagado. Un pedido sin secreto recibe 401. |
+| 2. Cola | Hecho. Parque Rodó y Toby volvieron a pendiente y se prendió el reconocimiento (01:08 UTC). |
+| 3. Prueba real | La función respondió `{"procesados":2,"errores":0,"quedan":0}`. Las 5 fotos de demo quedaron procesadas, sin errores ni recortes. **No se creó la coincidencia** de Toby con Parque Rodó: la IA les dio 60, y el umbral es 70. |
+| 4. Reconocimiento | Se apagó para frenar y consultar. Después, con la decisión del dueño, quedó **prendido** (`ia_activa = 'true'`). |
+| 5. Reporte | Este. |
+| 6. Merge y deploy | El PR #13 se mergea con merge commit después de este commit, y se confirma el deploy de Vercel. |
+
+**Descripción de Parque Rodó** (la que faltaba):
+- perro negro y dorado, tricolor, chico, collar no se ve;
+- raza "chihuahua o mestizo pequeño", calidad buena;
+- 7 rasgos, entre ellos "cachorro muy pequeño dentro de una taza blanca", "mancha blanca en la frente" y "patas delanteras blancas".
+
+**Comparación de Parque Rodó con Toby:**
+- Confianza 60, veredicto "posible".
+- Motivo, de 123 caracteres: "Las fotos son idénticas (misma taza y misma pose), pero los datos declarados no coinciden: tamaño, color y collar. Revisar."
+- Coinciden: "Foto idéntica: misma taza con lunares rojos", "Patrón tricolor negro, dorado y blanco", "Mancha blanca en la frente", "Patas delanteras blancas", "Orejas grandes, una algo caída" y "Hocico y cejas dorado-crema".
+- Difieren: "Tamaño declarado mediano; se ve chico", "Color declarado marrón con pecho blanco; se ve negro y dorado", "Collar declarado; no se ve collar en la foto" y "Foto posiblemente reutilizada de internet".
+
+**Por qué no llegó al umbral:**
+- Los dos casos de demo están declarados igual ("marrón con pecho blanco", mediano, con collar), pero su foto, la misma, muestra un cachorro negro y dorado, chico y sin collar. La IA bajó la confianza por esa contradicción y avisó que la foto podía estar sacada de internet.
+- Con 60, `guardar_comparacion_ia` guardó el par en `comparaciones_ia` y no creó la coincidencia.
+- La foto de Toby salió de la cola sin llamar a la API: ese par ya estaba comparado.
+
+**Decisión del dueño:**
+- Aceptar el resultado: el par de demo no es una prueba realista, porque tiene la foto idéntica y datos que la contradicen.
+- No cambiar `umbral_ia` (70) ni el pedido hasta tener datos de fotos reales.
+- Dejar el reconocimiento prendido y probar con el flujo 26.
+
+**Avisos de recorte:** ninguno. Las respuestas entraron en los topes: el motivo tiene 123 caracteres y las listas, 7, 6 y 4 rasgos.
 
 ## 2. Cambios
 
@@ -86,7 +120,7 @@ Para la falla se armó el PR #13, primer commit (`8872184`):
 
 **Docs:** ARQUITECTURA, DECISIONES, PRUEBAS-MANUALES, README, AGENTS y `supabase/tests/README.md`.
 
-### De este commit
+### Del segundo commit del PR #13 (`c76161a`)
 
 **Función `reconocer`**
 - `validar.ts`:
@@ -118,6 +152,10 @@ Para la falla se armó el PR #13, primer commit (`8872184`):
 - `AGENTS.md` y `docs/PRUEBAS-MANUALES.md` (flujo 26).
 - Este reporte.
 
+### De este commit
+
+- Solo este reporte, con la tercera ronda. No cambia código, así que las verificaciones de abajo siguen valiendo para `c76161a`.
+
 ## 3. Verificaciones
 
 | Comando | Resultado |
@@ -146,50 +184,49 @@ Para la falla se armó el PR #13, primer commit (`8872184`):
 | Comparar con un candidato | 3 (1 bien, 2 rechazadas) | 2.564 a 2.588 | 466 a 1.006 | US$ 0,00049 a 0,00076 |
 | **Total** | 9 | 19.824 | 5.645 | **US$ 0,0048** |
 
-**Costo por foto medido:** unos US$ 0,0005 sin candidatos y unos US$ 0,001 con un candidato (describir más comparar).
+**Uso medido en la tercera ronda:**
+
+| Llamada | Entrada | Salida | Costo |
+| --- | --- | --- | --- |
+| Describir Parque Rodó | 2.078 tokens | 558 | US$ 0,000487 |
+| Comparar Parque Rodó con Toby | 2.868 | 895 | US$ 0,000734 |
+| **Total de la ronda** | 4.946 | 1.453 | **US$ 0,0012** |
+
+**Desde el principio:** 19 llamadas, 24.770 tokens de entrada y 7.098 de salida, US$ 0,0060.
+
+**Costo por foto medido:** unos US$ 0,0005 sin candidatos y unos US$ 0,001 a 0,0012 con un candidato (describir más comparar).
 - Es más de lo estimado (1.300 tokens por descripción), porque las fotos de demo miden 640 × 480 y una miniatura del bucket, 320 × 320.
 - Las respuestas rechazadas también se cobran: este arreglo las evita.
 - Las llamadas que fallaron por la clave no se cobraron.
 
 ## 4. Pasos manuales
 
-Cuando este commit esté revisado. La 0019 ya está aplicada y este commit no cambia la base: no hay migración ni pruebas SQL nuevas.
+No queda nada por aplicar: la 0019 está aplicada, la función desplegada con `c76161a` y el reconocimiento prendido.
 
-1. **Volver a desplegar la función**, desde la rama del PR #13 (o desde main, después del merge):
-   ```bash
-   npx supabase functions deploy reconocer --project-ref bwqvuttuodwypwxckxgf --use-api --no-verify-jwt
-   ```
-2. **Volver a la cola las 2 fotos que fallaron** (Parque Rodó y Toby, con 2 intentos), prender el reconocimiento y procesar:
+1. **Probar con fotos reales** (flujo 26 de `docs/PRUEBAS-MANUALES.md`): un perdido y un encontrado del mismo perro, con dos fotos distintas y subidas desde la app. Así se prueba también el envío por URL desde el bucket, y quedan datos para decidir el umbral y el pedido.
+2. **Mirar el uso y los avisos**:
    ```sql
-   update public.cola_vision set estado = 'pendiente', intentos = 0, ultimo_error = null, updated_at = now()
-   where estado = 'error';
-   update public.config_app set valor = 'true', updated_at = now() where clave = 'ia_activa';
-   select public.despertar_vision();
+   select id, created_at, tipo, resultado, tokens_entrada, tokens_salida, costo_usd, detalle
+   from llamadas_ia order by id desc limit 20;
+   select c.confianza, c.veredicto, c.motivo from comparaciones_ia c order by c.created_at desc limit 20;
    ```
-3. **Mirar el resultado** (un minuto después):
-   ```sql
-   select id, tipo, resultado, tokens_entrada, tokens_salida, costo_usd, detalle from llamadas_ia order by id desc limit 6;
-   select animal_origen, animal_candidato, confianza, motivo, origen from coincidencias;
-   ```
-   - **Esperado:** la descripción de Parque Rodó.
-   - **Esperado:** una coincidencia entre Toby (`b0000000-0000-4000-8000-000000000004`) y el perro de Parque Rodó (`b0000000-0000-4000-8000-000000000001`), que tienen la misma foto, con su motivo.
-   - **Esperado:** las llamadas `ok`, y las recortadas con su aviso en `detalle`.
-4. **Si la API devuelve un error,** apagar:
+   Las llamadas `ok` con `detalle` son las que se recortaron. Las comparaciones guardan también las que no llegaron al umbral: sirven para calibrarlo.
+3. **Para apagarlo** en cualquier momento:
    ```sql
    update public.config_app set valor = 'false', updated_at = now() where clave = 'ia_activa';
    ```
-   El porqué queda en `llamadas_ia.detalle`.
-5. **Después:** mergear el PR #13 y confirmar que el deploy de Vercel quede en READY. Este PR no cambia la app; solo la función, la base y los docs.
+   El tope de 300 llamadas por día (`ia_tope_diario`) y la pausa sin crédito siguen activos.
 
 ## 5. Pendientes y riesgos
 
-- **Falta el motivo de Toby** y la coincidencia con Parque Rodó: llegan con los pasos de arriba.
-- **El reconocimiento está apagado** (`ia_activa = 'false'`). La función está desplegada en la versión 4, con el código del primer commit del PR #13: sin este recorte.
+- **No hubo coincidencia entre Toby y Parque Rodó** (confianza 60, umbral 70). Por decisión del dueño, el umbral y el pedido se ajustan cuando haya datos de fotos reales.
+- **El par ya está comparado,** así que no se vuelve a comparar solo. Para repetirlo habría que borrar su fila de `comparaciones_ia` y volver a la cola una de las dos fotos.
+- **Mandar fotos del bucket por URL a la API no está probado en producción:** el bucket está vacío, porque todas las fotos son de demo. Lo prueba el paso 1 de arriba.
+- **El reconocimiento queda prendido:** cada foto nueva gasta entre US$ 0,0005 y 0,0012, con un tope de 300 llamadas por día (unos US$ 0,30 por día como máximo, con estos tamaños).
 - **Un motivo recortado puede quedar a medias** ("…"). Los avisos de `detalle` dicen cuántos y cuánto. Si se repiten, conviene bajar el objetivo a menos de 110 o revisar el pedido.
-- **Mandar fotos del bucket por URL a la API no está probado en producción:** el bucket está vacío, porque todas las fotos son de demo. Conviene el flujo 26 de `docs/PRUEBAS-MANUALES.md` con una foto subida desde la app.
-- **Las fotos de demo no coinciden siempre con sus datos:** placedog.net da para el caso "perro negro, grande" un cachorro dorado. No molesta, pero los candidatos se filtran por lo que se ve, no por lo declarado.
-- **Uso hasta ahora:** 17 llamadas registradas desde el 20. Costaron US$ 0,0048 en total:
+- **Las fotos de demo no coinciden con sus datos:** placedog.net da para "perro negro, grande" un cachorro dorado, y para Toby, "marrón con pecho blanco, mediano, con collar", un cachorro negro y dorado sin collar. Por eso no sirven para calibrar.
+- **Uso hasta ahora:** 19 llamadas registradas desde el 20. Costaron US$ 0,0060 en total:
   - 8 fallaron por la clave, sin costo;
   - 4 se rechazaron por largo y se cobraron (US$ 0,0025);
-  - 5 salieron bien (US$ 0,0023).
+  - 7 salieron bien (US$ 0,0036).
 - **La URL y el secreto de la función** están en `config_app`, y no en este reporte ni en ningún archivo.
