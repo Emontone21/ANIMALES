@@ -15,8 +15,9 @@ set terminos_version = public.version_terminos(), terminos_aceptados_en = now()
 where id in ('00000000-0000-4000-8000-0000000000c1', '00000000-0000-4000-8000-0000000000c2');
 
 insert into storage.objects (bucket_id, name) values
-  ('fotos', '00000000-0000-4000-8000-0000000000c1/prueba-c1.jpg'),
-  ('fotos', '00000000-0000-4000-8000-0000000000c2/prueba-c2.jpg');
+  ('fotos', '00000000-0000-4000-8000-0000000000c1/c1000000-0000-4000-8000-000000000001.jpg'),
+  ('fotos', '00000000-0000-4000-8000-0000000000c1/c1000000-0000-4000-8000-000000000002.jpg'),
+  ('fotos', '00000000-0000-4000-8000-0000000000c2/c2000000-0000-4000-8000-000000000001.jpg');
 
 do $$
 declare
@@ -28,17 +29,17 @@ declare
 begin
   -- Como F: publica dos perdidos con contacto.
   perform set_config('request.jwt.claims', json_build_object('sub', f, 'role', 'authenticated')::text, true);
-  p1 := public.publicar_animal('perro', '00000000-0000-4000-8000-0000000000c1/prueba-c1.jpg',
+  p1 := public.publicar_animal('perro', '00000000-0000-4000-8000-0000000000c1/c1000000-0000-4000-8000-000000000001.jpg',
     -34.9, -56.16, now() - interval '1 day', 'mediano', 'marrón', true, null, 'perdido', 'Toby',
     '099 000 000');
-  p2 := public.publicar_animal('gato', '00000000-0000-4000-8000-0000000000c1/prueba-c1.jpg',
+  p2 := public.publicar_animal('gato', '00000000-0000-4000-8000-0000000000c1/c1000000-0000-4000-8000-000000000002.jpg',
     -34.9, -56.16, now() - interval '1 day', 'chico', 'gris', false, null, 'perdido', 'Mora',
     'Escribime por la app');
 
   -- 1. Resguardarlo no lo cierra: el contacto sigue.
   perform set_config('request.jwt.claims', json_build_object('sub', r, 'role', 'authenticated')::text, true);
   perform public.cambiar_estado_animal(p1, 'resguardado', 'Lo tengo yo', null, -34.9, -56.16,
-    '00000000-0000-4000-8000-0000000000c2/prueba-c2.jpg');
+    '00000000-0000-4000-8000-0000000000c2/c2000000-0000-4000-8000-000000000001.jpg');
   select contacto_familia into v_contacto from public.animales where id = p1;
   if v_contacto is distinct from '099 000 000' then
     raise exception 'FALLA 1: al resguardarlo cambió el contacto (%)', v_contacto;

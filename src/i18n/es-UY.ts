@@ -73,7 +73,9 @@ export const t = {
     sinReportes: 'No hay reportes con estos filtros.',
     verDetalle: 'Ver detalle',
     miUbicacion: 'Ir a mi ubicación',
-    atribucion: '© OpenFreeMap · © OpenMapTiles · Datos de OpenStreetMap',
+    /** El último pedazo es un link a openstreetmap.org/copyright, como piden sus guías. */
+    atribucion: '© OpenFreeMap · © OpenMapTiles · ',
+    atribucionOsm: '© colaboradores de OpenStreetMap',
     /** Mapa en grande del recorrido (docs/DISENO.md, 6.9.1). */
     recorrido: {
       verEnGrande: 'Ver el mapa en grande',
@@ -656,7 +658,7 @@ export const t = {
       enviar: 'Mandar el link',
       // Neutro: no dice si el email tiene cuenta.
       enviado:
-        'Si hay una cuenta con ese email, te mandamos un link. Revisá tu casilla y el correo no deseado. El link sirve una sola vez y vence en una hora.',
+        'Si hay una cuenta con ese email, te mandamos un link. Revisá tu casilla y el correo no deseado. Abrilo en este mismo navegador: sirve una sola vez y vence en una hora.',
       volver: 'Volver a ingresar',
       error: 'No pudimos mandar el link. Probá de nuevo.',
       muchosPedidos: 'Pediste varios links seguidos. Esperá unos minutos y probá de nuevo.',
@@ -670,7 +672,8 @@ export const t = {
       exito: 'Listo: tu contraseña cambió y ya ingresaste.',
       noCoinciden: 'Las dos contraseñas no coinciden.',
       igualAnterior: 'Elegí una contraseña distinta de la anterior.',
-      linkVencido: 'Este link ya no sirve: venció o ya se usó. Pedí uno nuevo.',
+      linkVencido:
+        'Este link ya no sirve: venció, ya se usó o se abrió en otro navegador. Pedí uno nuevo y abrilo en el mismo navegador.',
       pedirOtro: 'Pedir otro link',
       irAlMapa: 'Ir al mapa',
     },
@@ -683,7 +686,8 @@ export const t = {
     o: 'o',
     sinCuenta: '¿No tenés cuenta?',
     conCuenta: '¿Ya tenés cuenta?',
-    registroExito: 'Cuenta creada. Si te pedimos confirmar el email, revisá tu casilla.',
+    registroExito:
+      'Cuenta creada. Si te pedimos confirmar el email, revisá tu casilla y abrí el link en este mismo navegador.',
     errores: {
       credenciales: 'Email o contraseña incorrectos.',
       emailNoConfirmado: 'Tenés que confirmar tu email antes de ingresar.',

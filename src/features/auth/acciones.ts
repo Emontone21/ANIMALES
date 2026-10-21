@@ -3,7 +3,6 @@ import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 
 import { CLAVE_CAPTCHA, opcionesCaptcha } from '@/features/auth/captcha';
-import { marcarRecuperacion } from '@/features/auth/recuperacion';
 import { VERSION_TERMINOS } from '@/features/legal/terminos';
 import {
   ErrorAuth,
@@ -15,15 +14,16 @@ import {
 } from '@/features/auth/validaciones';
 import { t } from '@/i18n/es-UY';
 import { supabase } from '@/lib/supabase';
-import { leerParametros, tieneErrorAuth } from '@/lib/urlAuth';
+import { codigoDeAuth, leerParametros, tieneErrorAuth } from '@/lib/urlAuth';
 
 WebBrowser.maybeCompleteAuthSession();
 
 const esWeb = Platform.OS === 'web';
 
 /**
- * Adónde vuelve Supabase después de confirmar email u OAuth.
- * Web: la raíz del sitio (Supabase lee los tokens de la URL solo).
+ * Adónde vuelve Supabase después de confirmar email u OAuth, con un ?code=
+ * (flujo PKCE, ver src/lib/supabase.ts).
+ * Web: la raíz del sitio (Supabase canjea el código solo).
  * Nativo: spotmvd://auth/callback (exp://… en Expo Go).
  */
 const redirectTo = esWeb ? Linking.createURL('/') : Linking.createURL('auth/callback');
@@ -78,11 +78,11 @@ export async function registrarse(
 
 /**
  * OAuth con Google vía el navegador del sistema. Supabase redirige a
- * spotmvd://auth/callback con los tokens en el fragmento de la URL.
+ * spotmvd://auth/callback con un código que se canjea acá.
  */
 export async function ingresarConGoogle(): Promise<void> {
   if (esWeb) {
-    // El navegador va a Google y vuelve a la raíz con la sesión en la URL.
+    // El navegador va a Google y vuelve a la raíz con el código en la URL.
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo },
@@ -130,24 +130,28 @@ export async function cambiarContrasena(nueva: string, repetida: string): Promis
   if (error) throw traducirError(error);
 }
 
-/** Lee access_token y refresh_token de una URL de redirección y abre sesión. */
+/**
+ * Canjea el código de una URL de redirección (nativo) y abre sesión. Solo sirve
+ * con el verificador que guardó esta app al pedirlo: un link con tokens
+ * ajenos (#access_token=…) no abre nada (auditoría 2, S-M1 y S-B5). Si el link
+ * era de recuperación, Supabase avisa PASSWORD_RECOVERY (recuperacion.ts).
+ */
 export async function crearSesionDesdeUrl(url: string): Promise<void> {
   const params = leerParametros(url);
   if (tieneErrorAuth(params)) {
     throw new ErrorAuth(params['error_code'] ?? params['error_description'] ?? params['error']);
   }
 
-  const accessToken = params['access_token'];
-  const refreshToken = params['refresh_token'];
-  if (!accessToken || !refreshToken) return;
+  const codigo = codigoDeAuth(params);
+  if (!codigo) return;
 
-  const { error } = await supabase.auth.setSession({
-    access_token: accessToken,
-    refresh_token: refreshToken,
-  });
-  if (error) throw traducirError(error);
-  // En nativo setSession avisa SIGNED_IN, no PASSWORD_RECOVERY.
-  if (params['type'] === 'recovery') marcarRecuperacion();
+  const { error } = await supabase.auth.exchangeCodeForSession(codigo);
+  if (!error) return;
+  // El mismo link puede llegar dos veces (al volver del navegador y como deep
+  // link): si el primero ya abrió la sesión, el segundo no es un error.
+  const { data } = await supabase.auth.getSession();
+  if (data.session) return;
+  throw traducirError(error);
 }
 
 export async function cerrarSesion(): Promise<void> {

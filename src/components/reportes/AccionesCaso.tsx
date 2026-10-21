@@ -26,6 +26,7 @@ import {
   permisosDelCaso,
 } from '@/features/reportes/permisos';
 import { useSeguimiento } from '@/features/seguimientos/api';
+import { cerrarYNavegar } from '@/hooks/useCerrarConAtras';
 import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 import { datosParaCompartir, mensajeParaCompartir } from '@/lib/compartir';
@@ -139,10 +140,11 @@ export function useAccionesCaso(
     conversacion.mutate(
       { animalId: animal.id, otroUsuarioId },
       {
-        onSuccess: (id) => {
-          setModal(null);
-          router.push({ pathname: '/conversacion/[id]', params: { id } });
-        },
+        onSuccess: (id) =>
+          cerrarYNavegar(
+            () => setModal(null),
+            () => router.push({ pathname: '/conversacion/[id]', params: { id } }),
+          ),
         onError: (e) =>
           historial
             ? setErrorHistorial({ usuarioId: otroUsuarioId, texto: mensajeDeError(e) })
@@ -182,10 +184,11 @@ export function useAccionesCaso(
     setAvisoCopia({ ok, texto: ok ? t.compartir.copiado : t.compartir.errorCopiar });
   };
 
-  const editarReporte = () => {
-    setModal(null);
-    router.push({ pathname: '/animal/[id]/editar', params: { id: animal.id } });
-  };
+  const editarReporte = () =>
+    cerrarYNavegar(
+      () => setModal(null),
+      () => router.push({ pathname: '/animal/[id]/editar', params: { id: animal.id } }),
+    );
 
   const confirmarBorrado = () => {
     borrar.reset();
@@ -194,10 +197,11 @@ export function useAccionesCaso(
 
   const borrarReporte = () =>
     borrar.mutate(undefined, {
-      onSuccess: () => {
-        setModal(null);
-        router.replace('/');
-      },
+      onSuccess: () =>
+        cerrarYNavegar(
+          () => setModal(null),
+          () => router.replace('/'),
+        ),
     });
 
   const errorBorrar = borrar.isError
@@ -211,10 +215,11 @@ export function useAccionesCaso(
     setAviso(texto);
   };
 
-  const irA = (ruta: '/auth/ingresar' | '/auth/registrarse') => {
-    setModal(null);
-    router.push(ruta);
-  };
+  const irA = (ruta: '/auth/ingresar' | '/auth/registrarse') =>
+    cerrarYNavegar(
+      () => setModal(null),
+      () => router.push(ruta),
+    );
 
   const modales: ReactNode = (
     <>

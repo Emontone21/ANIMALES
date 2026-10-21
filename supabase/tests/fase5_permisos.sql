@@ -28,7 +28,7 @@ update public.perfiles
 set terminos_version = public.version_terminos(), terminos_aceptados_en = now()
 where id = '00000000-0000-4000-8000-0000000000a1';
 insert into storage.objects (bucket_id, name)
-values ('fotos', '00000000-0000-4000-8000-0000000000a1/prueba2.jpg');
+values ('fotos', '00000000-0000-4000-8000-0000000000a1/a1000000-0000-4000-8000-000000000002.jpg');
 
 -- Desde acá, todo corre como A, igual que una llamada desde la app.
 set local role authenticated;
@@ -76,7 +76,7 @@ begin
   end if;
 
   -- 5. publicar_animal sigue funcionando.
-  v_animal := public.publicar_animal('gato', auth.uid()::text || '/prueba2.jpg', -34.9, -56.16);
+  v_animal := public.publicar_animal('gato', auth.uid()::text || '/a1000000-0000-4000-8000-000000000002.jpg', -34.9, -56.16);
   if v_animal is null then
     raise exception 'FALLA 5: publicar_animal no devolvió el id';
   end if;

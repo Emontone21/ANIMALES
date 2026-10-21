@@ -620,7 +620,57 @@ El nombre visible es Spot. El logo es una chapita de collar con una S, colgada d
   - los `id` de `index.html`: `encontrados-fuentes`, `encontrados-carga` y `encontrados-web`;
   - las migraciones ya aplicadas;
   - los agentes HTTP de la función `reconocer` (`encontrados-reconocer`) y del servicio de visión (`encontrados-vision`);
-  - el texto que la función `reconocer` le manda a la API (cambiarlo pide desplegarla de nuevo);
+  - el texto que la función `reconocer` le manda a la API: desde la auditoría 2 ya no nombra la app ("una app que ayuda a reunir…"), y el cambio llega al desplegarla de nuevo;
   - el servicio sin desplegar (`services/vision`);
   - los datos de prueba: los emails `@encontrados.test` de `supabase/tests/` y la cuenta demo de `seed.sql`.
 - **Los nativos ya se habían cambiado:** `slug` `spot-mvd`, esquema `spotmvd`, `uy.spotmvd.app` y el `name` de `package.json` (`spot-mvd`), en "La app pasa a llamarse Spot", porque todavía no hay nada publicado. Ya están en producción (las Redirect URLs de Supabase usan `spotmvd://**`): no se vuelven atrás.
+
+## 2026-10-21 · La sesión con PKCE: solo abre sesión un link que pidió este navegador
+
+Con el flujo implícito, cualquier link con tokens en el fragmento (`/animal/<id>#access_token=…`) abría esa sesión y pisaba la que hubiera (auditoría 2, S-M1). Alguien podía mandar por WhatsApp un link con los tokens de su propia cuenta: la víctima quedaba adentro de esa cuenta sin darse cuenta, y si publicaba su perdido, los mensajes y el contacto de quien lo encontrara le llegaban al atacante. Se comprobó con el build de antes.
+
+Ahora el cliente usa `flowType: 'pkce'` (`src/lib/supabase.ts`). Confirmar el email, recuperar la contraseña y Google vuelven con `?code=`, que solo se canjea con el verificador que guardó este navegador al pedirlo; los tokens en el fragmento se ignoran. En nativo, `crearSesionDesdeUrl` canjea el código y ya no llama a `setSession` con lo que traiga un deep link (S-B5).
+- **Recuperar la contraseña:** la recuperación empieza solo con el evento `PASSWORD_RECOVERY` que manda Supabase al canjear el código. Ya no se lee `#type=recovery` de la URL.
+- **Costo:** un link abierto en otro navegador (el mail en la compu, la app en el celular) no abre sesión. Al confirmar el email, la cuenta queda confirmada igual y se ingresa con la contraseña; al recuperar, la pantalla dice que el link no sirve y que se pida otro en el mismo navegador. Los textos lo avisan.
+- **Se descartó** `token_hash` en las plantillas con `verifyOtp`: anda entre navegadores, pero un link armado por otra persona vuelve a abrir su sesión, que es justo lo que se quería evitar. Las plantillas no cambian: siguen con `{{ .ConfirmationURL }}`.
+
+## 2026-10-21 · Encabezados de seguridad, con la CSP primero en modo reporte
+
+`vercel.json` no mandaba ningún encabezado de seguridad, y la sesión vive en `localStorage` (auditoría 2, S-M2). Ahora todo el sitio manda `X-Frame-Options: DENY` (no se puede enmarcar: clickjacking), `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` y `Permissions-Policy` (ubicación y cámara solo para el sitio; micrófono, pagos y USB para nadie).
+- **La CSP va como `Content-Security-Policy-Report-Only`:** el navegador avisa en la consola lo que bloquearía, sin bloquearlo. Se pasa a `Content-Security-Policy` después de recorrer `docs/PRUEBAS-MANUALES.md` en producción sin avisos.
+- **Qué permite:** los scripts del sitio, los dos en línea de `index.html` por su hash (una prueba lo compara: si cambian, cambia la CSP) y Turnstile; estilos en línea (react-native-web los arma así); fotos y datos del Supabase de los `preconnect`, las teselas de OpenFreeMap y las fotos de demo; ningún `eval`.
+- **Sin COEP ni COOP por ahora:** COEP rompe las fotos de Supabase y Turnstile; COOP queda para después de pasar la CSP a obligatoria. Vercel ya manda HSTS.
+- **Si cambia el proyecto de Supabase, el estilo del mapa o se suma un script,** hay que cambiar la CSP de `vercel.json`.
+
+## 2026-10-21 · Los textos de la IA no guardan teléfonos, links ni emails
+
+La IA describe y compara fotos, y el motivo de una coincidencia es público. Un "encontrado" con una foto que dijera "es el mismo, llamá al 099…" podía dejar un teléfono en una tabla pública y empujar una estafa (auditoría 2, S-M3).
+- **La función tapa, no rechaza:** en el motivo, los rasgos, lo que coincide y lo que difiere, la raza y el color del collar, los teléfonos (6 dígitos o más), links y emails se reemplazan por "[dato oculto]" (`ocultarDatos`, `validar.ts`), con un aviso en `llamadas_ia.detalle`. Rechazar la respuesta haría reintentar la misma foto en bucle.
+- **El pedido lo prohíbe:** las dos instrucciones de sistema dicen que nunca transcriba texto de una foto.
+- **La base es la última barrera:** `tiene_datos_de_contacto` rechaza esos textos en `coincidencias`, `comparaciones_ia` y `descripciones_ia` (0023). Sus patrones son una parte de los que tapa la función, para que lo tapado nunca choque con el check; `__tests__/datosOcultos.test.ts` los compara.
+- **Falsos positivos posibles:** un dominio pegado a una palabra ("rojo.Me parece") se tapa. Es raro en lo que escribe la IA y no esconde nada del animal.
+
+## 2026-10-21 · Topes por cuenta y una foto por avistamiento
+
+Una cuenta con una sola foto podía mandar cientos de "lo vi" o publicaciones: cada una manda avisos y pasa por la IA, y unas 150 agotaban el tope diario de todos (auditoría 2, S-M4).
+- **Topes por hora y por cuenta,** en `config_app`: `publicaciones_por_hora_cuenta` (10) y `avisos_por_hora_cuenta` (30, solo los "lo vi"). Son generosos para un rescatista activo y se cambian sin código. Con un candado por cuenta, como `reportar_error`. Resguardar no cuenta: ya lo limitan las reglas de quién cambia el estado.
+- **Una foto, un avistamiento:** la foto de un caso es la de su primer avistamiento, así que alcanza con que `avistamientos.foto_path` no se repita. Lo revisa un trigger con su mensaje ("Esa foto ya está publicada") y lo garantiza un índice único, aunque lleguen dos pedidos a la vez. Las URL de los datos de demo no cuentan. Vale también para el resguardo.
+- **El nombre de la foto:** `es_foto_propia` exige `<uid>/<uuid>.jpg`, el que sube la app. Antes aceptaba cualquier nombre dentro de la carpeta, también con `..`, `?` o espacios, que el navegador normaliza hacia otras rutas (S-B6).
+- **Se puede esquivar** publicando y borrando, porque lo borrado no cuenta. Alcanza para frenar el abuso fácil; si hace falta, se cuenta en una tabla aparte.
+
+## 2026-10-21 · Navegar desde una hoja: primero se cierra
+
+Con Expo Router 58, tocar **Editar el reporte** en Más opciones cambiaba la URL pero dejaba el caso a la vista; lo mismo pasaba con **Ingresar** desde "Necesitás una cuenta" y al borrar un reporte, que se quedaba en el caso borrado (auditoría 2, E-1; ya pasaba en main). Expo Router navega dentro de una transición de React, y la hoja quitaba su entrada del historial (`history.go(-1)`) en el mismo momento.
+- **`cerrarYNavegar(cerrar, navegar)`** (`src/hooks/useCerrarConAtras`): cierra la hoja con `flushSync`, así su efecto empieza a quitar la entrada, y navega cuando el navegador terminó (`cuandoTermine` en `historialHojas.ts`). En nativo cierra y navega, como antes.
+- **Se usa en todo botón de una hoja que lleva a otra pantalla:** Editar el reporte, Ingresar o Crear cuenta, escribirle a alguien y borrar el reporte (`AccionesCaso.tsx`).
+- **Por qué no alcanza con `historialHojas.ts`:** el módulo ya demoraba lo que Expo Router escribía en el historial, y aun así la pantalla no cambiaba. Hay que demorar la navegación misma. Si una versión nueva de Expo Router lo arregla, `cerrarYNavegar` sigue sirviendo igual.
+
+## 2026-10-21 · Licencias permitidas
+
+`AGENTS.md` pedía Apache 2.0, MIT o BSD, y la revisión de la auditoría 2 encontró otras licencias en las dependencias. Queda esta lista:
+- **Permisivas, en cualquier lado (también en lo que se publica):** MIT, MIT-0, Apache 2.0, BSD (2 y 3 cláusulas), 0BSD, ISC, BlueOak 1.0, Unlicense, CC0, Python 2.0 y Zlib.
+- **Fuentes tipográficas:** SIL OFL 1.1, la excepción que ya había aprobado el dueño (Fredoka, Figtree).
+- **Solo en herramientas que no se distribuyen** (build, pruebas, medición): MPL 2.0 (por ejemplo `lightningcss`, que trae Expo, y axe-core, que se usó para medir y no está en el repo) y CC BY 4.0 (`caniuse-lite`, datos de browserslist).
+- **Nunca:** GPL, AGPL, LGPL, SSPL ni licencias que prohíban el uso comercial. Una dual (como node-forge, BSD o GPL) se usa por su lado permisivo.
+- **Cómo se revisa:** `npx license-checker-rseidelsohn --production --summary` y, para lo que llega a la web, los source maps del build (`npx expo export -p web --source-maps`). En la auditoría 2, lo que llega a la web es MIT, BSD y 0BSD, más las fuentes OFL.
+

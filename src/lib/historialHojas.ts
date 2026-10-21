@@ -40,6 +40,8 @@ export type HistorialDeHojas = {
   abrir(cerrar: () => void): number;
   /** La hoja se cerró desde la interfaz o se desmontó. */
   cerrar(token: number): void;
+  /** Corre fn ahora o, si hay un retroceso propio en camino, cuando llegue. */
+  cuandoTermine(fn: () => void): void;
 };
 
 type Hoja = {
@@ -211,5 +213,6 @@ export function crearHistorialDeHojas(ventana: Ventana): HistorialDeHojas {
       hoja.abierta = false;
       enOrden(limpiar);
     },
+    cuandoTermine: enOrden,
   };
 }

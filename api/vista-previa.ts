@@ -72,10 +72,15 @@ export async function HEAD(request: Request): Promise<Response> {
   return new Response(null, { status: respuesta.status, headers: respuesta.headers });
 }
 
-/** El id llega como ?id= (rewrite de vercel.json) o en la ruta /animal/<id>. */
+/**
+ * El id llega como ?id= (rewrite de vercel.json) o en la ruta /animal/<id>.
+ * Si llega más de uno (/animal/<A>?id=<B>), ninguno: la vista previa podría
+ * mostrar un caso y el link abrir otro (auditoría 2, S-B7).
+ */
 function idDelPedido(pedido: URL): string | null {
-  const id =
-    pedido.searchParams.get('id') ?? /^\/animal\/([^/]+)\/?$/.exec(pedido.pathname)?.[1] ?? null;
+  const ids = pedido.searchParams.getAll('id');
+  if (ids.length > 1) return null;
+  const id = ids[0] ?? /^\/animal\/([^/]+)\/?$/.exec(pedido.pathname)?.[1] ?? null;
   return id && ID_VALIDO.test(id) ? id.toLowerCase() : null;
 }
 
@@ -215,7 +220,9 @@ function insertarEtiquetas(html: string, e: Etiquetas): string {
   const sinGenericas = html
     .replace(/<title>[\s\S]*?<\/title>/i, '')
     .replace(/<meta\s+name="description"[^>]*>/gi, '');
-  return sinGenericas.replace('</head>', `\n    ${etiquetas}\n  </head>`);
+  // Con una función, el texto se inserta tal cual: con un texto de reemplazo,
+  // "$`" o "$&" en un nombre metería pedazos del <head> (auditoría 2, S-B1).
+  return sinGenericas.replace('</head>', () => `\n    ${etiquetas}\n  </head>`);
 }
 
 /** Si no se pudo leer el index.html de la app: lo justo para la vista previa. */

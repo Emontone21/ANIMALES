@@ -26,8 +26,24 @@ Deno.test('sin el secreto, con otro o sin secreto cargado, no atiende', async ()
   const manejar = crearManejador(dependencias(base, apiDeUnaLlamada().cliente));
   assertEquals((await manejar(pedido('/procesar-pendientes', {}, null))).status, 401);
   assertEquals((await manejar(pedido('/procesar-pendientes', {}, 'otro'))).status, 401);
+  assertEquals((await manejar(pedido('/procesar-pendientes', {}, 'f'.repeat(64)))).status, 401);
   base.config_.secreto = '';
   assertEquals((await manejar(pedido('/procesar-pendientes', {}, ''))).status, 401);
+  assertEquals((await manejar(pedido('/procesar-pendientes', {}, SECRETO))).status, 401);
+});
+
+Deno.test('un header sin la forma del secreto se rechaza sin consultar la base', async () => {
+  const base = new BaseFalsa();
+  const manejar = crearManejador(dependencias(base, apiDeUnaLlamada().cliente));
+  for (const secreto of [null, '', 'otro', SECRETO.slice(1), `${SECRETO}0`, `${SECRETO.slice(1)}g`]) {
+    assertEquals((await manejar(pedido('/procesar-pendientes', {}, secreto))).status, 401);
+  }
+  assertEquals(base.consultasConfig, 0);
+  // Con la forma correcta sí va a la base, y en mayúsculas también.
+  assertEquals((await manejar(pedido('/procesar-pendientes', {}, 'f'.repeat(64)))).status, 401);
+  assertEquals(base.consultasConfig, 1);
+  base.config_.secreto = SECRETO.toUpperCase();
+  assertEquals((await manejar(pedido('/procesar-pendientes', {}, SECRETO.toUpperCase()))).status, 200);
 });
 
 Deno.test('solo POST, rutas conocidas y un avistamiento_id que sea un UUID', async () => {

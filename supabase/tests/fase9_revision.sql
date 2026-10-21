@@ -25,7 +25,7 @@ where id::text like '00000000-0000-4000-8000-0000000009%';
 
 -- Fotos "subidas" a la carpeta de cada uno, cada una con su miniatura.
 insert into storage.objects (bucket_id, name)
-select 'fotos', u || '/t9-' || n || variante
+select 'fotos', u || '/00000000-0000-4000-8009-' || lpad(n::text, 12, '0') || variante
 from unnest(array[
   '00000000-0000-4000-8000-000000000901', '00000000-0000-4000-8000-000000000902',
   '00000000-0000-4000-8000-000000000903', '00000000-0000-4000-8000-000000000904',
@@ -55,17 +55,17 @@ declare
 begin
   -- F publica un perdido; Y lo ve (y así lo sigue); F bloquea a X.
   perform set_config('request.jwt.claims', json_build_object('sub', f, 'role', 'authenticated')::text, true);
-  p9 := public.publicar_animal('perro', f || '/t9-1.jpg', -34.91, -56.16, now() - interval '1 day',
+  p9 := public.publicar_animal('perro', f || '/00000000-0000-4000-8009-000000000001.jpg', -34.91, -56.16, now() - interval '1 day',
     'mediano', 'marrón', true, null, 'perdido', 'Toby', null);
   select id into av_p9 from public.avistamientos where animal_id = p9;
   perform set_config('request.jwt.claims', json_build_object('sub', y, 'role', 'authenticated')::text, true);
-  av_y := public.registrar_avistamiento(p9, y || '/t9-1.jpg', -34.905, -56.155);
+  av_y := public.registrar_avistamiento(p9, y || '/00000000-0000-4000-8009-000000000001.jpg', -34.905, -56.155);
   insert into public.bloqueos (bloqueador_id, bloqueado_id) values (f, x);
 
   -- X publica un encontrado parecido y otro que ya cerró.
   perform set_config('request.jwt.claims', json_build_object('sub', x, 'role', 'authenticated')::text, true);
-  e9 := public.publicar_animal('perro', x || '/t9-1.jpg', -34.905, -56.155, now() - interval '2 hours');
-  e10 := public.publicar_animal('perro', x || '/t9-2.jpg', -34.905, -56.155, now() - interval '2 hours');
+  e9 := public.publicar_animal('perro', x || '/00000000-0000-4000-8009-000000000001.jpg', -34.905, -56.155, now() - interval '2 hours');
+  e10 := public.publicar_animal('perro', x || '/00000000-0000-4000-8009-000000000002.jpg', -34.905, -56.155, now() - interval '2 hours');
   perform public.cambiar_estado_animal(e10, 'reunido');
   select id into av_e9 from public.avistamientos where animal_id = e9;
   select id into av_e10 from public.avistamientos where animal_id = e10;
@@ -107,14 +107,14 @@ begin
     raise exception 'FALLA 2b: la foto de un caso cerrado no salió de la cola';
   end if;
   perform set_config('request.jwt.claims', json_build_object('sub', r, 'role', 'authenticated')::text, true);
-  e11 := public.publicar_animal('perro', r || '/t9-1.jpg', -34.905, -56.155, now() - interval '1 hour');
+  e11 := public.publicar_animal('perro', r || '/00000000-0000-4000-8009-000000000001.jpg', -34.905, -56.155, now() - interval '1 hour');
   select id into av_e11 from public.avistamientos where animal_id = e11;
   update public.animales set oculto = true where id = e11;
   if public.guardar_embedding(av_e11, v_emb) <> 0
      or exists (select 1 from public.coincidencias where e11 in (animal_origen, animal_candidato)) then
     raise exception 'FALLA 2c: un caso oculto por moderación generó coincidencias';
   end if;
-  e12 := public.publicar_animal('perro', r || '/t9-2.jpg', -34.905, -56.155, now() - interval '1 hour');
+  e12 := public.publicar_animal('perro', r || '/00000000-0000-4000-8009-000000000002.jpg', -34.905, -56.155, now() - interval '1 hour');
   select id into av_e12 from public.avistamientos where animal_id = e12;
   perform public.guardar_embedding(av_e12, v_emb);
   if exists (select 1 from public.coincidencias where e11 in (animal_origen, animal_candidato)) then
@@ -157,7 +157,7 @@ begin
   -- 4. R resguarda el encontrado de X y dice dónde está: queda redondeado.
   perform set_config('request.jwt.claims', json_build_object('sub', r, 'role', 'authenticated')::text, true);
   perform public.cambiar_estado_animal(e9, 'resguardado', 'Contacto de R', null,
-    -34.901234, -56.165432, r || '/t9-3.jpg');
+    -34.901234, -56.165432, r || '/00000000-0000-4000-8009-000000000003.jpg');
   select id, extensions.st_y(ubicacion::extensions.geometry), extensions.st_x(ubicacion::extensions.geometry)
   into av_r, v_lat, v_lng
   from public.avistamientos where animal_id = e9 and tipo = 'resguardado';

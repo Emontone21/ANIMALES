@@ -379,14 +379,16 @@ Esperado:
 Cuenta: vecina (o familia, si es del equipo de Supabase).
 
 1. Sin sesión: **Ingresar → ¿Olvidaste tu contraseña?** con el email de la cuenta.
-2. Abrí el link del mail en el mismo dispositivo y elegí una contraseña nueva de 8 caracteres o más.
+2. Abrí el link del mail en el mismo navegador donde lo pediste y elegí una contraseña nueva de 8 caracteres o más.
 3. Volvé a usar el mismo link.
+4. Pedí otro link y abrilo en otro navegador (por ejemplo, el mail en la computadora y la app en el celular).
 
 Esperado:
 - El mensaje es el mismo exista o no la cuenta.
 - El mail llega en español: "Elegí una contraseña nueva para Spot", y se ve bien en Gmail del celular.
 - Con la contraseña nueva quedás adentro.
 - Usado de nuevo, el link dice que ya no sirve y ofrece pedir otro.
+- Abierto en otro navegador, no abre sesión ni muestra el formulario: dice que el link no sirve y que se pida otro en el mismo navegador (es el flujo PKCE, a propósito).
 - Si se piden varios seguidos: "Pediste varios links seguidos…", nunca "email inválido".
 
 - [ ] Android · Chrome
@@ -599,6 +601,28 @@ Esperado:
 - [ ] Android · Chrome
 - [ ] iPhone · Safari
 - [ ] Computadora
+
+## 29. Auditoría integral 2 · 8 min
+
+Cuentas: familia y vecina. Después del deploy de la auditoría 2 y de aplicar la 0023.
+
+1. Computadora, Chrome, con las herramientas de desarrollo abiertas (**Consola**): recorré el mapa, un caso, Publicar (sin publicar), Ingresar con Google, Actividad, una conversación y Moderación.
+2. En la pestaña **Red**, mirá los encabezados de respuesta de `/`.
+3. En el mapa, tocá **© colaboradores de OpenStreetMap** (abajo a la izquierda).
+4. Ingresá con Google: tiene que volver a la app con la sesión abierta.
+5. Abrí, en una ventana privada, un link de un caso con `#access_token=cualquiercosa&refresh_token=x&expires_in=3600&token_type=bearer` al final.
+6. Familia, en un caso propio de prueba: **Más opciones → Editar el reporte**; volvé, y **Más opciones → Borrar el reporte → Borrar para siempre**.
+
+Esperado:
+- **Consola:** ningún aviso que empiece con `[Report Only] Refused to…`. Si aparece alguno, anotalo: es un origen o script que la CSP todavía no permite (hay que sumarlo antes de pasarla a obligatoria).
+- **Encabezados:** `content-security-policy-report-only`, `x-frame-options: DENY`, `x-content-type-options: nosniff`, `referrer-policy` y `permissions-policy`.
+- **OpenStreetMap:** abre `openstreetmap.org/copyright` en otra pestaña, y el mapa se sigue moviendo al arrastrar sobre los créditos. En el mini mapa del detalle los créditos no son link (todo el mini mapa abre el mapa en grande).
+- **Google:** queda la sesión abierta y la URL sin `?code=`.
+- **Link con tokens:** no abre ninguna sesión (Perfil muestra Ingresar).
+- **Desde el menú:** Editar abre el formulario (no solo cambia la URL) y Borrar vuelve al mapa sin el caso.
+
+- [ ] Computadora · Chrome
+- [ ] Android · Chrome
 
 ## Al terminar
 

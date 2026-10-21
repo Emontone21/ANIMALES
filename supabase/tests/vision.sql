@@ -23,8 +23,8 @@ where id::text like '00000000-0000-4000-8000-000000000c0%';
 update public.perfiles set es_moderador = true where id = '00000000-0000-4000-8000-000000000c03';
 
 insert into storage.objects (bucket_id, name) values
-  ('fotos', '00000000-0000-4000-8000-000000000c01/vision-1.jpg'),
-  ('fotos', '00000000-0000-4000-8000-000000000c01/vision-1.miniatura.jpg');
+  ('fotos', '00000000-0000-4000-8000-000000000c01/c0100000-0000-4000-8000-000000000001.jpg'),
+  ('fotos', '00000000-0000-4000-8000-000000000c01/c0100000-0000-4000-8000-000000000001.miniatura.jpg');
 
 -- Solo cuenta la cola de la prueba.
 update public.cola_vision set estado = 'hecho' where estado <> 'hecho';
@@ -94,7 +94,7 @@ begin
 
   -- Una foto nueva: el aviso sale enseguida, con la espera nueva y el secreto.
   perform set_config('request.jwt.claims', json_build_object('sub', f, 'role', 'authenticated')::text, true);
-  p := public.publicar_animal('perro', f || '/vision-1.jpg', -34.91, -56.16, now() - interval '1 hour',
+  p := public.publicar_animal('perro', f || '/c0100000-0000-4000-8000-000000000001.jpg', -34.91, -56.16, now() - interval '1 hour',
     'mediano', 'marrón', true, null, 'perdido', 'Toby', null);
   perform set_config('request.jwt.claims', '', true);
   select id into av from public.avistamientos where animal_id = p;

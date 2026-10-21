@@ -22,12 +22,13 @@ update public.perfiles
 set terminos_version = public.version_terminos(), terminos_aceptados_en = now()
 where id::text like '00000000-0000-4000-8000-0000000000f_';
 
--- Fotos "subidas" por cada uno a su carpeta del bucket fotos.
-insert into storage.objects (bucket_id, name) values
-  ('fotos', '00000000-0000-4000-8000-0000000000f1/prueba-1.jpg'),
-  ('fotos', '00000000-0000-4000-8000-0000000000f2/prueba-2.jpg'),
-  ('fotos', '00000000-0000-4000-8000-0000000000f3/prueba-3.jpg'),
-  ('fotos', '00000000-0000-4000-8000-0000000000f4/prueba-4.jpg');
+-- Cada foto, nueva y "subida" por su dueño a su carpeta, con el nombre que
+-- sube la app (<uid>/<uuid>.jpg): desde la 0023 una foto no se usa dos veces.
+create function pg_temp.foto(p_uid uuid) returns text language sql security definer as $$
+  insert into storage.objects (bucket_id, name)
+  values ('fotos', p_uid::text || '/' || gen_random_uuid()::text || '.jpg')
+  returning name
+$$;
 
 -- Parte A, como el sistema: publicar, validar fotos, redondear la ubicación y
 -- sugerir coincidencias con guardar_embedding (lo que hace el servicio de visión).
@@ -37,10 +38,6 @@ declare
   o constant uuid := '00000000-0000-4000-8000-0000000000f2';
   h constant uuid := '00000000-0000-4000-8000-0000000000f3';
   r constant uuid := '00000000-0000-4000-8000-0000000000f4';
-  foto_f constant text := '00000000-0000-4000-8000-0000000000f1/prueba-1.jpg';
-  foto_o constant text := '00000000-0000-4000-8000-0000000000f2/prueba-2.jpg';
-  foto_h constant text := '00000000-0000-4000-8000-0000000000f3/prueba-3.jpg';
-  foto_r constant text := '00000000-0000-4000-8000-0000000000f4/prueba-4.jpg';
   v_emb extensions.vector := array_fill(0.05::real, array[384])::extensions.vector;
   p1 uuid; p2 uuid; ev uuid; eb uuid; en uuid; g1 uuid; g2 uuid; g3 uuid; p3 uuid; e7 uuid; e8 uuid;
   v_lat double precision;
@@ -50,7 +47,7 @@ declare
 begin
   -- Como F: publica a Toby, perdido hace 2 días, con una ubicación precisa.
   perform set_config('request.jwt.claims', json_build_object('sub', f, 'role', 'authenticated')::text, true);
-  p1 := public.publicar_animal('perro', foto_f, -34.91512, -56.16789, now() - interval '2 days',
+  p1 := public.publicar_animal('perro', pg_temp.foto(f), -34.91512, -56.16789, now() - interval '2 days',
     'mediano', 'marrón', true, 'Collar rojo', 'perdido', 'Toby', 'Escribinos por la app');
 
   -- 1. En un perdido la ubicación se guarda redondeada a 3 decimales.
@@ -69,7 +66,7 @@ begin
   -- 2. Las RPC solo aceptan fotos subidas por el usuario a su carpeta.
   perform set_config('request.jwt.claims', json_build_object('sub', o, 'role', 'authenticated')::text, true);
   begin
-    perform public.publicar_animal('perro', foto_f, -34.9, -56.16);
+    perform public.publicar_animal('perro', pg_temp.foto(f), -34.9, -56.16);
     raise exception 'FALLA 2a: se pudo publicar con la foto de otra persona';
   exception when invalid_parameter_value then null;
   end;
@@ -79,7 +76,7 @@ begin
   exception when invalid_parameter_value then null;
   end;
   begin
-    perform public.publicar_animal('perro', o::text || '/no-subida.jpg', -34.9, -56.16);
+    perform public.publicar_animal('perro', o::text || '/' || gen_random_uuid()::text || '.jpg', -34.9, -56.16);
     raise exception 'FALLA 2c: se pudo publicar con una foto que no está en el bucket';
   exception when invalid_parameter_value then null;
   end;
@@ -90,18 +87,18 @@ begin
   end;
 
   -- O también perdió un perro, hace 1 día y sin nombre.
-  p2 := public.publicar_animal('perro', foto_o, -34.913, -56.166, now() - interval '1 day',
+  p2 := public.publicar_animal('perro', pg_temp.foto(o), -34.913, -56.166, now() - interval '1 day',
     null, null, false, null, 'perdido');
 
   -- Como H: tres perros encontrados. EV visto hace 5 días (3 días antes de que se perdiera Toby),
   -- EB hace 60 horas (12 horas antes) y EN hace una hora.
   perform set_config('request.jwt.claims', json_build_object('sub', h, 'role', 'authenticated')::text, true);
-  ev := public.publicar_animal('perro', foto_h, -34.9160, -56.1690, now() - interval '5 days');
-  eb := public.publicar_animal('perro', foto_h, -34.9140, -56.1670, now() - interval '60 hours');
-  en := public.publicar_animal('perro', foto_h, -34.9155, -56.1685, now() - interval '1 hour');
-  g1 := public.publicar_animal('gato', foto_h, -34.9120, -56.1510, now() - interval '3 hours');
-  e7 := public.publicar_animal('otro', foto_h, -34.8800, -56.2500, now() - interval '3 hours');
-  e8 := public.publicar_animal('otro', foto_h, -34.8800, -56.2500, now() - interval '3 hours');
+  ev := public.publicar_animal('perro', pg_temp.foto(h), -34.9160, -56.1690, now() - interval '5 days');
+  eb := public.publicar_animal('perro', pg_temp.foto(h), -34.9140, -56.1670, now() - interval '60 hours');
+  en := public.publicar_animal('perro', pg_temp.foto(h), -34.9155, -56.1685, now() - interval '1 hour');
+  g1 := public.publicar_animal('gato', pg_temp.foto(h), -34.9120, -56.1510, now() - interval '3 hours');
+  e7 := public.publicar_animal('otro', pg_temp.foto(h), -34.8800, -56.2500, now() - interval '3 hours');
+  e8 := public.publicar_animal('otro', pg_temp.foto(h), -34.8800, -56.2500, now() - interval '3 hours');
 
   -- 3. Quien encuentra no puede cargar un contacto de familia.
   if (select contacto_familia from public.animales where id = en) is not null then
@@ -110,12 +107,12 @@ begin
 
   -- Como R: dos gatos encontrados cerca del de H.
   perform set_config('request.jwt.claims', json_build_object('sub', r, 'role', 'authenticated')::text, true);
-  g2 := public.publicar_animal('gato', foto_r, -34.9121, -56.1511, now() - interval '2 hours');
-  g3 := public.publicar_animal('gato', foto_r, -34.9122, -56.1512, now() - interval '1 hour');
+  g2 := public.publicar_animal('gato', pg_temp.foto(r), -34.9121, -56.1511, now() - interval '2 hours');
+  g3 := public.publicar_animal('gato', pg_temp.foto(r), -34.9122, -56.1512, now() - interval '1 hour');
 
   -- Como F: Luna, perdida, para las pruebas de cierre.
   perform set_config('request.jwt.claims', json_build_object('sub', f, 'role', 'authenticated')::text, true);
-  p3 := public.publicar_animal('otro', foto_f, -34.8800, -56.2500, now() - interval '1 day',
+  p3 := public.publicar_animal('otro', pg_temp.foto(f), -34.8800, -56.2500, now() - interval '1 day',
     null, null, false, null, 'perdido', 'Luna');
 
   -- Para probar quién queda como principal: EN y G2 son los reportes más viejos.
@@ -291,7 +288,7 @@ begin
   end;
   -- 16. Pero sí puede avisar que lo tiene resguardado (con una foto actual, desde la 0011).
   perform public.cambiar_estado_animal(p3, 'resguardado', 'Lo tengo en casa', null, null, null,
-    '00000000-0000-4000-8000-0000000000f2/prueba-2.jpg');
+    pg_temp.foto(o));
   -- 17. Ni siquiera quien lo resguarda puede decir que se volvió a escapar o que volvió a casa.
   begin
     perform public.cambiar_estado_animal(p3, 'avistado');

@@ -2,3 +2,6 @@
 # Vercel. Sin estos archivos, Vercel no puede volver a detectar FastAPI y
 # cambiar el preset "Other" (ver docs/DECISIONES.md).
 services/
+
+# Las pruebas de punta a punta corren contra el proyecto de pruebas, no en Vercel.
+e2e/
