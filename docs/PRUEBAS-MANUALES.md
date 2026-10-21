@@ -1,6 +1,6 @@
 # Pruebas manuales
 
-Recorrido de toda la app, paso a paso, para hacer en la web publicada (https://animales-blue.vercel.app). Lleva unos 85 minutos en un dispositivo; en los otros dos se repite marcando la casilla de cada uno.
+Recorrido de toda la app, paso a paso, para hacer en la web publicada (https://animales-blue.vercel.app). Lleva unos 90 minutos en un dispositivo; en los otros dos se repite marcando la casilla de cada uno.
 
 - **Dispositivos:** Android con Chrome, iPhone con Safari y una computadora (cualquier navegador). Cada flujo tiene una casilla por dispositivo.
 - **Cuentas:** dos, que en esta lista se llaman **familia** (publica un perro perdido) y **vecina** (lo encuentra y lo ve). Para probar de a una persona: familia en el celular y vecina en la computadora, o una en una ventana privada.
@@ -563,12 +563,38 @@ Cuenta: vecina, sin sesión.
 6. Con la sesión de familia: publicá un encontrado con el color "negro 099 123 456" y compartilo por WhatsApp.
 
 Esperado:
-- La pestaña dice "Spot · Animales perdidos y encontrados en Montevideo", con el ícono del pin y la huella; la pantalla de carga dice "Spot".
+- La pestaña dice "Spot · Animales perdidos y encontrados en Montevideo", con el ícono de la chapita; la pantalla de carga muestra el logo (el flujo 28 lo mira en detalle).
 - La comprobación de Cloudflare aparece en el esquema de la app (claro u oscuro). Casi siempre se completa sola en unos segundos; a veces pide tocar una casilla.
 - Cada intento de ingresar pide una comprobación nueva: la tercera vez, con la contraseña correcta, entra. Con Google no aparece.
 - En los navegadores de WhatsApp e Instagram también se completa y deja ingresar.
 - Si no carga (sin conexión o bloqueada): "No pudimos cargar la comprobación de seguridad…" y **Reintentar**.
 - La vista previa y el texto de compartir dicen "Perro encontrado", sin el color ni el número.
+
+- [ ] Android · Chrome
+- [ ] iPhone · Safari
+- [ ] Computadora
+
+## 28. El logo de Spot · 6 min
+
+Cuenta: ninguna para empezar; familia en el paso 5.
+
+1. Con el sistema en modo claro, abrí la web en una pestaña nueva. Mirá la pestaña y la pantalla de carga mientras abre.
+2. **Perfil → Apariencia → Oscuro** y recargá la página.
+3. Sin sesión: **Perfil → Ingresar** y después **Crear cuenta**. Repetí en **Claro**. Si podés, con el lector de pantalla prendido (TalkBack o VoiceOver).
+4. Instalá la app: en Android, **Perfil → Instalar la app**; en iPhone, **Compartir → Agregar a inicio**. Mirá el ícono en la pantalla de inicio y abrila desde ahí.
+5. Con la sesión de familia, compartí un caso por WhatsApp y mirá la vista previa.
+
+Esperado:
+- **La pestaña** muestra el ícono nuevo: la chapita clara con la S verde y la argolla, sobre verde y con las esquinas redondeadas.
+- **La pantalla de carga** muestra el logo completo (la chapita y "Spot") arriba del indicador:
+  - en claro, la chapita verde oscuro y la palabra casi negra;
+  - en oscuro, la chapita verde claro y la palabra clara.
+
+  Sin destello del otro esquema.
+- **Ingresar y Crear cuenta** muestran el logo arriba, de unos 180 de ancho, con el lema debajo, y cambia con el esquema. La S y el agujero de la chapita dejan ver el fondo.
+- **El lector de pantalla** lee "Spot" como encabezado.
+- **Instalada,** el ícono es la chapita sobre verde, con la argolla entera, y el nombre debajo es "Spot". Abre sin la barra del navegador.
+- **La vista previa** muestra la foto del caso y termina en "· Spot".
 
 - [ ] Android · Chrome
 - [ ] iPhone · Safari

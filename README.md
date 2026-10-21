@@ -4,7 +4,7 @@ App para reunir perros y gatos perdidos con sus familias. La familia que perdió
 
 Interfaz en español rioplatense. Stack: Expo + React Native + TypeScript (corre en el navegador y, con el mismo código, como app nativa), Supabase en la nube (Auth, Postgres con PostGIS y pgvector, Storage), mapas MapLibre con teselas gratuitas de OpenFreeMap, reconocimiento de imágenes con la API de Claude (Anthropic) desde una Edge Function de Supabase. Se despliega en Vercel.
 
-Estado: las fases 1 a 8 están implementadas (la 5 endureció permisos, la 6 sumó los perdidos, la 7 la cuenta y la protección de usuarios y la 8 la gestión de casos y compartir). La Fase 9 fue una revisión integral: correcciones, pruebas automáticas de la app y una lista de pruebas manuales ([docs/PRUEBAS-MANUALES.md](docs/PRUEBAS-MANUALES.md)). Después vinieron la carga inicial más rápida, las mejoras (hoja "Cerca tuyo" plegable, instalar la app y reportar un error) y el reconocimiento con la API de Claude. Para el piloto, la app pasó a llamarse Spot, con un ícono provisorio, mails propios, captcha opcional y la clave publishable de Supabase. Ver [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) y [docs/DECISIONES.md](docs/DECISIONES.md).
+Estado: las fases 1 a 8 están implementadas (la 5 endureció permisos, la 6 sumó los perdidos, la 7 la cuenta y la protección de usuarios y la 8 la gestión de casos y compartir). La Fase 9 fue una revisión integral: correcciones, pruebas automáticas de la app y una lista de pruebas manuales ([docs/PRUEBAS-MANUALES.md](docs/PRUEBAS-MANUALES.md)). Después vinieron la carga inicial más rápida, las mejoras (hoja "Cerca tuyo" plegable, instalar la app y reportar un error) y el reconocimiento con la API de Claude. Para el piloto, la app pasó a llamarse Spot, con mails propios, captcha opcional y la clave publishable de Supabase, y después llegó su logo, una chapita de collar. Ver [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) y [docs/DECISIONES.md](docs/DECISIONES.md).
 
 Todo corre en la nube: no hace falta Docker ni Android Studio. Solo Node 20+ para desarrollar.
 
@@ -98,7 +98,7 @@ Las notificaciones in-app funcionan en web sin configurar nada. Para push en And
 | `deno test --allow-env` (en `supabase/functions/reconocer`) | Pruebas de la función de reconocimiento, con la API de Claude simulada |
 | `deno run … scripts/evaluar-ia.ts` | Evalúa el reconocimiento con fotos de animales conocidos y la API real (ver el reporte de la tarea) |
 | `pytest` (en `services/vision`) | Pruebas del servicio de embeddings (sin desplegar), con un modelo falso: `pip install -r requirements-pruebas.txt` |
-| `python3 scripts/iconos-web.py` | Íconos de la web y favicon desde `assets/images/icon.png` (con `--provisorio`, dibuja antes el ícono provisorio de Spot; ver `docs/DISENO.md`, "Ícono de la app") |
+| `python3 scripts/iconos-web.py` | Íconos de la web (`public/iconos/`) desde `assets/images/icon.png` (ver `docs/DISENO.md`, "Ícono de la app") |
 | `node scripts/plantillas-mail.js` | El JSON para cargar las plantillas de mail con la API de gestión (`supabase/templates/README.md`) |
 | `npm run format` | Formatea `src/` |
 | `npm run db:push` | Sube migraciones al proyecto enlazado |
@@ -232,7 +232,8 @@ supabase/           migrations/ (0001–0022), tests/ (pruebas SQL por fase, err
 api/                función de Vercel: vista previa del link de un caso (Open Graph)
 __tests__/          pruebas de jest-expo (npm run test)
 services/vision/    alternativa sin desplegar: microservicio Python de embeddings (Google Cloud Run), desplegar.sh, evaluar.py y tests/
-scripts/            evaluar-ia.ts (evaluar el reconocimiento con fotos), tipos de la base, íconos (iconos-web.py, con el ícono provisorio), plantillas de mail y lo que copia postinstall
+scripts/            evaluar-ia.ts (evaluar el reconocimiento con fotos), tipos de la base, íconos de la web (iconos-web.py), plantillas de mail y lo que copia postinstall
+assets/             marca/ (el logo en SVG, fuente oficial) e images/ (íconos de la app y pantalla de carga nativa)
 public/             estáticos de la web: index.html, manifest y service worker de la app instalable, íconos (scripts/iconos-web.py), robots.txt y lo que copia postinstall (worker y estilos de MapLibre, fuentes)
 docs/               arquitectura, decisiones, diseño, pruebas manuales y reportes
 vercel.json         despliegue (y qué pedidos van a la función de api/)
