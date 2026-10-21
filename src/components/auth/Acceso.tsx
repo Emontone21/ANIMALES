@@ -7,7 +7,7 @@ import { Espacio, Fuentes } from '@/constants/tema';
 import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 
-/** "Encontrados" en Fredoka 32, arriba de ingresar y registrarse (7.7). */
+/** El nombre de la app en Fredoka 32 y su lema, arriba de ingresar y registrarse (7.7). */
 export function MarcaAcceso() {
   const estilos = useEstilos(crear);
   return (

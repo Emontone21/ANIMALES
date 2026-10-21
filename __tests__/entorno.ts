@@ -4,7 +4,7 @@
  */
 process.env.EXPO_PUBLIC_SUPABASE_URL = 'https://ejemplo.supabase.co';
 process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = 'clave-de-prueba';
-process.env.EXPO_PUBLIC_SITE_URL = 'https://encontrados.test/';
+process.env.EXPO_PUBLIC_SITE_URL = 'https://spot.test/';
 
 // AsyncStorage es un módulo nativo: en las pruebas, su versión en memoria.
 jest.mock('@react-native-async-storage/async-storage', () =>

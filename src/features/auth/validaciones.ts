@@ -41,6 +41,9 @@ export function traducirError(error: {
   ) {
     return new ErrorAuth(t.auth.errores.muchosIntentos);
   }
+  if (codigo === 'captcha_failed' || mensaje.includes('captcha')) {
+    return new ErrorAuth(t.auth.errores.captcha);
+  }
   if (codigo === 'invalid_credentials' || mensaje.includes('invalid login credentials')) {
     return new ErrorAuth(t.auth.errores.credenciales);
   }

@@ -2,6 +2,7 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 
+import { CLAVE_CAPTCHA, opcionesCaptcha } from '@/features/auth/captcha';
 import { marcarRecuperacion } from '@/features/auth/recuperacion';
 import { VERSION_TERMINOS } from '@/features/legal/terminos';
 import {
@@ -23,7 +24,7 @@ const esWeb = Platform.OS === 'web';
 /**
  * Adónde vuelve Supabase después de confirmar email u OAuth.
  * Web: la raíz del sitio (Supabase lee los tokens de la URL solo).
- * Nativo: encontrados://auth/callback (exp://… en Expo Go).
+ * Nativo: spotmvd://auth/callback (exp://… en Expo Go).
  */
 const redirectTo = esWeb ? Linking.createURL('/') : Linking.createURL('auth/callback');
 
@@ -35,11 +36,17 @@ const redirectRecuperacion = esWeb
   ? Linking.createURL('/auth/nueva-contrasena')
   : Linking.createURL('auth/nueva-contrasena');
 
-export async function ingresarConEmail(email: string, contrasena: string): Promise<void> {
+/** `captcha`: el token de Turnstile, si hay captcha (ver captcha.ts). */
+export async function ingresarConEmail(
+  email: string,
+  contrasena: string,
+  captcha?: string | null,
+): Promise<void> {
   validarEmailYContrasena(email, contrasena);
   const { error } = await supabase.auth.signInWithPassword({
     email: email.trim().toLowerCase(),
     password: contrasena,
+    options: opcionesCaptcha(CLAVE_CAPTCHA, captcha),
   });
   if (error) throw traducirError(error);
 }
@@ -49,13 +56,16 @@ export async function registrarse(
   email: string,
   contrasena: string,
   aceptoTerminos: boolean,
+  captcha?: string | null,
 ): Promise<{ requiereConfirmacion: boolean }> {
   const nombre = validarRegistro(nombrePublico, email, contrasena, aceptoTerminos);
+  const conCaptcha = opcionesCaptcha(CLAVE_CAPTCHA, captcha);
 
   const { data, error } = await supabase.auth.signUp({
     email: email.trim().toLowerCase(),
     password: contrasena,
     options: {
+      ...conCaptcha,
       emailRedirectTo: redirectTo,
       // El trigger handle_new_user los copia a perfiles: el nombre público y la
       // versión de los términos que aceptó con la casilla, con la fecha.
@@ -68,7 +78,7 @@ export async function registrarse(
 
 /**
  * OAuth con Google vía el navegador del sistema. Supabase redirige a
- * encontrados://auth/callback con los tokens en el fragmento de la URL.
+ * spotmvd://auth/callback con los tokens en el fragmento de la URL.
  */
 export async function ingresarConGoogle(): Promise<void> {
   if (esWeb) {
@@ -97,15 +107,17 @@ export async function ingresarConGoogle(): Promise<void> {
  * Manda el link para elegir una contraseña nueva. Supabase responde igual
  * exista o no la cuenta, y la app muestra siempre el mismo mensaje.
  */
-export async function pedirRecuperacion(email: string): Promise<void> {
+export async function pedirRecuperacion(email: string, captcha?: string | null): Promise<void> {
   validarEmail(email);
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+    ...opcionesCaptcha(CLAVE_CAPTCHA, captcha),
     redirectTo: redirectRecuperacion,
   });
   if (!error) return;
   if (error.code === 'over_email_send_rate_limit' || error.status === 429) {
     throw new ErrorAuth(t.auth.recuperar.muchosPedidos);
   }
+  if (error.code === 'captcha_failed') throw new ErrorAuth(t.auth.errores.captcha);
   throw new ErrorAuth(t.auth.recuperar.error);
 }
 

@@ -5,17 +5,18 @@
  * las personas reciben el index.html estático de siempre.
  *
  * Devuelve el index.html de la app con las etiquetas Open Graph y Twitter del
- * caso. Lee el caso con la clave anon, como la app. Si no existe, está oculto o
- * se unió a otro, usa las genéricas. Nunca pone datos personales: ni el
- * contacto, ni quién publicó, ni dónde está. Por eso tampoco usa la
- * descripción libre del caso, donde alguien pudo haber escrito un teléfono.
+ * caso. Lee el caso con la clave pública de la app (la publishable o, de
+ * respaldo, la anon). Si no existe, está oculto o se unió a otro, usa las
+ * genéricas. Nunca pone datos personales: ni el contacto, ni quién publicó,
+ * ni dónde está. Por eso tampoco usa la descripción libre del caso, donde
+ * alguien pudo haber escrito un teléfono, ni un color con números.
  *
  * Sin dependencias: fetch y Response del runtime. Importa con rutas relativas
  * los mismos textos, URLs y miniaturas que usa la app.
  */
 import { t } from '../src/i18n/es-UY';
 import { datosParaCompartir, linkDelCaso } from '../src/lib/compartir';
-import { ENV } from '../src/lib/env';
+import { ENV, esClaveNueva } from '../src/lib/env';
 import { LADO_MINIATURA, urlFoto, urlMiniatura } from '../src/lib/imagenes';
 import type { EstadoAnimal, Especie, Tamanio, TipoReporte } from '../src/types/dominio';
 
@@ -86,7 +87,7 @@ async function leerPlantilla(origen: string): Promise<string | null> {
   if (plantilla && plantilla.hasta > Date.now()) return plantilla.html;
   try {
     const respuesta = await fetch(`${origen}/`, {
-      headers: { 'user-agent': 'encontrados-vista-previa' },
+      headers: { 'user-agent': 'spot-vista-previa' },
       // Una preview con la protección de Vercel redirige al login: eso no sirve.
       redirect: 'manual',
       signal: AbortSignal.timeout(ESPERA_MS),
@@ -101,12 +102,22 @@ async function leerPlantilla(origen: string): Promise<string | null> {
   }
 }
 
+/**
+ * Headers para leer como la app sin sesión: la publishable va solo en apikey
+ * (no es un JWT); la anon legacy, también en Authorization.
+ */
+export function encabezadosDeLectura(clave: string): Record<string, string> {
+  return esClaveNueva(clave)
+    ? { apikey: clave }
+    : { apikey: clave, authorization: `Bearer ${clave}` };
+}
+
 async function leerCaso(id: string | null): Promise<Caso | null> {
   if (!id) return null;
   try {
     const url = `${ENV.supabaseUrl.replace(/\/+$/, '')}/rest/v1/animales?id=eq.${id}&select=${COLUMNAS}`;
     const respuesta = await fetch(url, {
-      headers: { apikey: ENV.supabaseAnonKey, authorization: `Bearer ${ENV.supabaseAnonKey}` },
+      headers: encabezadosDeLectura(ENV.supabaseKey),
       signal: AbortSignal.timeout(ESPERA_MS),
     });
     if (!respuesta.ok) return null;

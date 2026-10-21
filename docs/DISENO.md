@@ -1,6 +1,6 @@
-# Encontrados · Plan de rediseño visual
+# Spot · Plan de rediseño visual
 
-Actualizado: 20 de octubre de 2026.
+Actualizado: 21 de octubre de 2026.
 
 Este documento es la fuente de verdad del aspecto de la app. Resume la dirección elegida, "Calma oliva", y todo lo que hace falta para aplicarla en cada pantalla, en celulares de cualquier tamaño y en computadoras, en modo claro y oscuro.
 
@@ -213,6 +213,16 @@ Se usa Ionicons, que ya está instalado, siempre en variante de contorno (`-outl
 | Ver el mapa en grande (sobre el mini mapa) | `expand-outline` |
 | Procesar pendientes ahora (moderación) | `refresh-outline` |
 | Reactivar el reconocimiento (moderación) | `play-outline` |
+
+### 5.1 Ícono de la app
+
+Provisorio, hasta tener uno definitivo: un pin de mapa en `textoSobrePrimario` (blanco) con una huella calada (cuatro dedos y la almohadilla), sobre `primario` del claro, que llena todo el cuadrado. Sin texto ni degradés.
+
+- **Legible a 48 px** y en claro y oscuro: lleva su propio fondo, así no depende del fondo del sistema.
+- **Zonas seguras:** en el ícono principal el pin llega al 69 % del radio, dentro del círculo del 80 % que respetan las máscaras (maskable e iOS). En el adaptativo de Android, al 56 %, dentro del círculo de 66 de 108.
+- **Archivos** (`assets/images/`): `icon.png` (1024, sin transparencias, también el de iOS), `android-icon-foreground.png` (el pin sobre transparente), `android-icon-background.png` (el `primario`), `android-icon-monochrome.png` (la forma, para los íconos con el color del tema) y `splash-icon.png` (el pin solo, sobre el `primario` de la pantalla de carga nativa). Los de la web (192, 512, maskable y el de iPhone de 180) y el favicon (48) salen de `icon.png`.
+- **Cómo se genera:** `python3 scripts/iconos-web.py --provisorio` dibuja todo con los colores de `tema.ts`.
+- **Cómo reemplazarlo:** poné los archivos definitivos en `assets/images/` con los mismos nombres y medidas (el dibujo de `icon.png` dentro del círculo del 80 %; el frente y el monocromo de Android dentro del de 66 de 108) y corré `python3 scripts/iconos-web.py`, sin la opción: rehace los de la web y el favicon. Si cambian los colores de fondo, cambialos también en `app.json` (`adaptiveIcon` y `expo-splash-screen`).
 
 ## 6. Componentes
 
@@ -504,8 +514,9 @@ Esta sección describe la versión de celular (compacta). La sección 8 indica c
 
 Contenido centrado, de 420 de ancho como máximo:
 
-- "Encontrados" en Fredoka 32;
+- "Spot" en Fredoka 32 y, debajo, el lema en `secundario`;
 - los campos;
+- si hay captcha (solo web, con la clave de Turnstile), la comprobación de Cloudflare a todo el ancho, arriba del botón, en el esquema de la app (claro u oscuro) y en español. Ocupa 65 de alto desde que se abre la pantalla, para que nada salte. Si no carga, un mensaje de error con **Reintentar**;
 - el botón primario;
 - un enlace `fantasma` para cambiar entre ingresar y registrarse.
 
@@ -534,7 +545,7 @@ Contenido centrado, de 420 de ancho como máximo:
 
 Lo que se ve desde el primer instante, antes de que llegue el JS: es solo HTML y CSS en `public/index.html` (`#carga`).
 
-- Fondo `fondo`, el nombre "Encontrados" con la variante `titulo` (28/32) en `texto` y, debajo, un indicador circular de 28 con borde de 3: la vía en `borde` y el arco en `primario`, girando. Con movimiento reducido no gira.
+- Fondo `fondo`, el nombre "Spot" con la variante `titulo` (28/32) en `texto` y, debajo, un indicador circular de 28 con borde de 3: la vía en `borde` y el arco en `primario`, girando. Con movimiento reducido no gira.
 - Sigue el esquema elegido en Perfil (lo lee el script de `index.html`) o, si es Automático, el del sistema. Nunca hay destello blanco ni negro: el fondo del documento ya es el de la paleta.
 - Se va cuando la app dibuja su primera pantalla con contenido (`src/lib/pantallaCarga.ts`), no apenas monta el marco, para que no quede un fondo vacío en el medio.
 - Es la única excepción a `tema.ts` y `es-UY.ts`: cada color lleva un comentario con su token y una prueba comprueba que coincidan (`__tests__/indexHtml.test.ts`).
@@ -547,7 +558,7 @@ Lo que se ve desde el primer instante, antes de que llegue el JS: es solo HTML y
 - *Navegadores de WhatsApp, Instagram y Facebook:* una hoja "Abrila en Chrome o Safari" que nombra la app, con el link del sitio en `cuerpoFuerte` (seleccionable) y "Copiar el link" (`primario`); al copiar, el mensaje de éxito.
 - *Ya instalada, en la app nativa o en un navegador que no la instala:* el botón no aparece.
 
-**La app instalada** usa el manifest (`public/manifest.webmanifest`): nombre "Encontrados", `display: standalone` y `background_color` y `theme_color` en `fondo` del claro. En el navegador, `theme-color` tiñe la barra con `fondo` del esquema del sistema. Los íconos salen de `assets/images/icon.png` (192, 512, uno maskable y el de iPhone de 180); el ícono propio sigue pendiente (sección 10).
+**La app instalada** usa el manifest (`public/manifest.webmanifest`): nombre "Spot", `display: standalone` y `background_color` y `theme_color` en `fondo` del claro. En el navegador, `theme-color` tiñe la barra con `fondo` del esquema del sistema. Los íconos salen de `assets/images/icon.png` (192, 512, uno maskable y el de iPhone de 180): el provisorio de la sección 5.1.
 
 **Reportar un error:** una `Hoja` con:
 - "¿Qué pasó?" (obligatorio, de 10 a 1000 caracteres) y "¿Qué estabas haciendo? (opcional)", campos de varias líneas;
@@ -555,6 +566,17 @@ Lo que se ve desde el primer instante, antes de que llegue el JS: es solo HTML y
 - sin cuenta, "Tu contacto (opcional)", con la ayuda de que solo lo ven los moderadores;
 - un bloque `superficieSuave` de radio `l` con lo que se suma solo (pantalla anterior, navegador y sistema, tamaño de pantalla y versión), cada etiqueta en Figtree 700;
 - al pie, "Mandar el reporte" (`primario`, `send-outline`). Los errores de cada campo aparecen al intentar mandarlo.
+
+### 7.11 Mails
+
+Los mails de la cuenta (confirmar, recuperar la contraseña, cambiar el email y enlace mágico) están en `supabase/templates/`. Ninguno lleva imágenes ni fuentes externas: Gmail y otros las bloquean o las piden a terceros.
+
+- Fondo `fondo`; arriba, "Spot" en 28/32, negrita, en `primario`.
+- Una tarjeta `superficie` con borde de 1 en `borde` y radio `xl` (24): el título en 22/28 y `texto`, el párrafo en 16/25 y `textoCuerpo`.
+- El botón: cápsula `primario` con el texto en `textoSobrePrimario`, 16 en negrita. Debajo, en 14 y `textoSecundario`, cuánto dura el link y el mismo link escrito, en `primario`, por si el botón no anda.
+- Al pie, en 13 y `textoSecundario`: por qué llegó el mail y qué hacer si no lo pidió la persona, y "Spot · Animales perdidos y encontrados en Montevideo".
+- Ancho máximo de 480; en el celular ocupa todo el ancho con 16 de margen. Fuente del sistema (los clientes de correo no cargan Fredoka ni Figtree).
+- Solo la paleta clara: los clientes de correo oscurecen por su cuenta, y con estos contrastes se sigue leyendo.
 
 ## 8. Adaptación a cualquier celular y computadora
 
@@ -676,7 +698,7 @@ El mapa en grande del recorrido no es una columna: ocupa toda el área de conten
 | Foto en todos los marcadores | Necesitaba miniaturas | Hecho en la Fase 8 |
 | Perdidos, nombre del animal y uso real del naranja | Necesitaba `tipo_reporte` | Hecho en la Fase 6 |
 | "Ver lista" y compartir con vista previa | Eran funciones nuevas | Hecho en la Fase 8 |
-| Ícono de la app y arte de la pantalla de carga | Es trabajo gráfico aparte. Los íconos de la web instalable salen hoy del ícono de la plantilla de Expo | Más adelante: al cambiar `assets/images/icon.png`, correr `scripts/iconos-web.py` |
+| Ícono de la app y arte de la pantalla de carga | Es trabajo gráfico aparte | Hay uno provisorio (sección 5.1). El definitivo, más adelante: se reemplaza como dice esa sección |
 
 ## 11. Textos nuevos o que cambian en `es-UY.ts`
 

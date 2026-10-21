@@ -1,24 +1,23 @@
 {
   "expo": {
-    "name": "Encontrados",
-    "slug": "encontrados-mvd",
+    "name": "Spot",
+    "slug": "spot-mvd",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "encontrados",
+    "scheme": "spotmvd",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
-      "bundleIdentifier": "uy.encontrados.app",
+      "bundleIdentifier": "uy.spotmvd.app",
       "supportsTablet": false,
       "infoPlist": {
         "CFBundleAllowMixedLocalizations": true
       }
     },
     "android": {
-      "package": "uy.encontrados.app",
+      "package": "uy.spotmvd.app",
       "adaptiveIcon": {
-        "backgroundColor": "#F6F6F2",
+        "backgroundColor": "#556B2F",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -49,14 +48,14 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Encontrados usa tu ubicación para marcar dónde viste al animal y centrar el mapa cerca tuyo."
+          "locationWhenInUsePermission": "Spot usa tu ubicación para marcar dónde viste al animal y centrar el mapa cerca tuyo."
         }
       ],
       [
         "expo-image-picker",
         {
-          "cameraPermission": "Encontrados usa la cámara para sacarle una foto al animal que encontraste.",
-          "photosPermission": "Encontrados accede a tus fotos para que elijas una del animal que encontraste.",
+          "cameraPermission": "Spot usa la cámara para sacarle una foto al animal que encontraste.",
+          "photosPermission": "Spot accede a tus fotos para que elijas una del animal que encontraste.",
           "microphonePermission": false
         }
       ],

@@ -1,5 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import {
+  desdeParaPedir,
+  marcarLeidosEnCache,
+  sumarMensajes,
+} from '@/features/mensajes/incremental';
 import { supabase } from '@/lib/supabase';
 import type { ConversacionDetalle, MensajeDetalle } from '@/types/dominio';
 
@@ -17,12 +22,17 @@ export async function listarConversaciones(): Promise<ConversacionDetalle[]> {
   return data;
 }
 
-export async function listarMensajes(conversacionId: string): Promise<MensajeDetalle[]> {
-  const { data, error } = await supabase
+/** Los mensajes de una conversación; con `desde`, solo los de esa hora en adelante. */
+export async function listarMensajes(
+  conversacionId: string,
+  desde: string | null = null,
+): Promise<MensajeDetalle[]> {
+  let consulta = supabase
     .from('mensajes_detalle')
     .select('*')
-    .eq('conversacion_id', conversacionId)
-    .order('created_at', { ascending: true });
+    .eq('conversacion_id', conversacionId);
+  if (desde) consulta = consulta.gte('created_at', desde);
+  const { data, error } = await consulta.order('created_at', { ascending: true });
   if (error) throw error;
   return data;
 }
@@ -93,15 +103,36 @@ export function useConversacion(conversacionId: string | undefined) {
 
 /**
  * Sin WebSockets: la conversación abierta se refresca cada 4 s, solo mientras
- * `activo` (si otra pantalla la tapa, por ejemplo el caso, deja de pedir).
+ * `activo` (si otra pantalla la tapa, por ejemplo el caso, deja de pedir). La
+ * primera vez pide todo; después, solo lo nuevo (M20, ver incremental.ts).
  */
 export function useMensajes(conversacionId: string | undefined, activo = true) {
+  const queryClient = useQueryClient();
+  const clave = clavesMensajes.mensajes(conversacionId ?? '');
   return useQuery({
-    queryKey: clavesMensajes.mensajes(conversacionId ?? ''),
-    queryFn: () => listarMensajes(conversacionId as string),
+    queryKey: clave,
+    queryFn: async () => {
+      const previos = queryClient.getQueryData<MensajeDetalle[]>(clave);
+      const nuevos = await listarMensajes(conversacionId as string, desdeParaPedir(previos));
+      return previos ? sumarMensajes(previos, nuevos) : nuevos;
+    },
     enabled: Boolean(conversacionId),
     refetchInterval: activo ? 4_000 : false,
   });
+}
+
+/**
+ * Después de marcarLeidos, los mismos mensajes en la caché: como ya no se
+ * vuelven a pedir, si no, seguirían figurando sin leer.
+ */
+export function anotarLeidos(
+  queryClient: ReturnType<typeof useQueryClient>,
+  conversacionId: string,
+  miId: string,
+) {
+  queryClient.setQueryData<MensajeDetalle[]>(clavesMensajes.mensajes(conversacionId), (previos) =>
+    previos ? marcarLeidosEnCache(previos, miId, new Date().toISOString()) : previos,
+  );
 }
 
 export function useEnviarMensaje(conversacionId: string, emisorId: string) {

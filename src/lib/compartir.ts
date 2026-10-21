@@ -9,6 +9,15 @@ export function linkDelCaso(id: string): string {
   return `${ENV.siteUrl}/animal/${id}`;
 }
 
+/**
+ * El color es texto libre: si trae números (podría ser un teléfono), no va en la
+ * vista previa del link ni en el texto de compartir (B37).
+ */
+export function colorParaCompartir(color: string | null): string | null {
+  const limpio = color?.trim() ?? '';
+  return limpio && !/\d/.test(limpio) ? limpio : null;
+}
+
 /** Lo que se necesita de un caso, tal como viene de animales_detalle o animales_mapa. */
 export function datosParaCompartir(caso: {
   tipo_reporte: TipoReporte;
@@ -24,7 +33,7 @@ export function datosParaCompartir(caso: {
     estado: caso.estado,
     nombre: caso.nombre,
     especie: caso.especie,
-    color: caso.color,
+    color: colorParaCompartir(caso.color),
     tamanio: caso.tamanio,
     tieneCollar: caso.tiene_collar,
   };

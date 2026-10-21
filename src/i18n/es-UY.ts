@@ -17,12 +17,19 @@ import type {
   TipoReporte,
 } from '@/types/dominio';
 
+/**
+ * El nombre de la app. Fuera de este archivo lo repiten public/index.html,
+ * public/manifest.webmanifest, app.json y las plantillas de supabase/templates/
+ * (las pruebas de __tests__/ comprueban que coincidan).
+ */
+const NOMBRE = 'Spot';
+
 export const t = {
   app: {
-    nombre: 'Encontrados',
-    lema: 'Animales encontrados en Montevideo',
+    nombre: NOMBRE,
+    lema: 'Animales perdidos y encontrados en Montevideo',
     /** Título de la pestaña del navegador. */
-    tituloWeb: 'Encontrados · Animales encontrados en Montevideo',
+    tituloWeb: `${NOMBRE} · Animales perdidos y encontrados en Montevideo`,
   },
   comunes: {
     cargando: 'Cargando…',
@@ -420,11 +427,11 @@ export const t = {
           caso.estado === 'reunido'
             ? 'Gracias a todos los que ayudaron a buscarlo.'
             : caso.tipo === 'perdido'
-              ? 'Si lo viste, avisá en Encontrados.'
-              : 'Si sabés de quién es, avisá en Encontrados.';
+              ? `Si lo viste, avisá en ${NOMBRE}.`
+              : `Si sabés de quién es, avisá en ${NOMBRE}.`;
         return `${datos}. ${pedido}`;
       },
-      tituloGenerico: 'Encontrados',
+      tituloGenerico: NOMBRE,
       descripcionGenerica:
         'Animales perdidos y encontrados en Montevideo. Si viste uno, avisá: así vuelve a casa.',
     },
@@ -667,6 +674,12 @@ export const t = {
       pedirOtro: 'Pedir otro link',
       irAlMapa: 'Ir al mapa',
     },
+    /** La comprobación de Cloudflare Turnstile al registrarse, ingresar y recuperar la contraseña. */
+    captcha: {
+      falta:
+        'Esperá a que termine la comprobación de seguridad, arriba del botón, y probá de nuevo.',
+      error: 'No pudimos cargar la comprobación de seguridad. Revisá la conexión y probá de nuevo.',
+    },
     o: 'o',
     sinCuenta: '¿No tenés cuenta?',
     conCuenta: '¿Ya tenés cuenta?',
@@ -681,6 +694,7 @@ export const t = {
       debeAceptar:
         'Para crear la cuenta tenés que aceptar los términos de uso y la política de privacidad.',
       googleCancelado: 'Se canceló el ingreso con Google.',
+      captcha: 'No pudimos comprobar que sos una persona. Probá de nuevo.',
       muchosIntentos: 'Hubo muchos intentos seguidos. Esperá unos minutos y probá de nuevo.',
       desconocido: 'No pudimos ingresar. Probá de nuevo.',
     },
@@ -721,7 +735,7 @@ export const t = {
       titulo: 'Agregala a tu pantalla de inicio',
       compartir: 'Tocá Compartir. En el iPhone está abajo; en el iPad, arriba a la derecha.',
       agregarAInicio: 'Bajá y elegí "Agregar a inicio".',
-      agregar: 'Tocá "Agregar". Encontrados queda en tu pantalla de inicio.',
+      agregar: `Tocá "Agregar". ${NOMBRE} queda en tu pantalla de inicio.`,
     },
     navegadorInterno: {
       titulo: 'Abrila en Chrome o Safari',
@@ -738,7 +752,7 @@ export const t = {
     enviadoConCuenta: 'Gracias. Te avisamos en Actividad cuando lo resolvamos.',
     formulario: {
       titulo: 'Reportar un error',
-      intro: 'Contanos qué anda mal. Lo leen las personas que moderan Encontrados.',
+      intro: `Contanos qué anda mal. Lo leen las personas que moderan ${NOMBRE}.`,
       quePaso: '¿Qué pasó?',
       quePasoPlaceholder: 'Por ejemplo: toqué "Lo vi" y no pasó nada.',
       queHacias: '¿Qué estabas haciendo? (opcional)',
@@ -871,11 +885,10 @@ export const t = {
     },
     terminos: {
       titulo: 'Términos de uso',
-      intro:
-        'Encontrados ayuda a que los animales perdidos vuelvan con sus familias en Montevideo. Al usar la app aceptás estas reglas.',
+      intro: `${NOMBRE} ayuda a que los animales perdidos vuelvan con sus familias en Montevideo. Al usar la app aceptás estas reglas.`,
       secciones: [
         {
-          titulo: 'Qué es Encontrados',
+          titulo: `Qué es ${NOMBRE}`,
           parrafos: [
             'Una app gratuita donde cualquiera puede publicar un animal perdido o encontrado, avisar que lo vio y hablar con otras personas para que vuelva a su casa.',
             'No somos un refugio ni una veterinaria, y no podemos garantizar que un animal aparezca.',
@@ -912,7 +925,7 @@ export const t = {
         {
           titulo: 'Encuentros y coincidencias',
           parrafos: [
-            'Encontrados pone en contacto a personas, pero no verifica cada publicación ni participa en los encuentros. Encontrate en lugares públicos y, si podés, acompañado.',
+            `${NOMBRE} pone en contacto a personas, pero no verifica cada publicación ni participa en los encuentros. Encontrate en lugares públicos y, si podés, acompañado.`,
             'Las coincidencias que sugiere el reconocimiento de imágenes son solo sugerencias: siempre decide una persona.',
           ],
         },
@@ -939,7 +952,7 @@ export const t = {
         {
           titulo: 'Quién es responsable',
           parrafos: [
-            'El responsable de la base de datos de Encontrados es [nombre o razón social, documento y domicilio, a completar]. Por cualquier consulta sobre tus datos, escribinos a [email de contacto, a completar].',
+            `El responsable de la base de datos de ${NOMBRE} es [nombre o razón social, documento y domicilio, a completar]. Por cualquier consulta sobre tus datos, escribinos a [email de contacto, a completar].`,
           ],
         },
         {

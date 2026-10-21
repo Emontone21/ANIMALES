@@ -14,7 +14,7 @@ const esWeb = Platform.OS === 'web';
  * La sesión se guarda en AsyncStorage (localStorage en web). En web, Supabase
  * lee solo los tokens que llegan en la URL tras confirmar email u OAuth.
  */
-export const supabase = createClient<Database>(ENV.supabaseUrl, ENV.supabaseAnonKey, {
+export const supabase = createClient<Database>(ENV.supabaseUrl, ENV.supabaseKey, {
   auth: {
     storage: AsyncStorage,
     autoRefreshToken: true,

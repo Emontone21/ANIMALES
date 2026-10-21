@@ -25,6 +25,7 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { useAlternarBloqueo } from '@/features/bloqueos/api';
 import { useTerminos } from '@/features/legal/terminos';
 import {
+  anotarLeidos,
   clavesMensajes,
   marcarLeidos,
   useConversacion,
@@ -77,7 +78,10 @@ function Chat({ conversacionId, miId }: { conversacionId: string; miId: string }
   useEffect(() => {
     if (!hayNoLeidos) return;
     marcarLeidos(conversacionId, miId)
-      .then(() => queryClient.invalidateQueries({ queryKey: clavesMensajes.conversaciones }))
+      .then(() => {
+        anotarLeidos(queryClient, conversacionId, miId);
+        return queryClient.invalidateQueries({ queryKey: clavesMensajes.conversaciones });
+      })
       .catch(() => {});
   }, [hayNoLeidos, conversacionId, miId, queryClient]);
 

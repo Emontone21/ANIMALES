@@ -1,0 +1,47 @@
+<!doctype html>
+<!--
+  Plantilla de Supabase Auth: fuente de verdad del mail (ver supabase/templates/README.md).
+  El asunto es el <title>. HTML simple para Gmail y el celular: tablas, estilos en línea,
+  sin imágenes ni fuentes externas. Colores de la paleta clara de src/constants/tema.ts.
+-->
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light" />
+    <title>Elegí una contraseña nueva para Spot</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#F6F6F2;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">Tocá el botón para elegir una contraseña nueva.</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F6F6F2;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;">
+            <tr>
+              <td style="padding:0 8px 16px 8px;font-family:-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:28px;line-height:32px;font-weight:700;color:#556B2F;">Spot</td>
+            </tr>
+            <tr>
+              <td style="background-color:#FFFFFF;border:1px solid #E2E3DA;border-radius:24px;padding:32px 24px;">
+                <h1 style="margin:0 0 16px 0;font-family:-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:22px;line-height:28px;font-weight:700;color:#151613;">Elegí una contraseña nueva</h1>
+                <p style="margin:0 0 16px 0;font-family:-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:16px;line-height:25px;color:#383A33;">Hola. Pediste cambiar la contraseña de tu cuenta de Spot. Tocá el botón para elegir una nueva.</p>
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px 0;">
+                  <tr>
+                    <td align="center" bgcolor="#556B2F" style="border-radius:999px;background-color:#556B2F;">
+                      <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:16px 28px;font-family:-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:16px;line-height:20px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:999px;">Elegir una contraseña nueva</a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:0 0 16px 0;font-family:-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:14px;line-height:20px;color:#5C5F55;">El link sirve una sola vez y vence en una hora.</p>
+                <p style="margin:0;font-family:-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:14px;line-height:20px;color:#5C5F55;">Si el botón no anda, copiá este link y pegalo en el navegador:<br /><a href="{{ .ConfirmationURL }}" style="color:#556B2F;word-break:break-all;">{{ .ConfirmationURL }}</a></p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 8px 0 8px;font-family:-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:13px;line-height:18px;color:#5C5F55;">Recibiste este mail porque alguien pidió cambiar la contraseña de la cuenta de Spot con esta dirección. Si no fuiste vos, ignoralo: tu contraseña sigue igual.<br /><br />Spot · Animales perdidos y encontrados en Montevideo</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
