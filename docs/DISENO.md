@@ -216,13 +216,59 @@ Se usa Ionicons, que ya está instalado, siempre en variante de contorno (`-outl
 
 ### 5.1 Ícono de la app
 
-Provisorio, hasta tener uno definitivo: un pin de mapa en `textoSobrePrimario` (blanco) con una huella calada (cuatro dedos y la almohadilla), sobre `primario` del claro, que llena todo el cuadrado. Sin texto ni degradés.
+La chapita del logo (sección 5.2) en `fondo` del claro, con la S y el agujero calados, y la argolla en `texto`, sobre `primario` del claro, que llena todo el cuadrado. Sin texto ni degradés, y sin esquinas redondeadas: las pone cada sistema. Es `assets/marca/spot-icono.svg`.
 
 - **Legible a 48 px** y en claro y oscuro: lleva su propio fondo, así no depende del fondo del sistema.
-- **Zonas seguras:** en el ícono principal el pin llega al 69 % del radio, dentro del círculo del 80 % que respetan las máscaras (maskable e iOS). En el adaptativo de Android, al 56 %, dentro del círculo de 66 de 108.
-- **Archivos** (`assets/images/`): `icon.png` (1024, sin transparencias, también el de iOS), `android-icon-foreground.png` (el pin sobre transparente), `android-icon-background.png` (el `primario`), `android-icon-monochrome.png` (la forma, para los íconos con el color del tema) y `splash-icon.png` (el pin solo, sobre el `primario` de la pantalla de carga nativa). Los de la web (192, 512, maskable y el de iPhone de 180) y el favicon (48) salen de `icon.png`.
-- **Cómo se genera:** `python3 scripts/iconos-web.py --provisorio` dibuja todo con los colores de `tema.ts`.
-- **Cómo reemplazarlo:** poné los archivos definitivos en `assets/images/` con los mismos nombres y medidas (el dibujo de `icon.png` dentro del círculo del 80 %; el frente y el monocromo de Android dentro del de 66 de 108) y corré `python3 scripts/iconos-web.py`, sin la opción: rehace los de la web y el favicon. Si cambian los colores de fondo, cambialos también en `app.json` (`adaptiveIcon` y `expo-splash-screen`).
+- **Zonas seguras:** en `icon.png` el dibujo llega al 76,5 % del radio, dentro del círculo del 80 % que respetan las máscaras (maskable e iOS). En el adaptativo de Android también llega al 76,5 %, fuera del círculo de 66 de 108 (61 %): en los lanzadores con máscara redonda se corta el borde de la argolla. Hay que achicar el frente y el monocromo en el archivo (ver la sección 10).
+- **Archivos** (`assets/images/`, dibujados con el logo):
+
+  | Archivo | Medida | Qué es |
+  | --- | --- | --- |
+  | `icon.png` | 1024, sin transparencias | El ícono, también el de iOS (`app.json`, `icon`) |
+  | `android-icon-foreground.png` | 512 | La chapita y la argolla sobre transparente |
+  | `android-icon-background.png` | 512 | El `primario` liso (`adaptiveIcon.backgroundColor` también es `#556B2F`) |
+  | `android-icon-monochrome.png` | 432 | La forma, para los íconos con el color del tema (Android 13 o posterior) |
+  | `favicon.png` | 48 | La pestaña del navegador: dibujado aparte, con las esquinas redondeadas y la chapita más grande para que se lea. El export lo convierte en `favicon.ico` |
+  | `splash-icon.png` | 228 × 244 | La chapita sola, sobre el `primario` de la pantalla de carga nativa (`expo-splash-screen`) |
+
+- **Los de la web** (`public/iconos/`: 192, 512, maskable de 512 y el de iPhone de 180) salen de `icon.png` con `python3 scripts/iconos-web.py`.
+- **Cómo reemplazarlo:** poné los archivos nuevos en `assets/images/` con los mismos nombres y medidas y corré `python3 scripts/iconos-web.py`: rehace los de la web. El favicon se reemplaza a mano. Si cambian los colores de fondo, cambialos también en `app.json` (`adaptiveIcon` y `expo-splash-screen`).
+
+### 5.2 Logo
+
+Una chapita de collar con una S, colgada de su argolla, y al lado la palabra "Spot". Todo está dibujado en formas: no hace falta tener la fuente instalada.
+
+**Archivos** (`assets/marca/`, la fuente oficial; no se redibujan):
+
+| Archivo | Qué es | Para qué |
+| --- | --- | --- |
+| `spot-logo.svg` | El logo completo, 274 × 107 | Fondos claros: Ingresar y Registrarse, documentos |
+| `spot-logo-oscuro.svg` | El logo completo para fondos oscuros | Lo mismo, en modo oscuro |
+| `spot-marca.svg` | Solo la chapita, 316 × 337 | Espacios chicos o cuadrados, en claro |
+| `spot-marca-oscuro.svg` | Solo la chapita para fondos oscuros | Lo mismo, en modo oscuro |
+| `spot-marca-negro.svg` | La chapita en un color, `texto` del claro | Sellos, impresiones en un color |
+| `spot-marca-blanco.svg` | La chapita en blanco | Sobre fotos o fondos oscuros que no son de la paleta |
+| `spot-icono.svg` | El ícono de la app, 1024 × 1024 | El original de los PNG de la sección 5.1 |
+
+**Colores** (de `tema.ts`; `__tests__/marca.test.ts` comprueba que cada archivo use los de su esquema):
+
+| Parte | Claro | Oscuro | En el ícono |
+| --- | --- | --- | --- |
+| Chapita | `#556B2F` (`primario`) | `#8FA357` (`primario`) | `#F6F6F2` (`fondo`) sobre `#556B2F` |
+| Argolla y palabra | `#151613` (`texto`) | `#EDEEE6` (`texto`) | — |
+
+- **Calados:** la S y el agujero de la chapita dejan ver el fondo. No se rellenan.
+- **Margen libre:** alrededor del logo, como mínimo el diámetro de la argolla.
+- **Tamaños mínimos:** 24 px para la chapita sola y 96 px de ancho para el logo completo.
+- **En la app:**
+  - **Ingresar y Registrarse** (`MarcaAcceso`, 7.7): el logo completo de 180 de ancho, en claro u oscuro según el esquema, con `expo-image`. Es el encabezado de la pantalla, con el nombre accesible "Spot", y se pide primero (prioridad alta, sin carga diferida).
+  - **Pantalla de carga web** (7.9): el mismo logo, en SVG en línea.
+  - **Íconos:** sección 5.1.
+- **Qué no hacer:**
+  - rotarlo ni deformarlo;
+  - cambiarle los colores;
+  - reescribir la palabra con otra fuente;
+  - ponerlo sobre una foto sin un fondo liso.
 
 ## 6. Componentes
 
@@ -514,7 +560,7 @@ Esta sección describe la versión de celular (compacta). La sección 8 indica c
 
 Contenido centrado, de 420 de ancho como máximo:
 
-- "Spot" en Fredoka 32 y, debajo, el lema en `secundario`;
+- el logo completo de 180 de ancho (sección 5.2), en claro u oscuro según el esquema, y, debajo, el lema en `secundario`;
 - los campos;
 - si hay captcha (solo web, con la clave de Turnstile), la comprobación de Cloudflare a todo el ancho, arriba del botón, en el esquema de la app (claro u oscuro) y en español. Ocupa 65 de alto desde que se abre la pantalla, para que nada salte. Si no carga, un mensaje de error con **Reintentar**;
 - el botón primario;
@@ -545,7 +591,8 @@ Contenido centrado, de 420 de ancho como máximo:
 
 Lo que se ve desde el primer instante, antes de que llegue el JS: es solo HTML y CSS en `public/index.html` (`#carga`).
 
-- Fondo `fondo`, el nombre "Spot" con la variante `titulo` (28/32) en `texto` y, debajo, un indicador circular de 28 con borde de 3: la vía en `borde` y el arco en `primario`, girando. Con movimiento reducido no gira.
+- Fondo `fondo`, el logo de 180 de ancho y, debajo, un indicador circular de 28 con borde de 3: la vía en `borde` y el arco en `primario`, girando. Con movimiento reducido no gira.
+- **El logo** va en SVG en línea, con las formas de `assets/marca/spot-logo.svg` y sin colores propios: la chapita en `primario` y la argolla y la palabra en `texto`, del esquema activo. Así es el claro o el oscuro, cada uno con los colores de su archivo. Su nombre accesible es "Spot".
 - Sigue el esquema elegido en Perfil (lo lee el script de `index.html`) o, si es Automático, el del sistema. Nunca hay destello blanco ni negro: el fondo del documento ya es el de la paleta.
 - Se va cuando la app dibuja su primera pantalla con contenido (`src/lib/pantallaCarga.ts`), no apenas monta el marco, para que no quede un fondo vacío en el medio.
 - Es la única excepción a `tema.ts` y `es-UY.ts`: cada color lleva un comentario con su token y una prueba comprueba que coincidan (`__tests__/indexHtml.test.ts`).
@@ -558,7 +605,7 @@ Lo que se ve desde el primer instante, antes de que llegue el JS: es solo HTML y
 - *Navegadores de WhatsApp, Instagram y Facebook:* una hoja "Abrila en Chrome o Safari" que nombra la app, con el link del sitio en `cuerpoFuerte` (seleccionable) y "Copiar el link" (`primario`); al copiar, el mensaje de éxito.
 - *Ya instalada, en la app nativa o en un navegador que no la instala:* el botón no aparece.
 
-**La app instalada** usa el manifest (`public/manifest.webmanifest`): nombre "Spot", `display: standalone` y `background_color` y `theme_color` en `fondo` del claro. En el navegador, `theme-color` tiñe la barra con `fondo` del esquema del sistema. Los íconos salen de `assets/images/icon.png` (192, 512, uno maskable y el de iPhone de 180): el provisorio de la sección 5.1.
+**La app instalada** usa el manifest (`public/manifest.webmanifest`): nombre "Spot", `display: standalone` y `background_color` y `theme_color` en `fondo` del claro. En el navegador, `theme-color` tiñe la barra con `fondo` del esquema del sistema. Los íconos salen de `assets/images/icon.png` (192, 512, uno maskable y el de iPhone de 180): el de la sección 5.1.
 
 **Reportar un error:** una `Hoja` con:
 - "¿Qué pasó?" (obligatorio, de 10 a 1000 caracteres) y "¿Qué estabas haciendo? (opcional)", campos de varias líneas;
@@ -698,7 +745,7 @@ El mapa en grande del recorrido no es una columna: ocupa toda el área de conten
 | Foto en todos los marcadores | Necesitaba miniaturas | Hecho en la Fase 8 |
 | Perdidos, nombre del animal y uso real del naranja | Necesitaba `tipo_reporte` | Hecho en la Fase 6 |
 | "Ver lista" y compartir con vista previa | Eran funciones nuevas | Hecho en la Fase 8 |
-| Ícono de la app y arte de la pantalla de carga | Es trabajo gráfico aparte | Hay uno provisorio (sección 5.1). El definitivo, más adelante: se reemplaza como dice esa sección |
+| Ícono de la app y arte de la pantalla de carga | Es trabajo gráfico aparte | Hecho: el logo de la chapita (secciones 5.1 y 5.2). Queda achicar el frente y el monocromo del ícono adaptativo de Android, que se cortan en los lanzadores redondos |
 
 ## 11. Textos nuevos o que cambian en `es-UY.ts`
 

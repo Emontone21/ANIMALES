@@ -334,7 +334,7 @@ La hoja del celular tenía alto fijo y tapaba parte del mapa. Ahora tiene dos po
 - **iPhone con otros navegadores:** desde iOS 16.4, Chrome y Firefox también agregan a inicio desde Compartir, así que ven los mismos pasos que Safari.
 - **Manifest:** nombre y descripción de `es-UY.ts` y colores de `tema.ts` (el `fondo` del claro). Como el JSON no admite comentarios, una prueba comprueba que coincidan. Los íconos (192, 512, maskable de 512 y el de iPhone de 180) los genera `scripts/iconos-web.py` desde `assets/images/icon.png`. Ese ícono sigue siendo el de la plantilla de Expo: el ícono propio es trabajo gráfico pendiente (DISENO.md, sección 10).
 
-> **Nota:** desde el 21/10 es el ícono provisorio de Spot (ver "Ícono provisorio: un pin con una huella").
+> **Nota:** desde el 21/10 es el ícono provisorio de Spot (ver "Ícono provisorio: un pin con una huella") y, después, el del logo (ver "El logo de Spot: una chapita de collar").
 
 ## 2026-10-20 · Reportar un error: solo lo lee moderación y la base pone los límites
 
@@ -565,6 +565,8 @@ Hasta tener uno definitivo, el ícono es un pin de mapa blanco con una huella ca
 - **iOS** usa `icon.png`: se sacó el `.icon` de la plantilla de Expo, que mostraba su logo.
 - **Para reemplazarlo:** los archivos nuevos en `assets/images/` con los mismos nombres y medidas, y `python3 scripts/iconos-web.py` sin la opción (`docs/DISENO.md`, "Ícono de la app").
 
+> **Nota:** reemplazado por el logo el mismo día (ver "El logo de Spot: una chapita de collar"). El script ya no dibuja.
+
 ## 2026-10-21 · Plantillas de mail en el repo, sin datos de quien se registra
 
 Las plantillas de Supabase Auth (confirmar la cuenta, recuperar la contraseña, cambiar el email y enlace mágico) están en `supabase/templates/`, con el asunto en su `<title>` y en `config.toml`. Se cargan en el proyecto con la API de gestión (`scripts/plantillas-mail.js` arma el JSON).
@@ -603,3 +605,22 @@ Registrarse, ingresar con email y recuperar la contraseña muestran Turnstile (B
 ## 2026-10-21 · El color con números no se comparte
 
 El color es texto libre y entraba en la vista previa del link y en el texto de compartir: alguien podía escribir un teléfono (B37). Si tiene algún dígito, `colorParaCompartir` lo deja afuera. Va en `datosParaCompartir`, que usan las dos, así el texto que se manda por WhatsApp tampoco lo lleva.
+
+## 2026-10-21 · El logo de Spot: una chapita de collar
+
+El nombre visible es Spot. El logo es una chapita de collar con una S, colgada de su argolla, y la palabra "Spot" al lado. Llegó dibujado y se usa tal cual: no se redibuja ni se le cambian colores o proporciones (`docs/DISENO.md`, 5.2).
+- **Fuente oficial:** los SVG de `assets/marca/` (logo completo, chapita sola y el ícono, en claro, oscuro y un color). Sus colores son los de `tema.ts` de cada esquema, y una prueba lo comprueba y que las versiones de cada pieza tengan la misma forma.
+- **Íconos:** los PNG de `assets/images/` vienen dibujados con el logo. `scripts/iconos-web.py` ya no dibuja nada: solo arma los de la web (`public/iconos/`) desde `icon.png`, y salen iguales, byte por byte, a los que llegaron con el logo. El favicon de 48 no sale de `icon.png`: tiene las esquinas redondeadas y la chapita más grande, para que se lea en la pestaña, así que se reemplaza a mano.
+- **En la app,** con `expo-image` y el SVG como recurso de Metro, en Ingresar y Registrarse. Así es un solo archivo por esquema, nítido en cualquier pantalla, y no hacen falta PNG @1x, @2x y @3x.
+- **En la pantalla de carga,** el SVG va en línea en `index.html`, porque se ve antes del JS. Tiene las formas del archivo sin colores: los pone el CSS con `--carga-primario` y `--carga-texto`, que ya cambian con el esquema elegido y son los colores de cada archivo. Una prueba compara las formas con `spot-logo.svg` y `spot-logo-oscuro.svg`.
+- **Vista previa del link:** no cambia. Cada caso tiene foto, y la genérica (caso que no existe u oculto) va sin imagen.
+- **Identificadores técnicos:** el logo no los toca. Los que todavía dicen "encontrados" quedan así hasta confirmar la marca en la etapa de tiendas:
+  - las claves de `localStorage` y `AsyncStorage`: `encontrados-apariencia` y `encontrados-hoja-cerca`; cambiarlas borra las preferencias guardadas;
+  - la marca del historial de las hojas (`hojaEncontrados`);
+  - los `id` de `index.html`: `encontrados-fuentes`, `encontrados-carga` y `encontrados-web`;
+  - las migraciones ya aplicadas;
+  - los agentes HTTP de la función `reconocer` (`encontrados-reconocer`) y del servicio de visión (`encontrados-vision`);
+  - el texto que la función `reconocer` le manda a la API (cambiarlo pide desplegarla de nuevo);
+  - el servicio sin desplegar (`services/vision`);
+  - los datos de prueba: los emails `@encontrados.test` de `supabase/tests/` y la cuenta demo de `seed.sql`.
+- **Los nativos ya se habían cambiado:** `slug` `spot-mvd`, esquema `spotmvd`, `uy.spotmvd.app` y el `name` de `package.json` (`spot-mvd`), en "La app pasa a llamarse Spot", porque todavía no hay nada publicado. Ya están en producción (las Redirect URLs de Supabase usan `spotmvd://**`): no se vuelven atrás.

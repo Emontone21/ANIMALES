@@ -1,8 +1,9 @@
 /**
  * Lo que repite el nombre de la app o los colores fuera de es-UY.ts y tema.ts:
- * app.json, el script del ícono (scripts/iconos-web.py) y las plantillas de mail
- * (supabase/templates/). También, que la versión de los términos de la app sea
- * la que pone la última migración.
+ * app.json, el logo y los íconos (assets/marca/ y assets/images/) y las
+ * plantillas de mail (supabase/templates/). También, que es-UY.ts no use el
+ * nombre viejo y que la versión de los términos de la app sea la que pone la
+ * última migración.
  */
 import { paletas } from '@/constants/tema';
 import { VERSION_TERMINOS } from '@/features/legal/terminos';
@@ -10,8 +11,10 @@ import { t } from '@/i18n/es-UY';
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const fs = require('fs') as {
-  readFileSync: (ruta: string, codificacion: 'utf8') => string;
+  readFileSync: ((ruta: string, codificacion: 'utf8') => string) &
+    ((ruta: string) => { readUInt32BE: (posicion: number) => number });
   readdirSync: (ruta: string) => string[];
+  existsSync: (ruta: string) => boolean;
 };
 const { plantillas } = require('../scripts/plantillas-mail.js') as {
   plantillas: () => { tipo: string; asunto: string; archivo: string }[];
@@ -37,16 +40,66 @@ describe('app.json', () => {
     expect(plugin('expo-splash-screen').backgroundColor).toBe(paletas.claro.primario);
     expect(plugin('expo-notifications').color).toBe(paletas.claro.primario);
   });
+
+  test('el ícono es el del logo en todas las plataformas, no el de la plantilla de Expo', () => {
+    expect(app.icon).toBe('./assets/images/icon.png');
+    expect(app.ios.icon ?? app.icon).toBe('./assets/images/icon.png');
+    expect(fs.existsSync(`${raiz}/assets/expo.icon`)).toBe(false);
+  });
 });
 
-test('el script del ícono usa los colores de tema.ts que dice su comentario', () => {
-  const script = leer('scripts/iconos-web.py');
-  const colores = [...script.matchAll(/^\w+ = "(#[0-9A-Fa-f]{6})"  # (claro|oscuro)\.(\w+)$/gm)];
-  expect(colores).toHaveLength(2);
-  for (const [, valor, esquema, token] of colores) {
-    const paleta = paletas[esquema as 'claro' | 'oscuro'] as Record<string, string>;
-    expect({ token, valor }).toEqual({ token, valor: paleta[token] });
-  }
+describe('logo (assets/marca/) e íconos (assets/images/)', () => {
+  const svg = (archivo: string) => leer(`assets/marca/${archivo}`);
+  const colores = (archivo: string) =>
+    [...new Set([...svg(archivo).matchAll(/#[0-9A-Fa-f]{6}\b/g)].map(([c]) => c.toUpperCase()))].sort();
+  const valores = (esquema: 'claro' | 'oscuro', ...tokens: (keyof typeof paletas.claro)[]) =>
+    tokens.map((token) => paletas[esquema][token].toUpperCase()).sort();
+  /** Lo que dibuja sin los colores: si cambia, cambió la forma o la proporción. */
+  const forma = (archivo: string) => svg(archivo).replace(/#[0-9A-Fa-f]{6}\b/g, '#');
+
+  test('cada archivo usa los colores de tema.ts de su esquema (DISENO.md, 5.2)', () => {
+    expect(colores('spot-logo.svg')).toEqual(valores('claro', 'primario', 'texto'));
+    expect(colores('spot-marca.svg')).toEqual(valores('claro', 'primario', 'texto'));
+    expect(colores('spot-logo-oscuro.svg')).toEqual(valores('oscuro', 'primario', 'texto'));
+    expect(colores('spot-marca-oscuro.svg')).toEqual(valores('oscuro', 'primario', 'texto'));
+    expect(colores('spot-marca-negro.svg')).toEqual(valores('claro', 'texto'));
+    expect(colores('spot-marca-blanco.svg')).toEqual(valores('claro', 'textoSobrePrimario'));
+    expect(colores('spot-icono.svg')).toEqual(valores('claro', 'primario', 'fondo', 'texto'));
+  });
+
+  test('las versiones de cada pieza tienen la misma forma', () => {
+    expect(forma('spot-logo-oscuro.svg')).toBe(forma('spot-logo.svg'));
+    for (const variante of ['spot-marca-oscuro.svg', 'spot-marca-negro.svg', 'spot-marca-blanco.svg']) {
+      expect(forma(variante)).toBe(forma('spot-marca.svg'));
+    }
+  });
+
+  test('los íconos de assets/images/ miden lo que piden app.json y cada sistema', () => {
+    const tamanio = (archivo: string) => {
+      const bytes = fs.readFileSync(`${raiz}/assets/images/${archivo}`);
+      return `${bytes.readUInt32BE(16)}x${bytes.readUInt32BE(20)}`;
+    };
+    expect(tamanio('icon.png')).toBe('1024x1024');
+    expect(tamanio('android-icon-foreground.png')).toBe('512x512');
+    expect(tamanio('android-icon-background.png')).toBe('512x512');
+    expect(tamanio('android-icon-monochrome.png')).toBe('432x432');
+    expect(tamanio('favicon.png')).toBe('48x48');
+    expect(tamanio('splash-icon.png')).toBe('228x244');
+  });
+});
+
+test('es-UY.ts no usa "Encontrados" como nombre de la app; como categoría, sí', () => {
+  // Cada texto entre comillas que lo dice con mayúscula, también dentro de las funciones.
+  const fuente = leer('src/i18n/es-UY.ts');
+  const textos = [...fuente.matchAll(/(['`])((?:(?!\1)[^\\\n]|\\.)*?Encontrados(?:(?!\1)[^\\\n]|\\.)*)\1/g)].map(
+    ([, , texto]) => texto,
+  );
+  expect(textos.length).toBe((fuente.match(/Encontrados/g) ?? []).length);
+  // La categoría es la etiqueta sola (el chip del mapa), nunca dentro de una oración
+  // como "avisá en Encontrados" o "Encontrados usa tu ubicación".
+  expect(textos).toContain('Encontrados');
+  for (const texto of textos) expect(texto).toBe('Encontrados');
+  expect(t.app.nombre).not.toMatch(/encontrados/i);
 });
 
 describe('plantillas de mail (supabase/templates/)', () => {

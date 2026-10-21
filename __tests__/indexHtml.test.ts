@@ -35,7 +35,7 @@ describe('public/index.html', () => {
   });
 
   test('los textos son los de es-UY.ts', () => {
-    expect(html).toContain(`<p class="carga-nombre">${t.app.nombre}</p>`);
+    expect(html).toContain(`aria-label="${t.app.nombre}"`);
     expect(html).toContain(
       `<noscript>Necesitás activar JavaScript para usar ${t.app.nombre}.</noscript>`,
     );
@@ -43,6 +43,29 @@ describe('public/index.html', () => {
     expect(html).toContain(
       `<meta name="description" content="${t.compartir.vistaPrevia.descripcionGenerica}" />`,
     );
+  });
+
+  test('el logo de la carga es el de assets/marca/: mismas formas y, en cada esquema, sus colores', () => {
+    const enLinea = html.match(/<svg class="carga-logo"[\s\S]*?<\/svg>/)?.[0] ?? '';
+    expect(enLinea).toContain(`role="img" aria-label="${t.app.nombre}"`);
+    // Sin colores propios: los pone el CSS con las variables de la carga.
+    expect(enLinea).not.toMatch(/#[0-9A-Fa-f]{6}|fill="#|stroke="#/);
+    expect(formas(enLinea).trazados).toHaveLength(2);
+    for (const [archivo, esquema] of [
+      ['spot-logo.svg', 'claro'],
+      ['spot-logo-oscuro.svg', 'oscuro'],
+    ] as const) {
+      const svg = fs.readFileSync(`${raiz}/assets/marca/${archivo}`, 'utf8');
+      expect(formas(enLinea)).toEqual(formas(svg));
+      // Cada parte del archivo tiene el color que el CSS le da en su esquema.
+      const paleta = paletas[esquema];
+      expect(svg).toMatch(new RegExp(`<circle [^>]*stroke="${paleta.texto}"`));
+      expect(svg).toMatch(new RegExp(`<g [^>]*><circle [^>]*/><path [^>]*fill="${paleta.primario}"`));
+      expect(svg).toMatch(new RegExp(`</g><path [^>]*fill="${paleta.texto}"`));
+    }
+    expect(html).toMatch(/\.carga-logo-chapita \{\s+fill: var\(--carga-primario\);/);
+    expect(html).toMatch(/\.carga-logo-argolla \{\s+stroke: var\(--carga-texto\);/);
+    expect(html).toMatch(/\.carga-logo-palabra \{\s+fill: var\(--carga-texto\);/);
   });
 
   test('declara las fuentes de tema.ts con su peso, desde los archivos que copia postinstall', () => {
@@ -97,6 +120,17 @@ describe('public/index.html', () => {
     expect(html).toContain("navigator.serviceWorker.register('/sw.js')");
   });
 });
+
+/** Lo que dibuja un SVG sin sus colores: el viewBox, la transformación, el círculo y los trazados. */
+function formas(svg: string) {
+  return {
+    viewBox: svg.match(/viewBox="([^"]+)"/)?.[1],
+    transform: svg.match(/transform="([^"]+)"/)?.[1],
+    circulo: svg.match(/<circle [^>]*cx="([^"]+)" cy="([^"]+)" r="([^"]+)"[^>]*stroke-width="([^"]+)"/)?.slice(1),
+    trazados: [...svg.matchAll(/<path [^>]*d="([^"]+)"/g)].map(([, d]) => d),
+    reglas: [...svg.matchAll(/fill-rule="([^"]+)"/g)].map(([, regla]) => regla),
+  };
+}
 
 /** Ancho y alto de un PNG, de su encabezado. */
 function tamanioPng(ruta: string): string {

@@ -1,20 +1,36 @@
+import { Image } from 'expo-image';
 import { type Href, useRouter } from 'expo-router';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 
+import logoClaro from '@/assets/marca/spot-logo.svg';
+import logoOscuro from '@/assets/marca/spot-logo-oscuro.svg';
 import { Boton } from '@/components/ui/Boton';
 import { Texto } from '@/components/ui/Texto';
-import { Espacio, Fuentes } from '@/constants/tema';
-import { crearEstilos, useEstilos } from '@/hooks/useTema';
+import { Espacio } from '@/constants/tema';
+import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 
-/** El nombre de la app en Fredoka 32 y su lema, arriba de ingresar y registrarse (7.7). */
+/** El logo completo (assets/marca/, 274 × 107) a 180 de ancho (DISENO.md, 5.2). */
+const ANCHO_LOGO = 180;
+const PROPORCION_LOGO = 274 / 107;
+
+/** El logo, en claro u oscuro, y el lema, arriba de ingresar y registrarse (7.7). */
 export function MarcaAcceso() {
+  const { esquema } = useTema();
   const estilos = useEstilos(crear);
   return (
     <View style={estilos.marca}>
-      <Text style={estilos.nombre} accessibilityRole="header">
-        {t.app.nombre}
-      </Text>
+      {/* El encabezado de la pantalla es el logo: "Spot" para el lector, en web y en nativo. */}
+      <Image
+        source={esquema === 'oscuro' ? logoOscuro : logoClaro}
+        style={estilos.logo}
+        contentFit="contain"
+        priority="high"
+        loading="eager"
+        accessible
+        accessibilityRole="header"
+        accessibilityLabel={t.app.nombre}
+      />
       <Texto variante="secundario" style={estilos.centrado}>
         {t.app.lema}
       </Texto>
@@ -44,9 +60,9 @@ export function CambiarAcceso({
   );
 }
 
-const crear = crearEstilos((c) => ({
-  marca: { alignItems: 'center', gap: Espacio.xs, marginBottom: Espacio.s },
-  nombre: { ...Fuentes.titulo, fontSize: 32, lineHeight: 38, color: c.texto, textAlign: 'center' },
+const crear = crearEstilos(() => ({
+  marca: { alignItems: 'center', gap: Espacio.s, marginBottom: Espacio.s },
+  logo: { width: ANCHO_LOGO, aspectRatio: PROPORCION_LOGO },
   centrado: { textAlign: 'center' },
   cambiar: { alignItems: 'center', marginTop: Espacio.s },
 }));
