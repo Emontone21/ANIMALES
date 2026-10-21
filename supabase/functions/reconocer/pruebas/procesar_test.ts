@@ -1,7 +1,8 @@
 import { assertEquals, assertStringIncludes } from '@std/assert';
 
 import { HERRAMIENTA_COMPARAR, HERRAMIENTA_DESCRIBIR } from '../claude.ts';
-import { procesarFoto } from '../procesar.ts';
+import type { FotoBajada } from '../descargar.ts';
+import { procesarFoto, TOPE_PEDIDO_BASE64 } from '../procesar.ts';
 import {
   apiFalsa,
   BaseFalsa,
@@ -10,6 +11,7 @@ import {
   dependencias,
   DESCRIPCION_PERRO,
   errorDeApi,
+  imagenesDe,
   type PedidoClaude,
   pendiente,
   soloTexto,
@@ -79,20 +81,55 @@ Deno.test('una foto nueva: la describe, la compara con los candidatos y guarda c
   assertEquals(base.errores, []);
 });
 
-Deno.test('sin miniatura (fotos de antes de la Fase 8), manda la original; un candidato sin foto queda afuera', async () => {
+Deno.test('una foto de otro sitio la baja la función y va dentro del pedido; una que no se pudo bajar queda afuera', async () => {
+  const PERRO = 'https://placedog.net/640/480?id=12';
   const base = new BaseFalsa();
-  base.agregar(pendiente());
-  base.candidatos_ = [candidato(A), candidato(B)];
-  const api = apiQueResponde([resultado('C1', 90)]);
-  const existe = (url: string) => Promise.resolve(!url.endsWith('foto-nueva.miniatura.jpg') && !url.includes(B));
+  base.agregar(pendiente({ foto_path: PERRO }));
+  // A es del bucket; B y C, de otros sitios (C no se puede bajar).
+  const C = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+  base.candidatos_ = [
+    candidato(A),
+    candidato(B, { foto_path: PERRO }),
+    candidato(C, { foto_path: 'https://cataas.com/cat?id=1' }),
+  ];
+  const api = apiQueResponde([resultado('C1', 10), resultado('C2', 90)]);
+  const bajadas: string[] = [];
+  const bajar = (url: string): Promise<FotoBajada | null> => {
+    bajadas.push(url);
+    return Promise.resolve(url === PERRO ? { media_type: 'image/jpeg', data: '/9j/4AAQ', bytes: 6 } : null);
+  };
 
-  const r = await procesarFoto(dependencias(base, api.cliente, { existe }), await base.config(), ID);
+  const r = await procesarFoto(dependencias(base, api.cliente, { bajar }), await base.config(), ID);
+
+  assertEquals(r, { procesado: true, comparado: true, coincidencias: 1 });
+  // Las fotos de otros sitios se bajan (nunca las del bucket) y llegan en base64 con el tipo de sus bytes.
+  assertEquals(bajadas.sort(), [PERRO, PERRO, 'https://cataas.com/cat?id=1'].sort());
+  assertEquals(imagenesDe(api.pedidos[0]), ['base64:image/jpeg']);
+  assertEquals(imagenesDe(api.pedidos[1]), [
+    'base64:image/jpeg',
+    `url:${SUPABASE}/storage/v1/object/public/fotos/uid-hallazgo/${A}.miniatura.jpg`,
+    'base64:image/jpeg',
+  ]);
+  // C, sin foto, no se comparó: C1 es A y C2 es B.
+  assertEquals(base.comparaciones[0].resultados.map((x) => [x.animal_id, x.confianza]), [[A, 10], [B, 90]]);
+});
+
+Deno.test('las fotos bajadas no pasan de 20 MB por pedido: los candidatos que no entran quedan afuera', async () => {
+  const base = new BaseFalsa();
+  base.agregar(pendiente({ foto_path: 'https://otro.sitio/nueva.jpg' }));
+  base.candidatos_ = [
+    candidato(A, { foto_path: 'https://otro.sitio/a.jpg' }),
+    candidato(B, { foto_path: 'https://otro.sitio/b.jpg' }),
+  ];
+  const api = apiQueResponde([resultado('C1', 10)]);
+  // Cada una ocupa un poco más de la tercera parte del tope: entran la nueva y una más.
+  const grande = 'A'.repeat(Math.floor(TOPE_PEDIDO_BASE64 / 3) + 1);
+  const bajar = () => Promise.resolve<FotoBajada>({ media_type: 'image/png', data: grande, bytes: 0 });
+
+  const r = await procesarFoto(dependencias(base, api.cliente, { bajar }), await base.config(), ID);
 
   assertEquals(r.procesado, true);
-  assertEquals(urlsDeImagenes(api.pedidos[0]), [
-    `${SUPABASE}/storage/v1/object/public/fotos/uid-familia/foto-nueva.jpg`,
-  ]);
-  assertEquals(urlsDeImagenes(api.pedidos[1]).length, 2);
+  assertEquals(imagenesDe(api.pedidos[1]), ['base64:image/png', 'base64:image/png']);
   assertEquals(base.comparaciones[0].resultados.map((x) => x.animal_id), [A]);
 });
 
@@ -181,7 +218,11 @@ Deno.test('sin crédito: registra la llamada, marca el error (se reintenta) y pa
   const r = await procesarFoto(dependencias(base, api.cliente), await base.config(), ID);
 
   assertEquals(r, { procesado: false, motivo: 'error', error: 'sin_credito' });
-  assertEquals(base.llamadas.map((l) => [l.resultado, l.costo, l.detalle]), [['sin_credito', 0, 'billing_error']]);
+  assertEquals(base.llamadas.map((l) => [l.resultado, l.costo, l.detalle]), [[
+    'sin_credito',
+    0,
+    'billing_error: mensaje en inglés de la API',
+  ]]);
   assertEquals(base.errores.length, 1);
   assertStringIncludes(base.errores[0].error, 'sin_credito');
   assertEquals(base.pausas, ['sin_credito']);
@@ -205,6 +246,50 @@ Deno.test('límite (429) y sobrecarga (529): error con reintento, sin pausar', a
   }
 });
 
+Deno.test('el texto del error de la API queda en la llamada, limpio; en la cola, solo el código', async () => {
+  const base = new BaseFalsa();
+  base.agregar(pendiente());
+  const mensaje = 'Unable to download https://proyecto.supabase.co/storage/v1/object/public/fotos/uid/x.jpg ' +
+    'for sk-ant-api03-abc123 (escribile a ana@correo.com o al 099 123 456). ' + 'x'.repeat(400);
+  const api = apiFalsa(() => errorDeApi(400, 'invalid_request_error', mensaje, 'req_011CPrueba'));
+
+  const r = await procesarFoto(dependencias(base, api.cliente), await base.config(), ID);
+
+  assertEquals(r, { procesado: false, motivo: 'error', error: 'error' });
+  const detalle = base.llamadas[0].detalle ?? '';
+  assertEquals(detalle.length, 300);
+  assertStringIncludes(
+    detalle,
+    'invalid_request_error: Unable to download [url] for [clave] (escribile a [email] o al [número]). xxx',
+  );
+  for (const dato of ['supabase.co', 'sk-ant', 'ana@', '099']) assertEquals(detalle.includes(dato), false, dato);
+  assertEquals(base.errores, [{ id: ID, error: 'describir: error (invalid_request_error)' }]);
+});
+
+Deno.test('lo que se pasa de largo se recorta: la llamada sale bien, con el aviso en el detalle', async () => {
+  const base = new BaseFalsa();
+  base.agregar(pendiente());
+  base.candidatos_ = [candidato(A)];
+  const rasgos = Array.from({ length: 10 }, (_, i) => `rasgo ${i + 1}`);
+  const motivo = 'Mismo collar rojo, misma mancha blanca en el pecho y las mismas orejas caídas; en las dos fotos ' +
+    'se ve la cola corta, el hocico gris y la misma cicatriz en la pata trasera izquierda';
+  assertEquals(motivo.length > 140, true);
+  const api = apiQueResponde([{ ...resultado('C1', 85), motivo }], { ...DESCRIPCION_PERRO, rasgos });
+
+  const r = await procesarFoto(dependencias(base, api.cliente), await base.config(), ID);
+
+  assertEquals(r, { procesado: true, comparado: true, coincidencias: 1 });
+  assertEquals(base.descripciones[0].descripcion.rasgos, rasgos.slice(0, 8));
+  const guardado = base.comparaciones[0].resultados[0].motivo;
+  assertEquals(guardado.length <= 140 && guardado.endsWith('…'), true);
+  // Ninguna cuenta como error: quedan ok, con lo que se recortó.
+  assertEquals(base.llamadas.map((l) => [l.tipo, l.resultado, l.detalle]), [
+    ['describir', 'ok', 'rasgos: 10 > 8'],
+    ['comparar', 'ok', `C1 motivo: ${motivo.length} > 140`],
+  ]);
+  assertEquals(base.errores, []);
+});
+
 Deno.test('una respuesta que no valida cuenta como error con reintento, con su costo', async () => {
   const base = new BaseFalsa();
   base.agregar(pendiente());
@@ -222,7 +307,7 @@ Deno.test('una respuesta que no valida cuenta como error con reintento, con su c
   assertEquals(base.descripciones, []);
 });
 
-Deno.test('una foto que no está pendiente, o que no se puede ver, no llama a la API', async () => {
+Deno.test('una foto que no está pendiente, o de otro sitio que no se pudo bajar, no llama a la API', async () => {
   const base = new BaseFalsa();
   const api = apiQueResponde();
   assertEquals(await procesarFoto(dependencias(base, api.cliente), await base.config(), ID), {
@@ -230,9 +315,9 @@ Deno.test('una foto que no está pendiente, o que no se puede ver, no llama a la
     motivo: 'no_pendiente',
   });
 
-  base.agregar(pendiente());
+  base.agregar(pendiente({ foto_path: 'https://cataas.com/cat?id=1' }));
   const r = await procesarFoto(
-    dependencias(base, api.cliente, { existe: () => Promise.resolve(false) }),
+    dependencias(base, api.cliente, { bajar: () => Promise.resolve(null) }),
     await base.config(),
     ID,
   );

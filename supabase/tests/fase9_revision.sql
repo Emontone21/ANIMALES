@@ -32,8 +32,11 @@ from unnest(array[
   '00000000-0000-4000-8000-000000000905'
 ]) as u, generate_series(1, 6) as n, unnest(array['.jpg', '.miniatura.jpg']) as variante;
 
--- Durante la prueba hay un servicio de visión "configurado" (nada sale: rollback).
+-- Durante la prueba hay un servicio de visión "configurado" (nada sale: rollback),
+-- con el reconocimiento prendido aunque en la base esté apagado o pausado (0018).
 update public.config_app set valor = 'https://vision.encontrados.test/' where clave = 'vision_url';
+update public.config_app set valor = 'true' where clave = 'ia_activa';
+update public.config_app set valor = '' where clave = 'ia_pausa';
 
 -- -----------------------------------------------------------------------------
 -- Parte A, como el sistema: casos, bloqueo, coincidencias y cola de visión.

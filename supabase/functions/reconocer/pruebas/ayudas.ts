@@ -15,6 +15,7 @@ import type {
   TipoLlamada,
 } from '../base.ts';
 import { crearCliente } from '../claude.ts';
+import type { FotoBajada } from '../descargar.ts';
 import type { Dependencias } from '../procesar.ts';
 import type { Descripcion } from '../validar.ts';
 
@@ -259,14 +260,29 @@ export function soloTexto(texto: string, stopReason = 'end_turn'): Response {
 }
 
 /** Un error de la API, sin que el SDK lo reintente. */
-export function errorDeApi(estado: number, tipo: string): Response {
+export function errorDeApi(
+  estado: number,
+  tipo: string,
+  mensaje = 'mensaje en inglés de la API',
+  pedidoId?: string,
+): Response {
   return new Response(
-    JSON.stringify({ type: 'error', error: { type: tipo, message: 'mensaje en inglés de la API' } }),
-    { status: estado, headers: { 'content-type': 'application/json', 'x-should-retry': 'false' } },
+    JSON.stringify({ type: 'error', error: { type: tipo, message: mensaje } }),
+    {
+      status: estado,
+      headers: {
+        'content-type': 'application/json',
+        'x-should-retry': 'false',
+        ...(pedidoId ? { 'request-id': pedidoId } : {}),
+      },
+    },
   );
 }
 
-/** Las dependencias de la función con la base y la API falsas; todas las fotos existen. */
+/** Una foto de otro sitio ya bajada: un JPEG chiquito. */
+export const FOTO_BAJADA: FotoBajada = { media_type: 'image/jpeg', data: '/9j/4AAQ', bytes: 6 };
+
+/** Las dependencias de la función con la base y la API falsas; las fotos de otros sitios se bajan bien. */
 export function dependencias(
   base: BaseFalsa,
   cliente: Anthropic | null,
@@ -277,7 +293,7 @@ export function dependencias(
     base,
     claude: cliente,
     supabaseUrl: SUPABASE,
-    existe: () => Promise.resolve(true),
+    bajar: () => Promise.resolve(FOTO_BAJADA),
     ahora: () => reloj++,
     topeMs: 90_000,
     ...cambios,
@@ -289,6 +305,21 @@ export function urlsDeImagenes(pedido: PedidoClaude): string[] {
   const contenido = pedido.messages[0].content;
   if (typeof contenido === 'string') return [];
   return contenido.flatMap((b) => (b.type === 'image' && b.source.type === 'url' ? [b.source.url] : []));
+}
+
+/** Cómo llegó cada imagen de un pedido, en orden: "url:<url>" o "base64:<tipo>". */
+export function imagenesDe(pedido: PedidoClaude): string[] {
+  const contenido = pedido.messages[0].content;
+  if (typeof contenido === 'string') return [];
+  return contenido.flatMap((b) =>
+    b.type !== 'image'
+      ? []
+      : b.source.type === 'url'
+      ? [`url:${b.source.url}`]
+      : b.source.type === 'base64'
+      ? [`base64:${b.source.media_type}`]
+      : []
+  );
 }
 
 /** Los textos de un pedido, en orden. */
