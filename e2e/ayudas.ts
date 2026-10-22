@@ -86,6 +86,17 @@ export function tarjeta(pagina: Page, ...contenidos: (string | Locator)[]): Loca
   return candidatos.last();
 }
 
+/** "Más opciones" de una historia del muro (o de su página): la hoja con lo que ofrece. */
+export async function abrirOpcionesDeHistoria(
+  pagina: Page,
+  alcance: Alcance = pagina,
+): Promise<Locator> {
+  await boton(alcance, t.reencuentros.opciones).click();
+  const opciones = hoja(pagina, t.reencuentros.opciones);
+  await expect(opciones).toBeVisible();
+  return opciones;
+}
+
 /** Ingresar, el formulario de email y contraseña (/auth/ingresar), desde Perfil. */
 export async function abrirIngresar(pagina: Page): Promise<void> {
   await pagina.goto('/perfil');
@@ -235,4 +246,53 @@ export async function simularPushDelNavegador(contexto: BrowserContext): Promise
     });
     Object.defineProperty(contenedor, 'ready', { configurable: true, get: async () => registro });
   }, new URL(SITIO).origin);
+}
+
+/**
+ * La hoja del sistema de un celular que acepta archivos, simulada (Chromium en
+ * Linux no tiene navigator.share): anota los archivos que recibe.
+ */
+export async function simularHojaConArchivos(pagina: Page): Promise<void> {
+  await pagina.evaluate(() => {
+    const ventana = window as Window & { __archivos?: File[] };
+    Object.defineProperty(navigator, 'canShare', {
+      configurable: true,
+      value: (datos: ShareData) => Array.isArray(datos.files),
+    });
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: async (datos: ShareData) => {
+        ventana.__archivos = datos.files;
+      },
+    });
+  });
+}
+
+/**
+ * La imagen que recibió la hoja simulada: nombre, tipo y medidas, el color del
+ * fondo y una muestra de los colores de la franja del nombre (sus letras),
+ * para medir el contraste en la imagen.
+ */
+export async function leerImagenCompartida(pagina: Page) {
+  return pagina.evaluate(async () => {
+    const [archivo] = (window as Window & { __archivos?: File[] }).__archivos ?? [];
+    const mapa = await createImageBitmap(archivo);
+    const lienzo = new OffscreenCanvas(mapa.width, mapa.height);
+    const ctx = lienzo.getContext('2d') as OffscreenCanvasRenderingContext2D;
+    ctx.drawImage(mapa, 0, 0);
+    const aHex = (d: Uint8ClampedArray, i: number) =>
+      `#${[d[i], d[i + 1], d[i + 2]].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+    const fondo = aHex(ctx.getImageData(30, 30, 1, 1).data, 0);
+    const franja = ctx.getImageData(80, 1210, 920, 110).data;
+    const letras: string[] = [];
+    for (let i = 0; i < franja.length; i += 4 * 7) letras.push(aHex(franja, i));
+    return {
+      nombre: archivo.name,
+      tipo: archivo.type,
+      ancho: mapa.width,
+      alto: mapa.height,
+      fondo,
+      letras,
+    };
+  });
 }

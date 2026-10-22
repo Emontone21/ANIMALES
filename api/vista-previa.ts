@@ -1,21 +1,24 @@
 /**
- * Vista previa del link de un caso (/animal/<id>) en WhatsApp, Facebook,
- * Telegram y otros. Es la única pieza de servidor propia del proyecto (ver
- * docs/DECISIONES.md): vercel.json manda acá solo a los bots de vista previa;
- * las personas reciben el index.html estático de siempre.
+ * Vista previa del link de un caso (/animal/<id>) y de la historia de un
+ * reencuentro (/reencuentros/<id>) en WhatsApp, Facebook, Telegram y otros.
+ * Es la única pieza de servidor propia del proyecto (ver docs/DECISIONES.md):
+ * vercel.json manda acá solo a los bots de vista previa; las personas reciben
+ * el index.html estático de siempre.
  *
  * Devuelve el index.html de la app con las etiquetas Open Graph y Twitter del
  * caso. Lee el caso con la clave pública de la app (la publishable o, de
  * respaldo, la anon). Si no existe, está oculto o se unió a otro, usa las
  * genéricas. Nunca pone datos personales: ni el contacto, ni quién publicó,
  * ni dónde está. Por eso tampoco usa la descripción libre del caso, donde
- * alguien pudo haber escrito un teléfono, ni un color con números.
+ * alguien pudo haber escrito un teléfono, ni un color con números. De una
+ * historia, solo lo que muestra el muro: el nombre (si la familia quiso), la
+ * especie, los días y la foto; ni siquiera la frase.
  *
  * Sin dependencias: fetch y Response del runtime. Importa con rutas relativas
  * los mismos textos, URLs y miniaturas que usa la app.
  */
 import { t } from '../src/i18n/es-UY';
-import { datosParaCompartir, linkDelCaso } from '../src/lib/compartir';
+import { datosParaCompartir, linkDeHistoria, linkDelCaso } from '../src/lib/compartir';
 import { ENV, esClaveNueva } from '../src/lib/env';
 import { LADO_MINIATURA, urlFoto, urlMiniatura } from '../src/lib/imagenes';
 import type { EstadoAnimal, Especie, Tamanio, TipoReporte } from '../src/types/dominio';
@@ -41,6 +44,18 @@ type Caso = {
   oculto: boolean;
 };
 
+/** Lo que devuelve historia_reencuentro: lo mismo que el muro, más si está oculta. */
+type Historia = {
+  animal_id: string;
+  nombre: string | null;
+  especie: Especie;
+  foto_path: string;
+  dias: number;
+  oculta: boolean;
+};
+
+type Pedido = { tipo: 'caso' | 'historia'; id: string } | null;
+
 type Etiquetas = {
   titulo: string;
   descripcion: string;
@@ -50,11 +65,12 @@ type Etiquetas = {
 
 let plantilla: { html: string; hasta: number } | null = null;
 
+const GENERICOS: string[] = [t.app.nombre, t.reencuentros.vistaPrevia.tituloGenerico];
+
 export async function GET(request: Request): Promise<Response> {
-  const pedido = new URL(request.url);
-  const id = idDelPedido(pedido);
-  const [html, caso] = await Promise.all([leerPlantilla(pedido.origin), leerCaso(id)]);
-  const etiquetas = caso ? await etiquetasDelCaso(caso) : etiquetasGenericas(id);
+  const url = new URL(request.url);
+  const pedido = queSePide(url);
+  const [html, etiquetas] = await Promise.all([leerPlantilla(url.origin), etiquetasDe(pedido)]);
 
   return new Response(insertarEtiquetas(html ?? PLANTILLA_MINIMA, etiquetas), {
     headers: {
@@ -73,15 +89,37 @@ export async function HEAD(request: Request): Promise<Response> {
 }
 
 /**
- * El id llega como ?id= (rewrite de vercel.json) o en la ruta /animal/<id>.
- * Si llega más de uno (/animal/<A>?id=<B>), ninguno: la vista previa podría
- * mostrar un caso y el link abrir otro (auditoría 2, S-B7).
+ * El id llega como ?id= o ?historia= (rewrites de vercel.json) o en la ruta
+ * (/animal/<id> o /reencuentros/<id>). Si llega más de uno (/animal/<A>?id=<B>,
+ * o un caso y una historia), ninguno: la vista previa podría mostrar una cosa
+ * y el link abrir otra (auditoría 2, S-B7).
  */
-function idDelPedido(pedido: URL): string | null {
-  const ids = pedido.searchParams.getAll('id');
-  if (ids.length > 1) return null;
-  const id = ids[0] ?? /^\/animal\/([^/]+)\/?$/.exec(pedido.pathname)?.[1] ?? null;
-  return id && ID_VALIDO.test(id) ? id.toLowerCase() : null;
+function queSePide(url: URL): Pedido {
+  const casos = [
+    ...url.searchParams.getAll('id'),
+    ...[/^\/animal\/([^/]+)\/?$/.exec(url.pathname)?.[1]].filter((x): x is string => !!x),
+  ];
+  const historias = [
+    ...url.searchParams.getAll('historia'),
+    ...[/^\/reencuentros\/([^/]+)\/?$/.exec(url.pathname)?.[1]].filter((x): x is string => !!x),
+  ];
+  // La ruta y el parámetro del rewrite son el mismo id: cuenta una vez.
+  const unicos = (ids: string[]) => [...new Set(ids.map((x) => x.toLowerCase()))];
+  const [caso, historia] = [unicos(casos), unicos(historias)];
+  if (caso.length + historia.length !== 1) return null;
+  const id = caso[0] ?? historia[0];
+  if (!ID_VALIDO.test(id)) return null;
+  return { tipo: caso.length === 1 ? 'caso' : 'historia', id };
+}
+
+async function etiquetasDe(pedido: Pedido): Promise<Etiquetas> {
+  if (pedido?.tipo === 'historia') {
+    const historia = await leerHistoria(pedido.id);
+    return historia ? etiquetasDeHistoria(historia) : etiquetasGenericasDeHistoria(pedido.id);
+  }
+  const id = pedido?.id ?? null;
+  const caso = await leerCaso(id);
+  return caso ? etiquetasDelCaso(caso) : etiquetasGenericas(id);
 }
 
 /**
@@ -133,6 +171,45 @@ async function leerCaso(id: string | null): Promise<Caso | null> {
   } catch {
     return null;
   }
+}
+
+/** La historia de un reencuentro, por la misma RPC que usa el muro (solo lo público). */
+async function leerHistoria(id: string): Promise<Historia | null> {
+  try {
+    const url = `${ENV.supabaseUrl.replace(/\/+$/, '')}/rest/v1/rpc/historia_reencuentro`;
+    const respuesta = await fetch(url, {
+      method: 'POST',
+      headers: { ...encabezadosDeLectura(ENV.supabaseKey), 'content-type': 'application/json' },
+      body: JSON.stringify({ p_animal_id: id }),
+      signal: AbortSignal.timeout(ESPERA_MS),
+    });
+    if (!respuesta.ok) return null;
+    const [historia] = (await respuesta.json()) as Historia[];
+    // Sin cuenta nunca llega una oculta; si llegara, como si no existiera.
+    if (!historia || historia.oculta) return null;
+    return historia;
+  } catch {
+    return null;
+  }
+}
+
+async function etiquetasDeHistoria(historia: Historia): Promise<Etiquetas> {
+  const titulo = t.reencuentros.tituloHistoria(historia.nombre, historia.especie);
+  return {
+    titulo: t.reencuentros.vistaPrevia.titulo(titulo),
+    descripcion: t.reencuentros.vistaPrevia.descripcion(t.reencuentros.dias(historia.dias)),
+    url: linkDeHistoria(historia.animal_id),
+    imagen: await imagenDelCaso(historia.foto_path),
+  };
+}
+
+function etiquetasGenericasDeHistoria(id: string): Etiquetas {
+  return {
+    titulo: t.reencuentros.vistaPrevia.tituloGenerico,
+    descripcion: t.reencuentros.vistaPrevia.descripcionGenerica,
+    url: linkDeHistoria(id),
+    imagen: null,
+  };
 }
 
 async function etiquetasDelCaso(caso: Caso): Promise<Etiquetas> {
@@ -188,8 +265,8 @@ function insertarEtiquetas(html: string, e: Etiquetas): string {
   const meta = (atributo: 'name' | 'property', clave: string, valor: string) =>
     `<meta ${atributo}="${clave}" content="${escapar(valor)}" />`;
   const etiquetas = [
-    // Las genéricas ya se llaman como la app: no se repite el nombre.
-    `<title>${escapar(e.titulo === t.app.nombre ? e.titulo : `${e.titulo} · ${t.app.nombre}`)}</title>`,
+    // Las genéricas ya nombran la app: no se repite el nombre.
+    `<title>${escapar(GENERICOS.includes(e.titulo) ? e.titulo : `${e.titulo} · ${t.app.nombre}`)}</title>`,
     meta('name', 'description', e.descripcion),
     `<link rel="canonical" href="${escapar(e.url)}" />`,
     meta('property', 'og:type', 'website'),

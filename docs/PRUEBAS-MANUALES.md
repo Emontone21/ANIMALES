@@ -1,6 +1,6 @@
 # Pruebas manuales
 
-Recorrido de toda la app, paso a paso, para hacer en la web publicada (https://animales-blue.vercel.app). Lleva unos 90 minutos en un dispositivo; en los otros dos se repite marcando la casilla de cada uno.
+Recorrido de toda la app, paso a paso, para hacer en la web publicada (https://animales-blue.vercel.app). Lleva unos 100 minutos en un dispositivo; en los otros dos se repite marcando la casilla de cada uno.
 
 - **Dispositivos:** Android con Chrome, iPhone con Safari y una computadora (cualquier navegador). Cada flujo tiene una casilla por dispositivo.
 - **Cuentas:** dos, que en esta lista se llaman **familia** (publica un perro perdido) y **vecina** (lo encuentra y lo ve). Para probar de a una persona: familia en el celular y vecina en la computadora, o una en una ventana privada.
@@ -17,7 +17,7 @@ Tené a mano dos fotos parecidas de un mismo perro (o de dos perros parecidos) e
 
 **Cuentas.** Si no hay SMTP propio, creá las dos cuentas desde Supabase: **Authentication → Users → Add user → Create new user**, con **Auto Confirm User** marcado. Con SMTP propio, creálas desde la app: **Perfil → Crear cuenta** [SMTP].
 
-**Familia, moderadora.** Para los pasos 14, 15 y 23, en el SQL Editor (reemplazá el email):
+**Familia, moderadora.** Para los pasos 14, 15, 23 y 32, en el SQL Editor (reemplazá el email):
 
 ```sql
 update perfiles set es_moderador = true
@@ -686,6 +686,39 @@ Esperado:
 - El caso de demo sale igual: con la foto, o con el color de la especie y la chapita si la foto no se puede usar.
 - En el navegador de WhatsApp (o una computadora sin hoja de compartir) el botón es **Descargar la imagen**, baja `spot-historia.jpg` y copia el link.
 - Un caso reunido o de otra persona oculto no muestra el botón.
+
+- [ ] Android · Chrome
+- [ ] iPhone · Safari
+- [ ] Computadora
+
+## 32. Muro de reencuentros · 12 min
+
+Cuentas: familia, vecina y ninguna. Familia con un perdido abierto ("Toby prueba"), donde la vecina avisó que lo vio y le escribió (pasos 7 y 8 o los de 30). Familia, moderadora (paso 1).
+
+1. **Familia:** abrí el caso y tocá **Se reunió con su familia**.
+2. En "¡Qué alegría!", tocá **Ahora no**. Bajá hasta **Cómo volvió**.
+3. Tocá **Contar cómo volvió**. Sin escribir nada, tocá **Publicar la historia**.
+4. Elegí una foto, escribí "La vecina lo vio en la plaza, llamala al 099 123 456", dejá **Mostrar el nombre** prendido, marcá a la vecina, escribí un mensaje y tocá **Publicar la historia**.
+5. **Sin cuenta** (ventana privada): **Perfil → Ver las historias**. Después andá al mapa (con algún caso cerca) y desplazá "Cerca tuyo" hasta el final.
+6. En la historia: **Compartir** (y pegá el link en WhatsApp) y **Compartir en historias** (Android y iPhone).
+7. **Vecina:** **Actividad** y **Perfil**. Si tiene el celular con notificaciones (30), bloqueá la pantalla antes del paso 4.
+8. **Familia:** volvé al caso, **Editar la historia**, apagá **Mostrar el nombre** y guardá. Después probá **Borrar la historia** y volvé a contarla.
+9. **Vecina:** en el muro, **Más opciones → Denunciar la historia**. **Familia:** **Perfil → Panel de moderación**, en la denuncia: **Ocultar la historia**; mirá el muro sin cuenta; **Volver a mostrar la historia**.
+10. **Familia:** **Perfil → Apariencia → Oscuro** y mirá el muro y la historia de Instagram.
+
+Esperado:
+- Al marcarlo reunido aparece "¡Qué alegría! ¿Querés contar cómo volvió?". Solo la familia de un perdido lo ve; en un encontrado, el aviso de siempre.
+- Sin frase ni a quién agradecer: "Escribí cómo volvió o marcá a quién agradecerle.".
+- El formulario avisa que las personas de la foto tienen que estar de acuerdo. La lista de quienes participaron muestra a la vecina con "Avisó que lo vio · Te escribió" (y "Lo resguardó" si lo resguardó); nunca a la familia ni a alguien bloqueado.
+- Publicada, se abre su página: el nombre, "Volvió a casa después de N días", la frase con "[dato oculto]" en lugar del teléfono y la fecha.
+- **El muro sin cuenta:** el contador (con menos de 5 reencuentros, "Los primeros reencuentros de Spot") y la historia arriba de todo. No aparecen el nombre de la familia ni de la vecina, el mensaje del agradecimiento, contactos ni dónde.
+- **Más opciones** de la historia, en el muro y en su link: sin cuenta y con la cuenta de la vecina, solo "Denunciar la historia"; la familia (y moderación) ve además "Ver el caso".
+- **"Cerca tuyo":** al final del carrusel, la tarjeta "N volvieron a casa · Ver historias" (o "Los primeros reencuentros de Spot"), que lleva al muro. En la computadora, al final de la lista del panel.
+- El link (`/reencuentros/<id>`) en WhatsApp muestra "Toby prueba volvió a casa" con la foto, sin la frase. La imagen de Instagram dice "VOLVIÓ A CASA", el nombre, los días y la frase (cortada con "…»" si es larga), y copia el link de la historia.
+- A la vecina le llega "La familia de Toby prueba te agradeció" con el mensaje, en **Actividad** y en el celular, y **Perfil** dice "Ayudaste a reunir a 1 familia.".
+- Sin el nombre, el muro dice "Un perro". Borrada, sale del muro; contarla de nuevo no le vuelve a avisar a la vecina (ya le agradeciste).
+- Oculta por moderación, sale del muro y su link dice "Esta historia no está disponible."; la familia la sigue viendo, con el aviso y sin compartir. Si se oculta el caso, la historia tampoco se ve.
+- En oscuro, el muro y la imagen se leen bien.
 
 - [ ] Android · Chrome
 - [ ] iPhone · Safari

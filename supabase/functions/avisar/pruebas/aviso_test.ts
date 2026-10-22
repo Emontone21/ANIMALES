@@ -107,3 +107,25 @@ Deno.test('ids que no son uuid no arman rutas', () => {
   assertEquals(mensaje.url, '/actividad');
   assertEquals(mensaje.tag, 'spot');
 });
+
+Deno.test('un agradecimiento: la familia del animal, sin el mensaje ni quién lo mandó, y abre Actividad', () => {
+  const { mensaje, opciones } = armarMensaje(aviso({ tipo: 'agradecimiento', evento: null }));
+  assertEquals(mensaje, {
+    titulo: 'La familia de Toby te agradeció',
+    cuerpo: 'Gracias por ayudar a que volviera a casa.',
+    url: '/actividad',
+    tag: `agradecimiento-${ANIMAL}`,
+  });
+  // No reemplaza (ni lo reemplaza) el "¡Volvió con su familia!" del mismo caso.
+  assertStrictEquals(opciones.topic, undefined);
+  assertEquals(opciones.urgencia, 'normal');
+  assertEquals(
+    armarMensaje(aviso({ tipo: 'agradecimiento', evento: null, nombre: null })).mensaje.titulo,
+    'La familia del perro te agradeció',
+  );
+  assertEquals(
+    armarMensaje(aviso({ tipo: 'agradecimiento', evento: null, nombre: 'Llamar 099123456', especie: 'gato' }))
+      .mensaje.titulo,
+    'La familia del gato te agradeció',
+  );
+});

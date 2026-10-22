@@ -357,6 +357,11 @@ export const t = {
       Especie,
       string
     >,
+    /** Para "La familia del perro te agradeció". */
+    animalDe: { perro: 'del perro', gato: 'del gato', otro: 'del animal' } satisfies Record<
+      Especie,
+      string
+    >,
     /** "Alguien vio a Toby" / "Alguien vio al perro". */
     visto: {
       titulo: (aAnimal: string) => `Alguien vio ${aAnimal}`,
@@ -389,6 +394,11 @@ export const t = {
       titulo: (elAnimal: string | null) =>
         elAnimal ? `Tenés un mensaje nuevo sobre ${elAnimal}` : 'Tenés un mensaje nuevo',
       cuerpo: 'Tocá para leerlo.',
+    },
+    /** "La familia de Toby te agradeció". Nunca el mensaje ni quién lo mandó. */
+    agradecimiento: {
+      titulo: (deAnimal: string) => `La familia ${deAnimal} te agradeció`,
+      cuerpo: 'Gracias por ayudar a que volviera a casa.',
     },
     errorNuevo: {
       titulo: 'Llegó un reporte de un error',
@@ -565,6 +575,131 @@ export const t = {
       encontrado: `Ayudá a encontrar a su familia en ${NOMBRE}`,
     } satisfies Record<TipoReporte, string>,
     nombreArchivo: 'spot-historia.jpg',
+    /** La variante de un reencuentro (/reencuentros): "VOLVIÓ A CASA". */
+    reencuentro: {
+      etiqueta: 'VOLVIÓ A CASA',
+      ayuda: `Conocé más reencuentros en ${NOMBRE}`,
+      intro:
+        'Una imagen para tu historia de Instagram o tu estado de WhatsApp, con la foto y la frase del reencuentro.',
+      pistaAntes:
+        'Al compartirla copiamos el link de la historia: en Instagram, sumalo con el sticker de enlace.',
+    },
+  },
+  /**
+   * El muro de reencuentros (/reencuentros) y contar cómo volvió
+   * (/animal/<id>/reencuentro). El muro no nombra a nadie.
+   */
+  reencuentros: {
+    titulo: 'Reencuentros',
+    intro: 'Animales que volvieron a casa, contados por sus familias.',
+    /** El contador grande del muro. Con menos de 5, sin número. */
+    contadorPrimeros: `Los primeros reencuentros de ${NOMBRE}`,
+    contadorDetalle: (n: number) =>
+      n === 1 ? `animal volvió a casa con ${NOMBRE}` : `animales volvieron a casa con ${NOMBRE}`,
+    contadorAccesible: (n: number) =>
+      n === 1
+        ? `1 animal volvió a casa con ${NOMBRE}`
+        : `${n} animales volvieron a casa con ${NOMBRE}`,
+    /** La tarjeta de "Cerca tuyo": "34 volvieron a casa · Ver historias". */
+    tarjeta: (n: number | null) =>
+      n === null ? `Los primeros reencuentros de ${NOMBRE}` : `${n} volvieron a casa`,
+    verHistorias: 'Ver historias',
+    /** "Toby" o, si la familia no quiso mostrar el nombre, "Un perro". */
+    tituloHistoria: (nombre: string | null, especie: Especie) =>
+      nombre ?? t.especieConArticulo[especie],
+    dias: (dias: number) =>
+      dias <= 0
+        ? 'Volvió a casa el mismo día'
+        : dias === 1
+          ? 'Volvió a casa después de 1 día'
+          : `Volvió a casa después de ${dias} días`,
+    /** La fecha de la tarjeta: "El 21 de octubre". */
+    fecha: (cuando: string) => mayuscula(cuando),
+    /** Texto alternativo de la foto. */
+    fotoDe: (titulo: string) => `Foto del reencuentro de ${titulo}`,
+    vacio:
+      'Todavía no hay historias. Cuando una familia cuente cómo volvió su animal, va a aparecer acá.',
+    verMas: 'Ver más historias',
+    verTodas: 'Ver todos los reencuentros',
+    verCaso: 'Ver el caso',
+    noDisponible: 'Esta historia no está disponible.',
+    oculta: 'Esta historia fue ocultada por moderación: no se ve en el muro.',
+    opciones: 'Más opciones',
+    denunciar: 'Denunciar la historia',
+    denunciada: 'Ya denunciaste esta historia',
+    denunciaTitulo: 'Denunciar la historia',
+    denunciaIntro: 'Contanos qué tiene de malo. Moderación la revisa y, si hace falta, la oculta.',
+    denunciaExito: 'Gracias: moderación la va a revisar.',
+    requiereCuenta: 'Para denunciar una historia necesitás una cuenta.',
+    /** El texto que acompaña al link: "Toby volvió a casa con Spot. Mirá su historia:". */
+    compartirTexto: (titulo: string) => `${titulo} volvió a casa con ${NOMBRE}. Mirá su historia:`,
+    /** Vista previa del link (api/vista-previa.ts). Sin datos de nadie. */
+    vistaPrevia: {
+      titulo: (titulo: string) => `${titulo} volvió a casa`,
+      descripcion: (dias: string) => `${dias}. Mirá más reencuentros en ${NOMBRE}.`,
+      tituloGenerico: `Reencuentros en ${NOMBRE}`,
+      descripcionGenerica:
+        'Animales que volvieron a casa en Montevideo, contados por sus familias.',
+    },
+    /** En el detalle de un caso reunido. */
+    enElCaso: {
+      titulo: 'Cómo volvió',
+      pregunta: '¿Querés contar cómo volvió?',
+      ayuda: 'Tu historia sale en el muro de reencuentros, sin tus datos ni dónde fue.',
+      contar: 'Contar cómo volvió',
+      editar: 'Editar la historia',
+      verEnElMuro: 'Ver en el muro',
+    },
+    /** La pregunta al marcar el caso como reunido. */
+    alegria: {
+      titulo: '¡Qué alegría!',
+      pregunta: '¿Querés contar cómo volvió? También podés agradecerle a quien te ayudó.',
+      contar: 'Contar cómo volvió',
+      ahoraNo: 'Ahora no',
+    },
+    contar: {
+      titulo: 'Contá cómo volvió',
+      intro:
+        'Tu historia sale en el muro de reencuentros, sin tus datos ni dónde fue. Es opcional y la podés editar o borrar cuando quieras.',
+      historia: 'Tu historia (opcional)',
+      foto: 'Foto del reencuentro (opcional)',
+      fotoAyuda: 'Si no elegís una, usamos la foto del caso.',
+      avisoPersonas: 'Si en la foto aparecen personas, que estén de acuerdo en que se publique.',
+      usarFotoDelCaso: 'Usar la foto del caso',
+      frase: '¿Cómo volvió?',
+      frasePlaceholder: 'Una vecina lo vio en la plaza y nos escribió…',
+      fraseAyuda: 'Hasta 280 caracteres. Los teléfonos, links y emails no se publican.',
+      caracteres: (n: number) => `${n} de 280`,
+      mostrarNombre: (nombre: string) => `Mostrar el nombre (${nombre})`,
+      mostrarNombreAyuda: 'Si lo apagás, el muro dice la especie.',
+      agradecer: 'Agradecer (opcional)',
+      agradecerIntro:
+        'Quienes participaron en el caso. Marcá a quién agradecerle: le llega a Actividad y nadie más lo ve.',
+      sinParticipantes: 'Nadie más participó en el caso.',
+      /** Cómo participó cada persona: "Avisó que lo vio · Te escribió". */
+      comoAyudo: { vio: 'Avisó que lo vio', resguardo: 'Lo resguardó', escribio: 'Te escribió' },
+      yaAgradeciste: 'Ya le agradeciste',
+      mensaje: 'Mensaje (opcional)',
+      mensajePlaceholder: '¡Gracias por avisar!',
+      mensajeAyuda: 'Les llega a todos los que marques. Los teléfonos, links y emails se tapan.',
+      publicar: 'Publicar la historia',
+      guardar: 'Guardar los cambios',
+      soloAgradecer: 'Agradecer',
+      nadaQueGuardar: 'Escribí cómo volvió o marcá a quién agradecerle.',
+      fraseVacia: 'Para sacar la historia del muro, tocá Borrar la historia.',
+      fraseLarga: 'La historia puede tener hasta 280 caracteres.',
+      mensajeLargo: 'El mensaje puede tener hasta 280 caracteres.',
+      exitoHistoria: '¡Gracias por contarlo! Ya está en el muro.',
+      exitoAgradecer: 'Listo: les llegó tu agradecimiento.',
+      errorFoto: 'No pudimos subir la foto. Probá de nuevo.',
+      borrar: 'Borrar la historia',
+      borrarTitulo: '¿Borrar la historia?',
+      borrarDetalle: 'Sale del muro y se borra su foto. Los agradecimientos que mandaste quedan.',
+      borrarBoton: 'Borrar la historia',
+      borrada: 'Listo: borramos la historia.',
+      errorBorrarFotos: 'No pudimos borrar la foto. Probá de nuevo.',
+      soloFamilia: 'Solo la familia puede contar cómo volvió, con el caso cerrado como reunido.',
+    },
   },
   mensajes: {
     titulo: 'Mensajes',
@@ -615,6 +750,11 @@ export const t = {
     cuentaNueva: 'Cuenta nueva',
     cuentaNuevaAyuda:
       'La cuenta tenía menos de 7 días: no cuenta para ocultar sola la publicación.',
+    /** Una denuncia de la historia de un reencuentro, no del caso. */
+    historia: 'Historia del reencuentro',
+    ocultarHistoria: 'Ocultar la historia',
+    mostrarHistoria: 'Volver a mostrar la historia',
+    verHistoria: 'Ver la historia',
   },
   /** Moderación › Reconocimiento (servicio de visión). */
   reconocimiento: {
@@ -878,6 +1018,11 @@ export const t = {
     borrarCuenta: 'Borrar mi cuenta',
     /** Sección con "Instalar la app" y "Reportar un error". */
     laApp: 'La app',
+    reencuentros: 'Reencuentros',
+    verReencuentros: 'Ver las historias',
+    /** Solo cuenta lo que una familia agradeció (familias_que_ayude). */
+    ayudaste: (n: number) =>
+      n === 1 ? 'Ayudaste a reunir a 1 familia.' : `Ayudaste a reunir a ${n} familias.`,
   },
   instalar: {
     boton: 'Instalar la app',

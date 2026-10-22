@@ -79,7 +79,7 @@ function Denuncias() {
   const router = useRouter();
   const estilos = useEstilos(crear);
   const denuncias = useDenuncias(true);
-  const { resolver, ocultar } = useAccionesModeracion();
+  const { resolver, ocultar, ocultarDeHistoria } = useAccionesModeracion();
 
   return (
     <>
@@ -96,83 +96,126 @@ function Denuncias() {
         <Texto variante="secundario">{t.moderacion.vacio}</Texto>
       ) : (
         <View style={estilos.filas}>
-          {denuncias.data.map((d) => (
-            <View key={d.id} style={estilos.tarjeta}>
-              <View style={estilos.cabecera}>
-                <FotoMiniatura
-                  ruta={d.animal_foto_path}
-                  descripcion={t.especie[d.animal_especie]}
-                  style={estilos.foto}
-                  contentFit="cover"
-                  accessibilityIgnoresInvertColors
-                />
-                <View style={estilos.cuerpo}>
-                  <View style={estilos.fila}>
-                    <Etiqueta
-                      texto={t.estadoDenuncia[d.estado]}
-                      fondo={d.estado === 'pendiente' ? 'avisoFondo' : 'superficieSuave'}
-                      color={d.estado === 'pendiente' ? 'texto' : 'textoSecundario'}
-                    />
-                    {d.animal_oculto ? (
-                      <Etiqueta texto={t.moderacion.oculta} fondo="peligroSuave" color="peligro" />
-                    ) : null}
-                    {d.cuenta_nueva ? (
+          {denuncias.data.map((d) => {
+            // Una denuncia de la historia del reencuentro: se modera la historia, no el caso.
+            const oculta = d.historia ? d.historia_oculta : d.animal_oculto;
+            return (
+              <View key={d.id} style={estilos.tarjeta}>
+                <View style={estilos.cabecera}>
+                  <FotoMiniatura
+                    ruta={(d.historia ? d.historia_foto_path : null) ?? d.animal_foto_path}
+                    descripcion={t.especie[d.animal_especie]}
+                    style={estilos.foto}
+                    contentFit="cover"
+                    accessibilityIgnoresInvertColors
+                  />
+                  <View style={estilos.cuerpo}>
+                    <View style={estilos.fila}>
                       <Etiqueta
-                        texto={t.moderacion.cuentaNueva}
-                        fondo="superficieSuave"
-                        color="textoSecundario"
+                        texto={t.estadoDenuncia[d.estado]}
+                        fondo={d.estado === 'pendiente' ? 'avisoFondo' : 'superficieSuave'}
+                        color={d.estado === 'pendiente' ? 'texto' : 'textoSecundario'}
                       />
+                      {d.historia ? (
+                        <Etiqueta
+                          texto={t.moderacion.historia}
+                          fondo="primarioSuave"
+                          color="textoPrimarioSuave"
+                        />
+                      ) : null}
+                      {oculta ? (
+                        <Etiqueta
+                          texto={t.moderacion.oculta}
+                          fondo="peligroSuave"
+                          color="peligro"
+                        />
+                      ) : null}
+                      {d.cuenta_nueva ? (
+                        <Etiqueta
+                          texto={t.moderacion.cuentaNueva}
+                          fondo="superficieSuave"
+                          color="textoSecundario"
+                        />
+                      ) : null}
+                    </View>
+                    <Texto style={estilos.titulo}>{t.motivoDenuncia[d.motivo]}</Texto>
+                    <Texto variante="pequeno">
+                      {d.denunciante_nombre} · {fechaHoraCorta(d.created_at)}
+                    </Texto>
+                    {d.cuenta_nueva ? (
+                      <Texto variante="pequeno">{t.moderacion.cuentaNuevaAyuda}</Texto>
+                    ) : null}
+                    {d.detalle ? <Texto variante="secundario">{d.detalle}</Texto> : null}
+                    {d.historia && d.historia_frase ? (
+                      <Texto color="textoCuerpo">{d.historia_frase}</Texto>
                     ) : null}
                   </View>
-                  <Texto style={estilos.titulo}>{t.motivoDenuncia[d.motivo]}</Texto>
-                  <Texto variante="pequeno">
-                    {d.denunciante_nombre} · {fechaHoraCorta(d.created_at)}
-                  </Texto>
-                  {d.cuenta_nueva ? (
-                    <Texto variante="pequeno">{t.moderacion.cuentaNuevaAyuda}</Texto>
-                  ) : null}
-                  {d.detalle ? <Texto variante="secundario">{d.detalle}</Texto> : null}
                 </View>
+                {d.historia ? (
+                  <View style={estilos.fila}>
+                    <Boton
+                      titulo={t.moderacion.verHistoria}
+                      variante="fantasma"
+                      icono="open-outline"
+                      onPress={() => router.push(`/reencuentros/${d.animal_id}`)}
+                      style={estilos.boton}
+                    />
+                    <Boton
+                      titulo={oculta ? t.moderacion.mostrarHistoria : t.moderacion.ocultarHistoria}
+                      variante="secundario"
+                      icono={oculta ? 'eye-outline' : 'eye-off-outline'}
+                      cargando={
+                        ocultarDeHistoria.isPending &&
+                        ocultarDeHistoria.variables?.animalId === d.animal_id
+                      }
+                      onPress={() =>
+                        ocultarDeHistoria.mutate({ animalId: d.animal_id, oculta: !oculta })
+                      }
+                      style={estilos.boton}
+                    />
+                  </View>
+                ) : (
+                  <View style={estilos.fila}>
+                    <Boton
+                      titulo={t.mapa.verDetalle}
+                      variante="fantasma"
+                      icono="open-outline"
+                      onPress={() => router.push(`/animal/${d.animal_id}`)}
+                      style={estilos.boton}
+                    />
+                    <Boton
+                      titulo={d.animal_oculto ? t.moderacion.mostrar : t.moderacion.ocultar}
+                      variante="secundario"
+                      icono={d.animal_oculto ? 'eye-outline' : 'eye-off-outline'}
+                      cargando={ocultar.isPending && ocultar.variables?.animalId === d.animal_id}
+                      onPress={() =>
+                        ocultar.mutate({ animalId: d.animal_id, oculto: !d.animal_oculto })
+                      }
+                      style={estilos.boton}
+                    />
+                  </View>
+                )}
+                {d.estado === 'pendiente' ? (
+                  <View style={estilos.fila}>
+                    <Boton
+                      titulo={t.moderacion.marcarRevisada}
+                      icono="checkmark-outline"
+                      cargando={resolver.isPending && resolver.variables?.id === d.id}
+                      onPress={() => resolver.mutate({ id: d.id, estado: 'revisada' })}
+                      style={estilos.boton}
+                    />
+                    <Boton
+                      titulo={t.moderacion.descartar}
+                      variante="secundario"
+                      icono="close-outline"
+                      onPress={() => resolver.mutate({ id: d.id, estado: 'descartada' })}
+                      style={estilos.boton}
+                    />
+                  </View>
+                ) : null}
               </View>
-              <View style={estilos.fila}>
-                <Boton
-                  titulo={t.mapa.verDetalle}
-                  variante="fantasma"
-                  icono="open-outline"
-                  onPress={() => router.push(`/animal/${d.animal_id}`)}
-                  style={estilos.boton}
-                />
-                <Boton
-                  titulo={d.animal_oculto ? t.moderacion.mostrar : t.moderacion.ocultar}
-                  variante="secundario"
-                  icono={d.animal_oculto ? 'eye-outline' : 'eye-off-outline'}
-                  cargando={ocultar.isPending && ocultar.variables?.animalId === d.animal_id}
-                  onPress={() =>
-                    ocultar.mutate({ animalId: d.animal_id, oculto: !d.animal_oculto })
-                  }
-                  style={estilos.boton}
-                />
-              </View>
-              {d.estado === 'pendiente' ? (
-                <View style={estilos.fila}>
-                  <Boton
-                    titulo={t.moderacion.marcarRevisada}
-                    icono="checkmark-outline"
-                    cargando={resolver.isPending && resolver.variables?.id === d.id}
-                    onPress={() => resolver.mutate({ id: d.id, estado: 'revisada' })}
-                    style={estilos.boton}
-                  />
-                  <Boton
-                    titulo={t.moderacion.descartar}
-                    variante="secundario"
-                    icono="close-outline"
-                    onPress={() => resolver.mutate({ id: d.id, estado: 'descartada' })}
-                    style={estilos.boton}
-                  />
-                </View>
-              ) : null}
-            </View>
-          ))}
+            );
+          })}
         </View>
       )}
     </>

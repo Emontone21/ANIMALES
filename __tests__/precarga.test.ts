@@ -16,6 +16,15 @@ describe('Qué se adelanta según la ruta de entrada (precarga)', () => {
     expect(consultaInicial(`/animal/${id}/`)).toEqual({ tipo: 'caso', id });
   });
 
+  test('el link de una historia del muro pide esa historia; el muro, nada', () => {
+    const id = 'b0000000-0000-4000-8000-000000000004';
+    expect(consultaInicial(`/reencuentros/${id}`)).toEqual({ tipo: 'historia', id });
+    expect(consultaInicial(`/reencuentros/${id}/`)).toEqual({ tipo: 'historia', id });
+    expect(consultaInicial('/reencuentros')).toBeNull();
+    expect(consultaInicial(`/reencuentros/${id}/otra`)).toBeNull();
+    expect(consultaInicial('/animal/abc/reencuentro')).toBeNull();
+  });
+
   test('el resto no adelanta nada', () => {
     expect(consultaInicial('/animal/abc/editar')).toBeNull();
     expect(consultaInicial('/animal')).toBeNull();

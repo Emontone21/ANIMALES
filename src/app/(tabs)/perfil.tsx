@@ -22,6 +22,7 @@ import { useAuth } from '@/features/auth/AuthProvider';
 import { useAlternarBloqueo, useBloqueados } from '@/features/bloqueos/api';
 import { useInstalar } from '@/features/instalar/useInstalar';
 import { usePerfil } from '@/features/perfil/api';
+import { useFamiliasQueAyude } from '@/features/reencuentros/ayude';
 import { useMisAnimales } from '@/features/reportes/api';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
@@ -54,6 +55,7 @@ export default function PantallaPerfil() {
   const { data: perfil } = usePerfil(usuario?.id);
   const misAnimales = useMisAnimales(usuario?.id);
   const bloqueados = useBloqueados(usuario?.id);
+  const ayude = useFamiliasQueAyude(usuario?.id);
   const alternarBloqueo = useAlternarBloqueo(usuario?.id);
   const [saliendo, setSaliendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -138,6 +140,22 @@ export default function PantallaPerfil() {
           onPress={() => router.push('/moderacion')}
         />
       ) : null}
+
+      <View style={estilos.seccion}>
+        <Texto variante="subtitulo" accessibilityRole="header">
+          {t.perfil.reencuentros}
+        </Texto>
+        {/* Solo cuenta lo que una familia agradeció (familias_que_ayude). */}
+        {usuario && ayude.data ? (
+          <Texto variante="cuerpoFuerte">{t.perfil.ayudaste(ayude.data)}</Texto>
+        ) : null}
+        <Boton
+          titulo={t.perfil.verReencuentros}
+          icono="heart-outline"
+          variante="secundario"
+          onPress={() => router.push('/reencuentros')}
+        />
+      </View>
 
       <View style={estilos.seccion}>
         <Texto variante="subtitulo" accessibilityRole="header">

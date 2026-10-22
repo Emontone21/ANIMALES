@@ -253,6 +253,8 @@ export type Database = {
           detalle: string | null;
           estado: Database['public']['Enums']['estado_denuncia'];
           created_at: string;
+          /** De la historia del reencuentro del caso, no del caso (0026). */
+          historia: boolean;
         };
         Insert: {
           id?: string;
@@ -263,6 +265,7 @@ export type Database = {
           detalle?: string | null;
           estado?: Database['public']['Enums']['estado_denuncia'];
           created_at?: string;
+          historia?: boolean;
         };
         Update: {
           id?: string;
@@ -272,6 +275,69 @@ export type Database = {
           motivo?: Database['public']['Enums']['motivo_denuncia'];
           detalle?: string | null;
           estado?: Database['public']['Enums']['estado_denuncia'];
+          created_at?: string;
+          historia?: boolean;
+        };
+        Relationships: [];
+      };
+      historias_reencuentro: {
+        Row: {
+          animal_id: string;
+          familia_id: string;
+          /** Null: la foto del caso. */
+          foto_path: string | null;
+          frase: string;
+          mostrar_nombre: boolean;
+          oculta: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          animal_id: string;
+          familia_id: string;
+          foto_path?: string | null;
+          frase: string;
+          mostrar_nombre?: boolean;
+          oculta?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          animal_id?: string;
+          familia_id?: string;
+          foto_path?: string | null;
+          frase?: string;
+          mostrar_nombre?: boolean;
+          oculta?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      agradecimientos: {
+        Row: {
+          id: string;
+          animal_id: string;
+          familia_id: string;
+          /** Quien ayudó. */
+          usuario_id: string;
+          mensaje: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          animal_id: string;
+          familia_id: string;
+          usuario_id: string;
+          mensaje?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          animal_id?: string;
+          familia_id?: string;
+          usuario_id?: string;
+          mensaje?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -662,6 +728,11 @@ export type Database = {
           animal_estado: Database['public']['Enums']['estado_animal'];
           /** La cuenta tenía menos de 7 días al denunciar: no cuenta para ocultar. */
           cuenta_nueva: boolean;
+          /** De la historia del reencuentro (0026): con su frase, su foto y si está oculta. */
+          historia: boolean;
+          historia_frase: string | null;
+          historia_foto_path: string | null;
+          historia_oculta: boolean;
         };
         Relationships: [];
       };
@@ -790,6 +861,81 @@ export type Database = {
       };
     };
     Functions: {
+      contador_reencuentros: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
+      muro_reencuentros: {
+        Args: { p_limite?: number; p_antes?: string | null };
+        Returns: {
+          animal_id: string;
+          nombre: string | null;
+          especie: Database['public']['Enums']['especie'];
+          foto_path: string;
+          frase: string;
+          dias: number;
+          reunido_en: string;
+        }[];
+      };
+      historia_reencuentro: {
+        Args: { p_animal_id: string };
+        Returns: {
+          animal_id: string;
+          nombre: string | null;
+          especie: Database['public']['Enums']['especie'];
+          foto_path: string;
+          frase: string;
+          dias: number;
+          reunido_en: string;
+          oculta: boolean;
+        }[];
+      };
+      guardar_historia_reencuentro: {
+        Args: {
+          p_animal_id: string;
+          p_frase: string;
+          p_mostrar_nombre?: boolean;
+          p_foto_path?: string | null;
+        };
+        /** Los archivos de la foto anterior, para borrarlos. */
+        Returns: string[];
+      };
+      fotos_de_la_historia: {
+        Args: { p_animal_id: string };
+        Returns: string[];
+      };
+      borrar_historia_reencuentro: {
+        Args: { p_animal_id: string };
+        Returns: undefined;
+      };
+      participantes_del_caso: {
+        Args: { p_animal_id: string };
+        Returns: {
+          usuario_id: string;
+          nombre_publico: string;
+          avatar_path: string | null;
+          lo_vio: boolean;
+          lo_resguardo: boolean;
+          le_escribio: boolean;
+          agradecido: boolean;
+        }[];
+      };
+      agradecer: {
+        Args: { p_animal_id: string; p_usuarios: string[]; p_mensaje?: string | null };
+        Returns: number;
+      };
+      familias_que_ayude: {
+        Args: Record<string, never>;
+        Returns: number;
+      };
+      hay_historia: {
+        Args: { p_animal_id: string };
+        Returns: boolean;
+      };
+      moderar_historia: {
+        Args: { p_animal_id: string; p_oculta: boolean };
+        Returns: undefined;
+      };
       guardar_suscripcion_push: {
         Args: { p_endpoint: string; p_p256dh: string; p_auth: string };
         Returns: string;
@@ -940,7 +1086,8 @@ export type Database = {
       };
     };
     Enums: {
-      tipo_notificacion: 'coincidencia' | 'avistamiento' | 'estado' | 'mensaje' | 'error';
+      tipo_notificacion:
+        'coincidencia' | 'avistamiento' | 'estado' | 'mensaje' | 'error' | 'agradecimiento';
       estado_coincidencia: 'pendiente' | 'confirmada' | 'rechazada';
       estado_cola: 'pendiente' | 'procesando' | 'hecho' | 'error';
       motivo_denuncia: 'spam' | 'contenido_inapropiado' | 'informacion_falsa' | 'maltrato' | 'otro';

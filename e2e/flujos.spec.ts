@@ -13,19 +13,23 @@ import { contraste } from '../src/lib/contraste';
 import type { DatosCompartir } from '../src/types/dominio';
 import {
   abrirIngresar,
+  abrirOpcionesDeHistoria,
   boton,
   campo,
   completarIngreso,
   elegirFoto,
   empiezaCon,
+  escapar,
   esperarFoto,
   hoja,
   idDeLaConversacion,
   idDelCasoNuevo,
   ingresar,
+  leerImagenCompartida,
   mandarMensaje,
   opcion,
   type Persona,
+  simularHojaConArchivos,
   simularPushDelNavegador,
   tarjeta,
   texto,
@@ -53,6 +57,10 @@ function textosDe(sufijo: string) {
     respuestaVecina: `En la esquina de mi casa, hace un rato (${sufijo})`,
     contactoResguardo: `Escribime por la app, lo tengo yo (${sufijo})`,
     notaReunido: `Volvió solo a casa (prueba ${sufijo})`,
+    // Con un teléfono: la base lo tapa con "[dato oculto]" (ocultar_datos_de_contacto).
+    historia: `Una vecina lo vio en la plaza y nos avisó. Llamala al 099 123 456 (prueba ${sufijo})`,
+    historiaPublicada: `Una vecina lo vio en la plaza y nos avisó. Llamala al [dato oculto] (prueba ${sufijo})`,
+    agradecimiento: `¡Gracias por avisar y por cuidarlo! (prueba ${sufijo})`,
     denuncia: `Denuncia de prueba ${sufijo}`,
     nombreNuevo: `Familia ${sufijo} editada`,
     quePaso: `Toqué Lo vi y no pasó nada (prueba ${sufijo})`,
@@ -270,19 +278,7 @@ test.describe.serial('Spot de punta a punta', () => {
     await expect(titulo(p, textos.toby.nombre)).toBeVisible();
     const link = `${SITIO}/animal/${ids.toby}`;
     // Con hoja del sistema que acepta archivos (los celulares): se simula y se anota el archivo.
-    await p.evaluate(() => {
-      const ventana = window as Window & { __archivos?: File[] };
-      Object.defineProperty(navigator, 'canShare', {
-        configurable: true,
-        value: (datos: ShareData) => Array.isArray(datos.files),
-      });
-      Object.defineProperty(navigator, 'share', {
-        configurable: true,
-        value: async (datos: ShareData) => {
-          ventana.__archivos = datos.files;
-        },
-      });
-    });
+    await simularHojaConArchivos(p);
     await boton(p, t.historia.boton).click();
     const historia = hoja(p, t.historia.titulo);
     await expect(
@@ -295,27 +291,7 @@ test.describe.serial('Spot de punta a punta', () => {
 
     // El archivo: un JPEG de 1080 × 1920. El contraste se mide en la imagen: el
     // fondo contra el píxel más distinto de la franja del nombre (sus letras).
-    const imagen = await p.evaluate(async () => {
-      const [archivo] = (window as Window & { __archivos?: File[] }).__archivos ?? [];
-      const mapa = await createImageBitmap(archivo);
-      const lienzo = new OffscreenCanvas(mapa.width, mapa.height);
-      const ctx = lienzo.getContext('2d') as OffscreenCanvasRenderingContext2D;
-      ctx.drawImage(mapa, 0, 0);
-      const aHex = (d: Uint8ClampedArray, i: number) =>
-        `#${[d[i], d[i + 1], d[i + 2]].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
-      const fondo = aHex(ctx.getImageData(30, 30, 1, 1).data, 0);
-      const franja = ctx.getImageData(80, 1210, 920, 110).data;
-      const letras: string[] = [];
-      for (let i = 0; i < franja.length; i += 4 * 7) letras.push(aHex(franja, i));
-      return {
-        nombre: archivo.name,
-        tipo: archivo.type,
-        ancho: mapa.width,
-        alto: mapa.height,
-        fondo,
-        letras,
-      };
-    });
+    const imagen = await leerImagenCompartida(p);
     expect([imagen.nombre, imagen.tipo, imagen.ancho, imagen.alto]).toEqual([
       t.historia.nombreArchivo,
       'image/jpeg',
@@ -475,15 +451,23 @@ test.describe.serial('Spot de punta a punta', () => {
     await navegador.cerrar(anonima);
   });
 
-  test('la familia lo marca como reunido y el caso se cierra', async () => {
+  test('la familia lo marca como reunido: el caso se cierra y la app le pregunta cómo volvió', async () => {
     const f = familia.pagina;
     await expect(f).toHaveURL(new RegExp(`${urlToby()}$`));
     await boton(f, t.animal.acciones.reunido).click();
     const reunido = hoja(f, t.animal.modalReunido.titulo);
     await campo(reunido, t.animal.modalReunido.nota).fill(textos.notaReunido);
     await boton(reunido, t.animal.modalReunido.enviar).click();
-
     await expect(reunido).toHaveCount(0);
+
+    // "¡Qué alegría!": contarlo es opcional y lleva al formulario.
+    const alegria = hoja(f, t.reencuentros.alegria.titulo);
+    await expect(texto(alegria, t.reencuentros.alegria.pregunta)).toBeVisible();
+    await boton(alegria, t.reencuentros.alegria.contar).click();
+    await expect(f).toHaveURL(new RegExp(`${urlToby()}/reencuentro$`));
+    await expect(texto(f, t.reencuentros.contar.intro)).toBeVisible();
+
+    await f.goto(urlToby());
     await expect(texto(f, t.animal.casoCerrado)).toBeVisible();
     await expect(texto(f, t.estado.reunido)).toBeVisible();
     // Cerrado: ni el contacto de la familia ni "Lo vi".
@@ -491,11 +475,170 @@ test.describe.serial('Spot de punta a punta', () => {
     await expect(boton(f, t.animal.acciones.loVi)).toHaveCount(0);
     // Un perdido lo reabre solo su familia.
     await expect(boton(f, t.animal.acciones.reabrir)).toBeVisible();
+    // También lo puede contar después, desde el caso.
+    await expect(texto(f, t.reencuentros.enElCaso.pregunta)).toBeVisible();
 
     const v = vecina.pagina;
     await v.goto(urlToby());
     await expect(texto(v, t.animal.casoCerrado)).toBeVisible();
     await expect(boton(v, t.animal.acciones.reabrir)).toHaveCount(0);
+    await expect(texto(v, t.reencuentros.enElCaso.pregunta)).toHaveCount(0);
+  });
+
+  test('la familia cuenta cómo volvió, con una foto, y le agradece a la vecina', async () => {
+    const f = familia.pagina;
+    const c = t.reencuentros.contar;
+    await boton(f, t.reencuentros.enElCaso.contar).click();
+    await expect(f).toHaveURL(new RegExp(`${urlToby()}/reencuentro$`));
+    await expect(texto(f, c.avisoPersonas)).toBeVisible();
+    await expect(texto(f, c.fotoAyuda)).toBeVisible();
+    // Sin la historia ni a quién agradecerle, no hay nada que guardar.
+    await boton(f, c.publicar).click();
+    await expect(texto(f, c.nadaQueGuardar)).toBeVisible();
+
+    await elegirFoto(f, boton(f, t.publicar.elegirGaleria));
+    await expect(boton(f, c.usarFotoDelCaso)).toBeVisible();
+    await campo(f, c.frase).fill(textos.historia);
+    await expect(
+      f.getByRole('switch', { name: c.mostrarNombre(textos.toby.nombre) }),
+    ).toBeChecked();
+
+    // Quiénes participaron: la vecina lo vio, lo resguardó y le escribió. La familia no está.
+    const como = [c.comoAyudo.vio, c.comoAyudo.resguardo, c.comoAyudo.escribio].join(' · ');
+    const laVecina = f.getByRole('checkbox', { name: `${vecina.cuenta.nombre}. ${como}` });
+    await expect(f.getByRole('checkbox')).toHaveCount(1);
+    await expect(laVecina).toHaveAttribute('aria-checked', 'false');
+    await laVecina.click();
+    await expect(laVecina).toHaveAttribute('aria-checked', 'true');
+    await campo(f, c.mensaje).fill(textos.agradecimiento);
+    await boton(f, c.publicar).click();
+
+    // Publicada: la historia en su página del muro, con la foto nueva y el teléfono tapado.
+    await f.waitForURL(new RegExp(`/reencuentros/${ids.toby}$`), { timeout: 45_000 });
+    await expect(titulo(f, textos.toby.nombre)).toBeVisible();
+    await expect(texto(f, t.reencuentros.dias(2))).toBeVisible();
+    await expect(texto(f, textos.historiaPublicada)).toBeVisible();
+    await expect(f.getByText('099 123 456')).toHaveCount(0);
+    await esperarFoto(f.getByRole('img', { name: t.reencuentros.fotoDe(textos.toby.nombre) }));
+    // La familia (y moderación) tiene "Ver el caso" en las opciones de su historia.
+    const opcionesFamilia = await abrirOpcionesDeHistoria(f);
+    await expect(boton(opcionesFamilia, t.reencuentros.verCaso)).toBeVisible();
+    await expect(boton(opcionesFamilia, t.reencuentros.denunciar)).toBeVisible();
+    await boton(opcionesFamilia, t.comunes.cancelar).click();
+    await expect(opcionesFamilia).toHaveCount(0);
+
+    // En el caso, "Cómo volvió", y la familia la puede editar.
+    await f.goto(urlToby());
+    await expect(titulo(f, t.reencuentros.enElCaso.titulo)).toBeVisible();
+    await expect(texto(f, textos.historiaPublicada)).toBeVisible();
+    await expect(boton(f, t.reencuentros.enElCaso.editar)).toBeVisible();
+  });
+
+  test('el muro, sin cuenta: el contador y la historia sin nombrar a nadie; se comparte con su link y en historias', async ({
+    navegador,
+  }) => {
+    const anonima = await navegador.nuevaPagina('sin-cuenta');
+    // Desde Perfil (también hay una tarjeta en "Cerca tuyo").
+    await anonima.goto('/perfil');
+    await boton(anonima, t.perfil.verReencuentros).click();
+    await expect(anonima).toHaveURL(/\/reencuentros$/);
+    // El contador: con menos de 5 reencuentros, sin número.
+    await expect(
+      anonima.getByRole('heading', {
+        name: new RegExp(
+          `^(${escapar(t.reencuentros.contadorPrimeros)}|\\d+ animales volvieron a casa con ${escapar(t.app.nombre)})$`,
+        ),
+      }),
+    ).toBeVisible();
+    // La tarjeta: la foto, el nombre, los días, la frase y sus botones.
+    const foto = anonima.getByRole('img', { name: t.reencuentros.fotoDe(textos.toby.nombre) });
+    const laHistoria = tarjeta(anonima, textos.historiaPublicada, foto);
+    await expect(titulo(laHistoria, textos.toby.nombre)).toBeVisible();
+    await expect(texto(laHistoria, t.reencuentros.dias(2))).toBeVisible();
+    await esperarFoto(
+      laHistoria.getByRole('img', { name: t.reencuentros.fotoDe(textos.toby.nombre) }),
+    );
+    // No nombra a nadie: ni la familia, ni quien ayudó, ni el contacto, ni el agradecimiento.
+    for (const privado of [
+      familia.cuenta.nombre,
+      vecina.cuenta.nombre,
+      textos.toby.contacto,
+      textos.contactoResguardo,
+      textos.agradecimiento,
+      '099 123 456',
+    ]) {
+      await expect(anonima.getByText(privado)).toHaveCount(0);
+    }
+    // Sin "Ver el caso", que lleva al mapa, la zona donde se perdió y el historial: solo denunciar.
+    const opciones = await abrirOpcionesDeHistoria(anonima, laHistoria);
+    await expect(boton(opciones, t.reencuentros.denunciar)).toBeVisible();
+    await expect(boton(opciones, t.reencuentros.verCaso)).toHaveCount(0);
+    await boton(opciones, t.comunes.cancelar).click();
+    await expect(opciones).toHaveCount(0);
+
+    // Compartir: sin hoja del sistema, el link de la historia a la vista.
+    const link = `${SITIO}/reencuentros/${ids.toby}`;
+    await boton(laHistoria, t.compartir.boton).click();
+    const compartir = hoja(anonima, t.compartir.titulo);
+    await expect(texto(compartir, link)).toBeVisible();
+    await boton(compartir, t.comunes.cancelar).click();
+    await expect(compartir).toHaveCount(0);
+
+    // En historias: "VOLVIÓ A CASA", un JPEG de 1080 × 1920 que se lee, y el link copiado.
+    await simularHojaConArchivos(anonima);
+    await boton(laHistoria, t.historia.boton).click();
+    const historia = hoja(anonima, t.historia.titulo);
+    await expect(
+      historia.getByRole('img', { name: t.historia.vistaPrevia(textos.toby.nombre) }),
+    ).toBeVisible();
+    await expect(texto(historia, t.historia.reencuentro.pistaAntes)).toBeVisible();
+    await boton(historia, t.historia.compartir).click();
+    await expect(texto(historia, t.historia.pista)).toBeVisible();
+    expect(await anonima.evaluate(() => navigator.clipboard.readText())).toBe(link);
+    const imagen = await leerImagenCompartida(anonima);
+    expect([imagen.tipo, imagen.ancho, imagen.alto]).toEqual(['image/jpeg', 1080, 1920]);
+    const mejor = Math.max(...imagen.letras.map((color) => contraste(color, imagen.fondo)));
+    expect(mejor).toBeGreaterThanOrEqual(4.5);
+    await boton(historia, t.comunes.cancelar).click();
+    await expect(historia).toHaveCount(0);
+
+    // El link abre la historia, también sin cuenta, y tampoco ofrece "Ver el caso".
+    await anonima.goto(`/reencuentros/${ids.toby}`);
+    await expect(titulo(anonima, textos.toby.nombre)).toBeVisible();
+    await expect(texto(anonima, textos.historiaPublicada)).toBeVisible();
+    const opcionesLink = await abrirOpcionesDeHistoria(anonima);
+    await expect(boton(opcionesLink, t.reencuentros.denunciar)).toBeVisible();
+    await expect(boton(opcionesLink, t.reencuentros.verCaso)).toHaveCount(0);
+    await boton(opcionesLink, t.comunes.cancelar).click();
+    await navegador.cerrar(anonima);
+  });
+
+  test('a la vecina le llega el agradecimiento en Actividad y su perfil lo cuenta', async () => {
+    const v = vecina.pagina;
+    await v.goto('/actividad');
+    const aviso = t.avisosPush.agradecimiento.titulo(`de ${textos.toby.nombre}`);
+    await expect(texto(v, aviso)).toBeVisible();
+    await expect(texto(v, textos.agradecimiento)).toBeVisible();
+    await v.goto('/perfil');
+    await expect(texto(v, t.perfil.ayudaste(1))).toBeVisible();
+
+    // Quien ayudó tampoco tiene "Ver el caso" desde la historia: la base no le da la fila.
+    await v.goto(`/reencuentros/${ids.toby}`);
+    await expect(titulo(v, textos.toby.nombre)).toBeVisible();
+    const acceso = v.waitForResponse((r) => r.url().includes('/rest/v1/historias_reencuentro'));
+    const opcionesVecina = await abrirOpcionesDeHistoria(v);
+    await acceso;
+    await expect(boton(opcionesVecina, t.reencuentros.denunciar)).toBeVisible();
+    await expect(boton(opcionesVecina, t.reencuentros.verCaso)).toHaveCount(0);
+    await boton(opcionesVecina, t.comunes.cancelar).click();
+    await expect(opcionesVecina).toHaveCount(0);
+
+    // La familia no recibe nada ni lo cuenta: el agradecimiento es de ella.
+    const f = familia.pagina;
+    await f.goto('/actividad');
+    await expect(texto(f, aviso)).toHaveCount(0);
+    await f.goto('/perfil');
+    await expect(texto(f, empiezaCon('Ayudaste a reunir'))).toHaveCount(0);
   });
 
   test('la vecina lo denuncia y la familia, moderadora, lo oculta, lo vuelve a mostrar y la marca revisada', async ({
@@ -540,6 +683,10 @@ test.describe.serial('Spot de punta a punta', () => {
     await expect(boton(anonima, t.comunes.volverAlMapa)).toBeVisible();
     await v.goto(urlToby());
     await expect(texto(v, t.animal.noDisponible)).toBeVisible();
+    // Lo que cuelga del caso, tampoco: su historia no se ve ni por su link.
+    await anonima.goto(`/reencuentros/${ids.toby}`);
+    await expect(texto(anonima, t.reencuentros.noDisponible)).toBeVisible();
+    await anonima.goto(urlToby());
 
     // La familia lo sigue viendo, con el aviso y sin compartir.
     await f.goto(urlToby());

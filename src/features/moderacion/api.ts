@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { clavesReencuentros } from '@/features/reencuentros/claves';
 import { clavesReportes } from '@/features/reportes/api';
 import { supabase } from '@/lib/supabase';
 import type { DenunciaDetalle, EstadoDenuncia } from '@/types/dominio';
@@ -31,6 +32,15 @@ export async function ocultarAnimal(animalId: string, oculto: boolean): Promise<
   if (error) throw error;
 }
 
+/** Oculta o muestra la historia del reencuentro de un caso (moderar_historia, solo moderadores). */
+export async function ocultarHistoria(animalId: string, oculta: boolean): Promise<void> {
+  const { error } = await supabase.rpc('moderar_historia', {
+    p_animal_id: animalId,
+    p_oculta: oculta,
+  });
+  if (error) throw error;
+}
+
 export function useDenuncias(habilitado: boolean) {
   return useQuery({ queryKey: clave, queryFn: listarDenuncias, enabled: habilitado });
 }
@@ -51,5 +61,13 @@ export function useAccionesModeracion() {
       ocultarAnimal(animalId, oculto),
     onSuccess: invalidar,
   });
-  return { resolver, ocultar };
+  const ocultarDeHistoria = useMutation({
+    mutationFn: ({ animalId, oculta }: { animalId: string; oculta: boolean }) =>
+      ocultarHistoria(animalId, oculta),
+    onSuccess: () => {
+      invalidar();
+      void queryClient.invalidateQueries({ queryKey: clavesReencuentros.todo });
+    },
+  });
+  return { resolver, ocultar, ocultarDeHistoria };
 }

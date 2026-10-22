@@ -14,6 +14,8 @@ export const TEXTOS = {
   /** Sin nombre: la especie, para "al perro" y "el perro". */
   animalA: { perro: 'al perro', gato: 'al gato', otro: 'al animal' },
   animalEl: { perro: 'el perro', gato: 'el gato', otro: 'el animal' },
+  /** Para "La familia del perro te agradeció". */
+  animalDe: { perro: 'del perro', gato: 'del gato', otro: 'del animal' },
   /** "Alguien vio a Toby" / "Alguien vio al perro". */
   visto: {
     titulo: (aAnimal: string) => `Alguien vio ${aAnimal}`,
@@ -46,6 +48,11 @@ export const TEXTOS = {
     titulo: (elAnimal: string | null) =>
       elAnimal ? `Tenés un mensaje nuevo sobre ${elAnimal}` : 'Tenés un mensaje nuevo',
     cuerpo: 'Tocá para leerlo.',
+  },
+  /** "La familia de Toby te agradeció". Nunca el mensaje ni quién lo mandó. */
+  agradecimiento: {
+    titulo: (deAnimal: string) => `La familia ${deAnimal} te agradeció`,
+    cuerpo: 'Gracias por ayudar a que volviera a casa.',
   },
   errorNuevo: { titulo: 'Llegó un reporte de un error', cuerpo: 'Tocá para verlo en moderación.' },
   errorResuelto: { titulo: 'Resolvimos el error que reportaste', cuerpo: 'Tocá para ver la respuesta.' },

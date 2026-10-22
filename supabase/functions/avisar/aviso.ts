@@ -6,7 +6,13 @@
 
 import { type Especie, TEXTOS } from './textos.ts';
 
-export type TipoAviso = 'coincidencia' | 'avistamiento' | 'estado' | 'mensaje' | 'error';
+export type TipoAviso =
+  | 'coincidencia'
+  | 'avistamiento'
+  | 'estado'
+  | 'mensaje'
+  | 'error'
+  | 'agradecimiento';
 
 export type Suscripcion = { id: string; endpoint: string; p256dh: string; auth: string };
 
@@ -60,8 +66,13 @@ export function armarMensaje(aviso: Aviso): { mensaje: Mensaje; opciones: Opcion
   const especie: Especie = aviso.especie ?? 'otro';
   const aAnimal = nombre ? `a ${nombre}` : TEXTOS.animalA[especie];
   const elAnimal = nombre ?? TEXTOS.animalEl[especie];
+  const deAnimal = nombre ? `de ${nombre}` : TEXTOS.animalDe[especie];
+  // El agradecimiento abre Actividad, donde está lo que escribió la familia.
+  const agradecimiento = aviso.tipo === 'agradecimiento';
 
-  const url = conversacionId
+  const url = agradecimiento
+    ? '/actividad'
+    : conversacionId
     ? `/conversacion/${conversacionId}`
     : animalId
     ? `/animal/${animalId}`
@@ -70,8 +81,11 @@ export function armarMensaje(aviso: Aviso): { mensaje: Mensaje; opciones: Opcion
     : '/actividad';
   // Un aviso nuevo del mismo caso o conversación reemplaza al anterior en el
   // celular (tag) y en el servicio de push si todavía no se entregó (Topic:
-  // hasta 32 caracteres, el uuid sin guiones).
-  const grupo = conversacionId
+  // hasta 32 caracteres, el uuid sin guiones). El agradecimiento va aparte: no
+  // reemplaza "¡Volvió con su familia!" ni lo reemplazan.
+  const grupo = agradecimiento
+    ? { tag: animalId ? `agradecimiento-${animalId}` : 'agradecimiento' }
+    : conversacionId
     ? { tag: `conversacion-${conversacionId}`, topic: conversacionId.replaceAll('-', '') }
     : animalId
     ? { tag: `caso-${animalId}`, topic: animalId.replaceAll('-', '') }
@@ -110,6 +124,12 @@ export function armarMensaje(aviso: Aviso): { mensaje: Mensaje; opciones: Opcion
       break;
     case 'error':
       texto = aviso.moderacion ? TEXTOS.errorNuevo : TEXTOS.errorResuelto;
+      break;
+    case 'agradecimiento':
+      texto = {
+        titulo: TEXTOS.agradecimiento.titulo(deAnimal),
+        cuerpo: TEXTOS.agradecimiento.cuerpo,
+      };
       break;
     default:
       texto = TEXTOS.otro;

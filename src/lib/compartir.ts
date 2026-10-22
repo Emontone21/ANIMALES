@@ -9,6 +9,11 @@ export function linkDelCaso(id: string): string {
   return `${ENV.siteUrl}/animal/${id}`;
 }
 
+/** El link de la historia de un reencuentro: <sitio>/reencuentros/<id del caso>. */
+export function linkDeHistoria(id: string): string {
+  return `${ENV.siteUrl}/reencuentros/${id}`;
+}
+
 /**
  * El color es texto libre: si trae números (podría ser un teléfono), no va en la
  * vista previa del link ni en el texto de compartir (B37).

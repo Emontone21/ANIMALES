@@ -40,6 +40,10 @@ import type {
 const OfertaAvisos = lazy(() =>
   import('@/components/notificaciones/AvisosCelular').then((m) => ({ default: m.OfertaAvisos })),
 );
+// "Cómo volvió", solo en un caso reunido: el mismo bloque aparte que el muro de reencuentros.
+const HistoriaEnElCaso = lazy(() =>
+  import('@/components/reencuentros/Reencuentros').then((m) => ({ default: m.HistoriaEnElCaso })),
+);
 
 type Props = {
   animal: AnimalDetalle;
@@ -227,6 +231,11 @@ export function DetalleCaso({
       {/* En computadora el contacto de la familia va en la columna izquierda, con el aviso. */}
       {contactoFamilia && !amplio ? avisoEstafa : null}
       <NovedadesCaso acciones={acciones} />
+      {a.estado === 'reunido' ? (
+        <Suspense fallback={null}>
+          <HistoriaEnElCaso animal={a} />
+        </Suspense>
+      ) : null}
       <VistoPorUltimaVez
         avistamientos={avistamientos}
         estado={a.estado}

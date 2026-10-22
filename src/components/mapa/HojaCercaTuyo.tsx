@@ -2,6 +2,7 @@ import { type ComponentRef, useEffect, useRef } from 'react';
 import { Animated, Platform, Pressable, type ScrollView, View, type ViewStyle } from 'react-native';
 
 import { ALTO_FOTO_TARJETA, TarjetaCaso, TARJETAS_A_LA_VISTA } from '@/components/mapa/TarjetaCaso';
+import { TarjetaReencuentros } from '@/components/mapa/TarjetaReencuentros';
 import type { HojaPlegable } from '@/components/mapa/useHojaPlegable';
 import { Boton } from '@/components/ui/Boton';
 import { Cargando } from '@/components/ui/Cargando';
@@ -131,6 +132,8 @@ export function HojaCercaTuyo({
               onPress={() => onAbrir(caso.animal.id)}
             />
           ))}
+          {/* Al final: la entrada al muro de reencuentros (6.7). */}
+          <TarjetaReencuentros forma="carrusel" altoFoto={altoFoto} habilitado={!cargando} />
         </DesplazableHorizontal>
       ) : null}
     </Animated.View>

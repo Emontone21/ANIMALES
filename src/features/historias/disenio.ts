@@ -8,6 +8,11 @@
  * fecha, el logo y "Ayudá a encontrarlo en Spot". Nunca contactos, quién lo
  * publicó, la descripción libre ni dónde: los datos entran por
  * datosDeHistoria, que toma solo lo que se puede mostrar.
+ *
+ * La variante de un reencuentro (6.18.1) dice "VOLVIÓ A CASA" y lleva, en vez
+ * de la fecha, cuántos días estuvo perdido y la frase de la familia, la misma
+ * del muro (la base ya tapó los teléfonos, links y emails). Sus datos entran
+ * por datosDeReencuentro.
  */
 
 import { ColorHistoria, type Esquema, FAMILIAS, paletas } from '@/constants/tema';
@@ -61,6 +66,35 @@ export function datosDeHistoria(
     fecha: (perdido ? caso.perdido_desde : encontradoEn) ?? caso.created_at,
   };
 }
+
+/** Lo único de un reencuentro que entra en la imagen. */
+export type DatosReencuentro = {
+  nombre: string | null;
+  especie: Especie;
+  /** Cuántos días estuvo perdido (0: volvió el mismo día). */
+  dias: number;
+  /** La frase de la familia, tal como sale en el muro. */
+  frase: string;
+};
+
+/** De una historia del muro (muro_reencuentros, historia_reencuentro), solo lo que se muestra. */
+export function datosDeReencuentro(historia: {
+  nombre: string | null;
+  especie: Especie;
+  dias: number;
+  frase: string;
+}): DatosReencuentro {
+  return {
+    nombre: nombreParaHistoria(historia.nombre),
+    especie: historia.especie,
+    dias: Math.max(0, Math.round(historia.dias)),
+    frase: historia.frase.replace(/\s+/g, ' ').trim(),
+  };
+}
+
+/** Qué historia se arma: la de un caso abierto o la de un reencuentro. */
+export type FuenteHistoria =
+  { tipo: 'caso'; datos: DatosHistoria } | { tipo: 'reencuentro'; datos: DatosReencuentro };
 
 /**
  * El nombre lo escribe la familia: con números, una arroba o un link (podría
@@ -183,7 +217,7 @@ export function fondoDeHistoria(base: Rgb, esquema: Esquema): string {
 export type TextoEnHistoria = {
   texto: string;
   x: number;
-  /** Línea de base. */
+  /** Línea de base (de la primera línea, si va en varias). */
   y: number;
   familia: string;
   tamanio: number;
@@ -193,6 +227,8 @@ export type TextoEnHistoria = {
   color: string;
   /** El color que tiene detrás (para el contraste). */
   sobre: string;
+  /** En varias líneas (la frase de un reencuentro): cuántas como mucho y cada cuánto. */
+  lineas?: { maximo: number; interlineado: number };
 };
 
 export type DisenioHistoria = {
@@ -223,19 +259,15 @@ const MARGEN = 80;
 const ANCHO_UTIL = ANCHO - 2 * MARGEN;
 const ANCHO_LOGO = 288;
 
-/**
- * Instagram tapa arriba (unos 200 px) y abajo (unos 220): lo importante va
- * entre los dos.
- */
-export function disenioHistoria(
-  datos: DatosHistoria,
+/** Lo que comparten las dos variantes: el fondo, la etiqueta, la foto y el logo. */
+function baseDeHistoria(
   esquema: Esquema,
+  especie: Especie,
   colorFoto: Rgb | null,
-): DisenioHistoria {
+  etiqueta: { texto: string; perdido: boolean },
+) {
   const p = paletas[esquema];
-  const fondo = fondoDeHistoria(colorFoto ?? deHex(ColorHistoria[datos.especie]), esquema);
-  const textos = textosDeHistoria(datos);
-  const perdido = datos.tipo === 'perdido';
+  const fondo = fondoDeHistoria(colorFoto ?? deHex(ColorHistoria[especie]), esquema);
   const texto = (
     valor: string,
     y: number,
@@ -253,8 +285,7 @@ export function disenioHistoria(
     color: p.texto,
     sobre: fondo,
   });
-
-  return {
+  const base: Omit<DisenioHistoria, 'textos'> = {
     ancho: ANCHO,
     alto: ALTO,
     esquema,
@@ -266,16 +297,16 @@ export function disenioHistoria(
       relleno: 36,
       radioPunto: 12,
       color: p.superficie,
-      colorPunto: perdido ? p.perdido : p.encontrado,
+      colorPunto: etiqueta.perdido ? p.perdido : p.encontrado,
       texto: {
-        texto: textos.etiqueta,
+        texto: etiqueta.texto,
         x: MARGEN,
         y: 214 + 56,
         familia: FAMILIAS.negrita,
         tamanio: 38,
         tamanioMinimo: 38,
         maxAncho: ANCHO_UTIL,
-        color: perdido ? p.textoPerdido : p.textoEncontrado,
+        color: etiqueta.perdido ? p.textoPerdido : p.textoEncontrado,
         sobre: p.superficie,
       },
     },
@@ -288,6 +319,27 @@ export function disenioHistoria(
       colorVacio: p.superficieSuave,
     },
     conFoto: colorFoto !== null,
+    logo: { x: MARGEN, y: 1600, ancho: ANCHO_LOGO, alto: Math.round((ANCHO_LOGO * 107) / 274) },
+  };
+  return { base, texto };
+}
+
+/**
+ * Instagram tapa arriba (unos 200 px) y abajo (unos 220): lo importante va
+ * entre los dos.
+ */
+export function disenioHistoria(
+  datos: DatosHistoria,
+  esquema: Esquema,
+  colorFoto: Rgb | null,
+): DisenioHistoria {
+  const textos = textosDeHistoria(datos);
+  const { base, texto } = baseDeHistoria(esquema, datos.especie, colorFoto, {
+    texto: textos.etiqueta,
+    perdido: datos.tipo === 'perdido',
+  });
+  return {
+    ...base,
     textos: [
       texto(textos.titulo, 1306, FAMILIAS.titulo, 112, 64),
       ...(textos.descripcion
@@ -296,6 +348,107 @@ export function disenioHistoria(
       texto(textos.fecha, textos.descripcion ? 1444 : 1378, FAMILIAS.regular, 42, 34),
       texto(textos.ayuda, 1566, FAMILIAS.negrita, 44, 34),
     ],
-    logo: { x: MARGEN, y: 1600, ancho: ANCHO_LOGO, alto: Math.round((ANCHO_LOGO * 107) / 274) },
   };
+}
+
+export type TextosReencuentro = {
+  etiqueta: string;
+  titulo: string;
+  dias: string;
+  frase: string;
+  ayuda: string;
+};
+
+export function textosDeReencuentro(d: DatosReencuentro): TextosReencuentro {
+  return {
+    etiqueta: t.historia.reencuentro.etiqueta,
+    titulo: d.nombre ?? t.especie[d.especie],
+    dias: t.reencuentros.dias(d.dias),
+    // Entre comillas: es lo que dijo la familia.
+    frase: `«${d.frase}»`,
+    ayuda: t.historia.reencuentro.ayuda,
+  };
+}
+
+/** La frase va en dos líneas como mucho, entre los días (1378) y el pedido (1566). */
+const LINEAS_FRASE = { maximo: 2, interlineado: 50 };
+
+/** "VOLVIÓ A CASA" (6.18.1): la misma base, con los días y la frase en vez de la fecha. */
+export function disenioReencuentro(
+  datos: DatosReencuentro,
+  esquema: Esquema,
+  colorFoto: Rgb | null,
+): DisenioHistoria {
+  const textos = textosDeReencuentro(datos);
+  const { base, texto } = baseDeHistoria(esquema, datos.especie, colorFoto, {
+    texto: textos.etiqueta,
+    perdido: false,
+  });
+  return {
+    ...base,
+    textos: [
+      texto(textos.titulo, 1306, FAMILIAS.titulo, 112, 64),
+      texto(textos.dias, 1378, FAMILIAS.seminegrita, 46, 36),
+      { ...texto(textos.frase, 1440, FAMILIAS.regular, 38), lineas: LINEAS_FRASE },
+      texto(textos.ayuda, 1566, FAMILIAS.negrita, 44, 34),
+    ],
+  };
+}
+
+/** El diseño de cualquiera de las dos variantes. */
+export function disenioDe(
+  fuente: FuenteHistoria,
+  esquema: Esquema,
+  colorFoto: Rgb | null,
+): DisenioHistoria {
+  return fuente.tipo === 'caso'
+    ? disenioHistoria(fuente.datos, esquema, colorFoto)
+    : disenioReencuentro(fuente.datos, esquema, colorFoto);
+}
+
+/**
+ * Parte un texto en líneas que entren en maxAncho, como mucho `maximo`; si no
+ * entra entero, la última termina en "…". `medir` es el ancho de un texto (en
+ * el navegador, measureText del canvas). Una palabra que no entra sola en una
+ * línea se corta.
+ */
+export function partirEnLineas(
+  texto: string,
+  maxAncho: number,
+  maximo: number,
+  medir: (texto: string) => number,
+): string[] {
+  const palabras = texto.split(/\s+/).filter(Boolean);
+  const lineas: string[] = [];
+  let actual = '';
+  let i = 0;
+  while (i < palabras.length && lineas.length < maximo) {
+    const prueba = actual ? `${actual} ${palabras[i]}` : palabras[i];
+    if (medir(prueba) <= maxAncho) {
+      actual = prueba;
+      i++;
+      continue;
+    }
+    if (!actual) {
+      // Una palabra más larga que la línea: va lo que entra.
+      let corte = palabras[i];
+      while (corte.length > 1 && medir(corte) > maxAncho) corte = corte.slice(0, -1);
+      lineas.push(corte);
+      palabras[i] = palabras[i].slice(corte.length);
+      continue;
+    }
+    lineas.push(actual);
+    actual = '';
+  }
+  if (actual && lineas.length < maximo) lineas.push(actual);
+  if (i < palabras.length && lineas.length > 0) {
+    // Entre comillas, el corte las cierra: "…»".
+    const cierre = texto.endsWith('»') ? '…»' : '…';
+    let ultima = lineas[lineas.length - 1];
+    while (ultima.length > 1 && medir(`${ultima}${cierre}`) > maxAncho) {
+      ultima = ultima.slice(0, -1).trimEnd();
+    }
+    lineas[lineas.length - 1] = `${ultima.replace(/[\s.,;:!?»]+$/, '')}${cierre}`;
+  }
+  return lineas;
 }
