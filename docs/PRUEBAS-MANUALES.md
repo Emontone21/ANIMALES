@@ -26,6 +26,7 @@ where id = (select id from auth.users where email = '<email de familia>');
 Esperado:
 - Al crear la cuenta desde la app, la casilla de términos es obligatoria y después dice que revises tu email.
 - El mail llega en español: "Confirmá tu cuenta en Spot", con el botón verde **Confirmar mi cuenta** [SMTP].
+- **Confirmar mi cuenta** abre la app en `/auth/confirmar`: "Tu cuenta está confirmada" y el botón **Ingresar**, sin sesión abierta. Anda igual si el mail se abre en otro navegador que el del registro.
 - Al ingresar, Perfil muestra el nombre.
 
 - [ ] Android · Chrome
@@ -378,17 +379,18 @@ Esperado:
 
 Cuenta: vecina (o familia, si es del equipo de Supabase).
 
-1. Sin sesión: **Ingresar → ¿Olvidaste tu contraseña?** con el email de la cuenta.
-2. Abrí el link del mail en el mismo navegador donde lo pediste y elegí una contraseña nueva de 8 caracteres o más.
+1. Sin sesión: **Ingresar → ¿Olvidaste tu contraseña?** con el email de la cuenta. En el celular, pedilo desde el navegador de WhatsApp o Instagram (abrí el link de la app desde un chat).
+2. Abrí el link del mail en otro navegador (Gmail lo abre en Chrome). Antes de elegir, mirá qué cuenta dice. Elegí una contraseña nueva de 8 caracteres o más.
 3. Volvé a usar el mismo link.
-4. Pedí otro link y abrilo en otro navegador (por ejemplo, el mail en la computadora y la app en el celular).
+4. Pedí otro link, abrilo y tocá **No es mi cuenta**.
 
 Esperado:
 - El mensaje es el mismo exista o no la cuenta.
 - El mail llega en español: "Elegí una contraseña nueva para Spot", y se ve bien en Gmail del celular.
+- El link abre **Elegí una contraseña nueva** en cualquier navegador, con "Es para la cuenta e***@…" (la primera letra y el dominio del email de la cuenta) y **No es mi cuenta**.
 - Con la contraseña nueva quedás adentro.
 - Usado de nuevo, el link dice que ya no sirve y ofrece pedir otro.
-- Abierto en otro navegador, no abre sesión ni muestra el formulario: dice que el link no sirve y que se pida otro en el mismo navegador (es el flujo PKCE, a propósito).
+- **No es mi cuenta** vuelve al mapa sin sesión (Perfil muestra Ingresar) y la contraseña sigue siendo la del paso 2.
 - Si se piden varios seguidos: "Pediste varios links seguidos…", nunca "email inválido".
 
 - [ ] Android · Chrome
@@ -612,6 +614,7 @@ Cuentas: familia y vecina. Después del deploy de la auditoría 2 y de aplicar l
 4. Ingresá con Google: tiene que volver a la app con la sesión abierta.
 5. Abrí, en una ventana privada, un link de un caso con `#access_token=cualquiercosa&refresh_token=x&expires_in=3600&token_type=bearer` al final.
 6. Familia, en un caso propio de prueba: **Más opciones → Editar el reporte**; volvé, y **Más opciones → Borrar el reporte → Borrar para siempre**.
+7. [SMTP] Creá una cuenta de prueba desde un navegador y abrí el mail de confirmación en otro.
 
 Esperado:
 - **Consola:** ningún aviso que empiece con `[Report Only] Refused to…`. Si aparece alguno, anotalo: es un origen o script que la CSP todavía no permite (hay que sumarlo antes de pasarla a obligatoria).
@@ -620,6 +623,7 @@ Esperado:
 - **Google:** queda la sesión abierta y la URL sin `?code=`.
 - **Link con tokens:** no abre ninguna sesión (Perfil muestra Ingresar).
 - **Desde el menú:** Editar abre el formulario (no solo cambia la URL) y Borrar vuelve al mapa sin el caso.
+- **Confirmación en otro navegador:** el link empieza con `https://animales-blue.vercel.app/auth/confirmar?token_hash=`. Dice "Tu cuenta está confirmada", y ese navegador queda sin sesión hasta que ingresás con la contraseña.
 
 - [ ] Computadora · Chrome
 - [ ] Android · Chrome

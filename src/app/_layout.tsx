@@ -171,6 +171,8 @@ function Navegacion() {
             name="auth/nueva-contrasena"
             options={{ title: t.auth.nuevaContrasena.titulo }}
           />
+          {/* El link de los mails: se abre en cualquier navegador, con sesión o sin ella. */}
+          <Stack.Screen name="auth/confirmar" options={{ title: t.auth.confirmar.titulo }} />
 
           {/* Solo sin sesión. Al ingresar, el router cierra estas pantallas solo. */}
           <Stack.Protected guard={!usuario}>

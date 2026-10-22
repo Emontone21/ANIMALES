@@ -260,7 +260,7 @@ subject = "Confirmá el cambio de email en Spot"
 content_path = "./supabase/templates/cambio_email.html"
 
 [auth.email.template.magic_link]
-subject = "Tu link para entrar a Spot"
+subject = "Entrá a Spot con tu contraseña"
 content_path = "./supabase/templates/enlace_magico.html"
 
 # Uncomment to customize notification email template

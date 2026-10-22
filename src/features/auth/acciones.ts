@@ -3,6 +3,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 
 import { CLAVE_CAPTCHA, opcionesCaptcha } from '@/features/auth/captcha';
+import { clienteDeRecuperacion, terminarRecuperacion } from '@/features/auth/recuperacion';
 import { VERSION_TERMINOS } from '@/features/legal/terminos';
 import {
   ErrorAuth,
@@ -21,15 +22,18 @@ WebBrowser.maybeCompleteAuthSession();
 const esWeb = Platform.OS === 'web';
 
 /**
- * Adónde vuelve Supabase después de confirmar email u OAuth, con un ?code=
- * (flujo PKCE, ver src/lib/supabase.ts).
+ * Adónde vuelve Supabase después de Google, con un ?code= (flujo PKCE, ver
+ * src/lib/supabase.ts). Los mails nuevos no lo usan: su link va a
+ * /auth/confirmar en el sitio (supabase/templates/); el que se manda todavía
+ * sirve para los mails viejos, con ConfirmationURL.
  * Web: la raíz del sitio (Supabase canjea el código solo).
  * Nativo: spotmvd://auth/callback (exp://… en Expo Go).
  */
 const redirectTo = esWeb ? Linking.createURL('/') : Linking.createURL('auth/callback');
 
 /**
- * Adónde vuelve el link para elegir una contraseña nueva. Tiene que estar en
+ * Adónde volvía el link para elegir una contraseña nueva con la plantilla
+ * vieja (ConfirmationURL). La nueva va a /auth/confirmar. Tiene que estar en
  * las Redirect URLs de Supabase (ver docs/reportes/2026-10-19-cuenta.md).
  */
 const redirectRecuperacion = esWeb
@@ -121,13 +125,40 @@ export async function pedirRecuperacion(email: string, captcha?: string | null):
   throw new ErrorAuth(t.auth.recuperar.error);
 }
 
-/** Guarda la contraseña nueva con la sesión que abrió el link de recuperación. */
-export async function cambiarContrasena(nueva: string, repetida: string): Promise<void> {
+/**
+ * Guarda la contraseña nueva con la sesión que abrió el link de recuperación.
+ * Si vino del link del mail (/auth/confirmar), esa sesión estaba solo en
+ * memoria: la persona ya vio de qué cuenta es y eligió la contraseña, así que
+ * recién ahora pasa a la app. `conSesion` es false si no se pudo pasar: la
+ * contraseña cambió igual y la persona ingresa con la nueva.
+ */
+export async function cambiarContrasena(
+  nueva: string,
+  repetida: string,
+): Promise<{ conSesion: boolean }> {
   validarContrasenaNueva(nueva, repetida);
+
+  const delLink = clienteDeRecuperacion();
+  if (delLink) {
+    const { data, error } = await delLink.auth.updateUser({ password: nueva });
+    if (error) throw traducirError(error);
+    const { data: guardada } = await delLink.auth.getSession();
+    terminarRecuperacion();
+    const sesion = guardada.session;
+    if (!sesion || !data.user) return { conSesion: false };
+    const { error: alPasar } = await supabase.auth.setSession({
+      access_token: sesion.access_token,
+      refresh_token: sesion.refresh_token,
+    });
+    return { conSesion: !alPasar };
+  }
+
   const { data } = await supabase.auth.getSession();
   if (!data.session) throw new ErrorAuth(t.auth.nuevaContrasena.linkVencido);
   const { error } = await supabase.auth.updateUser({ password: nueva });
   if (error) throw traducirError(error);
+  terminarRecuperacion();
+  return { conSesion: true };
 }
 
 /**

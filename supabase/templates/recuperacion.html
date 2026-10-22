@@ -28,12 +28,12 @@
                 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px 0;">
                   <tr>
                     <td align="center" bgcolor="#556B2F" style="border-radius:999px;background-color:#556B2F;">
-                      <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:16px 28px;font-family:-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:16px;line-height:20px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:999px;">Elegir una contraseña nueva</a>
+                      <a href="{{ .SiteURL }}/auth/confirmar?token_hash={{ .TokenHash }}&amp;type=recovery" style="display:inline-block;padding:16px 28px;font-family:-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:16px;line-height:20px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:999px;">Elegir una contraseña nueva</a>
                     </td>
                   </tr>
                 </table>
-                <p style="margin:0 0 16px 0;font-family:-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:14px;line-height:20px;color:#5C5F55;">El link sirve una sola vez y vence en una hora.</p>
-                <p style="margin:0;font-family:-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:14px;line-height:20px;color:#5C5F55;">Si el botón no anda, copiá este link y pegalo en el navegador:<br /><a href="{{ .ConfirmationURL }}" style="color:#556B2F;word-break:break-all;">{{ .ConfirmationURL }}</a></p>
+                <p style="margin:0 0 16px 0;font-family:-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:14px;line-height:20px;color:#5C5F55;">El link sirve una sola vez, en cualquier navegador, y vence en una hora.</p>
+                <p style="margin:0;font-family:-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:14px;line-height:20px;color:#5C5F55;">Si el botón no anda, copiá este link y pegalo en el navegador:<br /><a href="{{ .SiteURL }}/auth/confirmar?token_hash={{ .TokenHash }}&amp;type=recovery" style="color:#556B2F;word-break:break-all;">{{ .SiteURL }}/auth/confirmar?token_hash={{ .TokenHash }}&amp;type=recovery</a></p>
               </td>
             </tr>
             <tr>

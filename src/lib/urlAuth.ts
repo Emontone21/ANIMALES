@@ -40,3 +40,44 @@ export function linkDeRecuperacionInvalido(url: string): boolean {
   }
   return ruta.startsWith('/auth/nueva-contrasena') && tieneErrorAuth(leerParametros(url));
 }
+
+/**
+ * Los links de los mails de Supabase Auth (supabase/templates/) llevan a
+ * /auth/confirmar?token_hash=…&type=…, que la app canjea con verifyOtp. Así
+ * sirven en cualquier navegador, no solo en el que pidió el mail.
+ * El enlace mágico no está: la app no lo usa (su mail no tiene link).
+ */
+export const TIPOS_DE_LINK_DE_MAIL = ['signup', 'recovery', 'email_change'] as const;
+
+export type TipoLinkDeMail = (typeof TIPOS_DE_LINK_DE_MAIL)[number];
+
+export type LinkDeMail = { tokenHash: string; tipo: TipoLinkDeMail };
+
+/** El token_hash es un hash en hexadecimal, a veces con el prefijo "pkce_". */
+const FORMA_TOKEN_HASH = /^[A-Za-z0-9_-]{8,200}$/;
+
+/**
+ * El token y el tipo del link de un mail, si los trae bien. Un parámetro
+ * repetido (?type=signup&type=recovery) no vale: no se elige uno.
+ */
+export function linkDeMail(
+  params: Record<string, string | string[] | undefined>,
+): LinkDeMail | null {
+  const tokenHash = params['token_hash'];
+  const tipo = params['type'];
+  if (typeof tokenHash !== 'string' || typeof tipo !== 'string') return null;
+  if (!FORMA_TOKEN_HASH.test(tokenHash)) return null;
+  if (!(TIPOS_DE_LINK_DE_MAIL as readonly string[]).includes(tipo)) return null;
+  return { tokenHash, tipo: tipo as TipoLinkDeMail };
+}
+
+/**
+ * El email de una cuenta sin mostrarlo entero (e***@gmail.com): alcanza para
+ * que la persona reconozca si es la suya.
+ */
+export function enmascararEmail(email: string | null | undefined): string {
+  const arroba = email?.lastIndexOf('@') ?? -1;
+  if (!email || arroba < 1 || arroba === email.length - 1) return '***';
+  const [primera] = Array.from(email.slice(0, arroba));
+  return `${primera}***${email.slice(arroba)}`;
+}

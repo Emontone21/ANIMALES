@@ -658,7 +658,7 @@ export const t = {
       enviar: 'Mandar el link',
       // Neutro: no dice si el email tiene cuenta.
       enviado:
-        'Si hay una cuenta con ese email, te mandamos un link. Revisá tu casilla y el correo no deseado. Abrilo en este mismo navegador: sirve una sola vez y vence en una hora.',
+        'Si hay una cuenta con ese email, te mandamos un link. Revisá tu casilla y el correo no deseado. Sirve una sola vez y vence en una hora.',
       volver: 'Volver a ingresar',
       error: 'No pudimos mandar el link. Probá de nuevo.',
       muchosPedidos: 'Pediste varios links seguidos. Esperá unos minutos y probá de nuevo.',
@@ -669,11 +669,16 @@ export const t = {
       contrasena: 'Contraseña nueva',
       repetir: 'Repetí la contraseña',
       guardar: 'Guardar contraseña',
+      /** El email enmascarado (e***@gmail.com) de la cuenta del link. */
+      cuenta: (email: string) => `Es para la cuenta ${email}.`,
+      noEsMiCuentaAyuda:
+        'Si no la reconocés o no pediste este link, no elijas nada: tocá "No es mi cuenta".',
+      noEsMiCuenta: 'No es mi cuenta',
       exito: 'Listo: tu contraseña cambió y ya ingresaste.',
+      exitoSinSesion: 'Listo: tu contraseña cambió. Ingresá con la nueva.',
       noCoinciden: 'Las dos contraseñas no coinciden.',
       igualAnterior: 'Elegí una contraseña distinta de la anterior.',
-      linkVencido:
-        'Este link ya no sirve: venció, ya se usó o se abrió en otro navegador. Pedí uno nuevo y abrilo en el mismo navegador.',
+      linkVencido: 'Este link ya no sirve: venció o ya se usó. Pedí uno nuevo.',
       pedirOtro: 'Pedir otro link',
       irAlMapa: 'Ir al mapa',
     },
@@ -686,8 +691,23 @@ export const t = {
     o: 'o',
     sinCuenta: '¿No tenés cuenta?',
     conCuenta: '¿Ya tenés cuenta?',
-    registroExito:
-      'Cuenta creada. Si te pedimos confirmar el email, revisá tu casilla y abrí el link en este mismo navegador.',
+    registroExito: 'Cuenta creada. Si te pedimos confirmar el email, revisá tu casilla.',
+    /** /auth/confirmar: el link de un mail (confirmar la cuenta, el email o recuperar la contraseña). */
+    confirmar: {
+      titulo: 'Tu cuenta',
+      comprobando: 'Comprobando el link…',
+      cuentaConfirmada: 'Tu cuenta está confirmada. Ingresá con tu email y tu contraseña.',
+      emailCambiado: 'Listo: confirmaste el email nuevo. Desde ahora ingresás con ese.',
+      faltaElOtroEmail:
+        'Confirmado. Falta un paso: abrí también el link que te mandamos al otro email.',
+      vencidoCuenta:
+        'Este link ya no sirve: venció o ya se usó. Si ya confirmaste tu cuenta, ingresá. Si no, volvé a crearla con el mismo email y te mandamos otro.',
+      vencidoEmail:
+        'Este link ya no sirve: venció o ya se usó. Si todavía querés cambiar el email, pedilo de nuevo.',
+      invalido: 'Este link no sirve. Abrí el último que te mandamos por mail.',
+      errorServidor: 'No pudimos comprobar el link. Probá de nuevo en un rato.',
+      reintentar: 'Probar de nuevo',
+    },
     errores: {
       credenciales: 'Email o contraseña incorrectos.',
       emailNoConfirmado: 'Tenés que confirmar tu email antes de ingresar.',
