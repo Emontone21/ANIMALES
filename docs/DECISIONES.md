@@ -52,6 +52,8 @@ Los mensajes se refrescan cada 4 s con TanStack Query. Suficiente para la escala
 
 Expo Notifications no cubre web push. Las notificaciones se guardan siempre en la tabla `notificaciones` (visible en Actividad) y además salen por push a los tokens registrados desde la app nativa, directamente a la Expo Push API (no exige credenciales para el envío básico).
 
+**Reemplazada el 2026-10-22** en lo que hace a la web: ver "Notificaciones en el celular (Web Push)". El push nativo sigue igual.
+
 ## 2026-10-17 · Moderación mínima sin roles de Auth
 
 `perfiles.es_moderador` se asigna por SQL. Los moderadores ven y resuelven denuncias y ocultan publicaciones (`animales.oculto`); tres denuncias de personas distintas ocultan solas (desde la Fase 7, solo cuentan las de cuentas con al menos 7 días: ver "Denuncias: la edad de la cuenta al denunciar"). No hay panel de administración más allá de eso.
@@ -684,4 +686,28 @@ Con Expo Router 58, tocar **Editar el reporte** en Más opciones cambiaba la URL
 - **Solo en herramientas que no se distribuyen** (build, pruebas, medición): MPL 2.0 (por ejemplo `lightningcss`, que trae Expo, y axe-core, que se usó para medir y no está en el repo) y CC BY 4.0 (`caniuse-lite`, datos de browserslist).
 - **Nunca:** GPL, AGPL, LGPL, SSPL ni licencias que prohíban el uso comercial. Una dual (como node-forge, BSD o GPL) se usa por su lado permisivo.
 - **Cómo se revisa:** `npx license-checker-rseidelsohn --production --summary` y, para lo que llega a la web, los source maps del build (`npx expo export -p web --source-maps`). En la auditoría 2, lo que llega a la web es MIT, BSD y 0BSD, más las fuentes OFL.
+
+## 2026-10-22 · Notificaciones en el celular (Web Push)
+
+Spot se usa como web (instalada o no), así que los avisos solo se veían al abrir Actividad. Ahora cada aviso de `notificaciones` llega también como notificación del celular a los navegadores que la activaron. Decisiones:
+- **Envío:** una Edge Function nueva, `avisar`, con el mismo esquema que `reconocer`: la llama la base con `pg_net` (`llamar_avisar`), con `X-Avisar-Secret` (`config_app.avisar_secret`, 32 bytes en hexadecimal; un header con otra forma se rechaza sin consultar la base), y usa la base solo por RPC de `service_role`. Cifrar y firmar Web Push con la librería `@negrel/webpush` (MIT, de jsr.io, solo WebCrypto; su dependencia `@negrel/http-ece` también es MIT). Se descartó `web-push` de npm (MPL 2.0, y pensada para Node). Un par de claves de cifrado nuevo por mensaje.
+- **Claves VAPID:** la pública en la app (`EXPO_PUBLIC_VAPID_PUBLIC_KEY`) y como secreto de la función (`VAPID_PUBLIC_KEY`); la privada, solo como secreto de la función (`VAPID_PRIVATE_KEY`). Ninguna en el repo. La función comprueba al arrancar que sean un par; si no, contesta 503 y no manda nada.
+- **Cola en la base:** el trigger de `notificaciones` encola en `avisos_push` solo si la persona tiene suscripciones y despierta a la función una vez por transacción (pg_net manda el pedido después del commit). `preparar_avisos_push` decide qué sale y `terminar_avisos_push` guarda el resultado. Lo que no sale sigue en Actividad. No hay pg_cron: lo pendiente lo toma el próximo aviso, y pasada una hora se descarta (ya no es noticia).
+- **Sin bombardeo:** un `tag` por caso o conversación (la nueva reemplaza a la anterior en la bandeja, sin volver a sonar), `Topic` en el servicio de push (reemplaza lo que todavía no se entregó), uno por caso o conversación cada 5 minutos y un tope por persona y por hora (`config_app.avisos_push_por_hora`, 6).
+- **Como Actividad:** quien bloqueó al actor no lo recibe (se vuelve a mirar al mandar, por si bloqueó después). Un caso oculto no manda nada al celular, ni sus mensajes ni sus coincidencias, a nadie: el aviso queda en Actividad. Lo ya leído en Actividad no sale.
+- **Pantalla bloqueada:** el texto lo arma la función, no la base, con una copia de `t.avisosPush` (`supabase/functions/avisar/textos.ts`, comparada por una prueba). Del caso, solo el nombre (si no tiene números, una arroba ni un link) o la especie. Nunca el nombre de quien lo vio, el texto de un mensaje, contactos ni lugares. Por eso los avisos de "lo vieron" y de estado guardan `datos.evento`.
+- **Solo servicios de push conocidos:** la función le manda pedidos a la URL de cada suscripción; si la base aceptara cualquiera, alguien podría hacer que la función pegue a una URL interna. `es_endpoint_push` (y la misma regla en `push.ts`) acepta solo `https` a FCM, Mozilla, Windows y Apple, sin puerto ni usuario. Las claves tienen que tener la forma de las de un navegador.
+- **Suscripciones:** una por navegador; si otra cuenta lo usa, pasa a esa. Hasta 10 por persona. Al cerrar sesión se borra la del navegador. Un 404 o 410 del servicio la borra.
+- **El permiso, nunca al abrir:** después de publicar ("¿Querés que te avisemos al celular cuando alguien lo vea?", una vez, en memoria y no en la URL) o con el interruptor de Perfil. `Notification.requestPermission` se llama en el mismo toque (Safari lo exige). iPhone solo con la app instalada (iOS 16.4 o más); en los navegadores de WhatsApp, Instagram y Facebook se explica cómo abrir en Chrome o Safari; bloqueadas, cómo volver a permitirlas.
+- **Carga:** el código del push va en dos bloques aparte (`AvisosCelular` y `celular`), que se bajan al abrir Perfil o al preguntar después de publicar. La suscripción se guarda desde `celular.web.ts` y no desde `api.ts`, que está en la carga inicial.
+- **El service worker** suma `push` y `notificationclick`, sin caché. Al tocar, lleva la ventana abierta a la ruta o abre una; solo sigue rutas de la app.
+
+## 2026-10-22 · Compartir en historias: la imagen se arma en el celular
+
+"Compartir en historias", junto a Compartir en el detalle (solo web y con el caso abierto), arma una imagen de 1080 × 1920 con un canvas, sin servidor: lo que cuesta es dibujar, y el celular lo hace en menos de un segundo. Decisiones:
+- **Diseño:** docs/DISENO.md, 6.18. El fondo sale del color dominante de la foto, como las tapas de Spotify, llevado hacia la superficie del claro o el fondo del oscuro hasta que el texto tenga 5,5:1 (más que el 4,5 de siempre), y siempre un mínimo para que la foto no se pierda contra el fondo. La historia sigue la apariencia de la app.
+- **Privacidad por construcción:** el generador recibe solo tipo, nombre, especie, color, tamaño y una fecha (`datosDeHistoria`). El nombre y el color con números o links no van.
+- **La foto:** se baja con `fetch` (Storage manda CORS) y se dibuja desde un `ImageBitmap`, así el canvas no queda bloqueado para exportar. Una foto de otro sitio que no lo permite no rompe nada: sale con el color de la especie (`ColorHistoria`, en `tema.ts`) y la chapita.
+- **Compartir:** `navigator.share` con la imagen como archivo y, en el mismo toque, copiar el link: Instagram no recibe links en las historias, se suman con el sticker de enlace. Si el navegador no puede mandar archivos (el de WhatsApp, muchas computadoras), se descarga, con la misma pista.
+- **Carga:** la hoja y el generador van en un bloque aparte (`HojaHistoria`): se bajan al tocar el botón.
 

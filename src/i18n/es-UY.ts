@@ -342,6 +342,93 @@ export const t = {
     sinMensajesAun: 'Sin mensajes todavía',
     marcarTodasLeidas: 'Marcar todas como leídas',
   },
+  /**
+   * Las notificaciones del celular (Web Push). Se ven en la pantalla bloqueada:
+   * nunca nombres de personas, el texto de un mensaje, contactos ni lugares.
+   * Del caso, solo su nombre o la especie. La función avisar tiene una copia
+   * (supabase/functions/avisar/textos.ts, la compara __tests__/avisosPush.test.ts).
+   */
+  avisosPush: {
+    animalA: { perro: 'al perro', gato: 'al gato', otro: 'al animal' } satisfies Record<
+      Especie,
+      string
+    >,
+    animalEl: { perro: 'el perro', gato: 'el gato', otro: 'el animal' } satisfies Record<
+      Especie,
+      string
+    >,
+    /** "Alguien vio a Toby" / "Alguien vio al perro". */
+    visto: {
+      titulo: (aAnimal: string) => `Alguien vio ${aAnimal}`,
+      cuerpo: 'Tocá para ver dónde lo vieron.',
+    },
+    resguardado: {
+      titulo: (aAnimal: string) => `Alguien tiene ${aAnimal} a salvo`,
+      cuerpo: 'Tocá para ver el caso.',
+    },
+    reunido: {
+      titulo: (animal: string) => `¡${mayuscula(animal)} volvió con su familia!`,
+      cuerpo: 'Un caso que seguías se cerró con final feliz.',
+    },
+    reabierto: {
+      titulo: (animal: string) => `${mayuscula(animal)} se volvió a escapar`,
+      cuerpo: 'Atento al mapa: tocá para ver el caso.',
+    },
+    coincidenciaFamilia: {
+      titulo: (nombre: string | null) =>
+        nombre
+          ? `Encontraron un animal parecido a ${nombre}`
+          : 'Encontraron un animal parecido al tuyo',
+      cuerpo: 'Mirá las fotos y decidí si es o no.',
+    },
+    coincidencia: {
+      titulo: (elAnimal: string) => `Posible coincidencia con ${elAnimal}`,
+      cuerpo: 'Tocá para ver las fotos.',
+    },
+    mensaje: {
+      titulo: (elAnimal: string | null) =>
+        elAnimal ? `Tenés un mensaje nuevo sobre ${elAnimal}` : 'Tenés un mensaje nuevo',
+      cuerpo: 'Tocá para leerlo.',
+    },
+    errorNuevo: {
+      titulo: 'Llegó un reporte de un error',
+      cuerpo: 'Tocá para verlo en moderación.',
+    },
+    errorResuelto: {
+      titulo: 'Resolvimos el error que reportaste',
+      cuerpo: 'Tocá para ver la respuesta.',
+    },
+    otro: { titulo: `Tenés una novedad en ${NOMBRE}`, cuerpo: 'Tocá para verla.' },
+  },
+  /** Activar las notificaciones del celular: en Perfil y después de publicar. */
+  celular: {
+    interruptor: 'Notificaciones en este celular',
+    ayuda:
+      'Te avisamos cuando alguien vea un caso tuyo o que seguís, cuando te escriban y si aparece una posible coincidencia. En la pantalla bloqueada no se ven nombres de personas, mensajes ni direcciones.',
+    activadas: 'Listo: te vamos a avisar en este celular.',
+    desactivadas: 'Listo: ya no te avisamos en este celular.',
+    error: 'No pudimos activar las notificaciones. Probá de nuevo.',
+    errorDesactivar: 'No pudimos apagar las notificaciones. Probá de nuevo.',
+    /** Después de publicar un caso. */
+    pregunta: '¿Querés que te avisemos al celular cuando alguien lo vea?',
+    si: 'Sí, avisame',
+    ahoraNo: 'Ahora no',
+    iphone: `En el iPhone, las notificaciones llegan con ${NOMBRE} instalada en la pantalla de inicio. Instalala y activalas desde Perfil.`,
+    navegadorInterno: (app: string) =>
+      `El navegador de ${app} no muestra notificaciones. Abrí ${NOMBRE} en Chrome o Safari para activarlas.`,
+    abrirEnNavegador: 'Abrir en Chrome o Safari',
+    bloqueadas: `Las notificaciones están bloqueadas para ${NOMBRE} en este navegador.`,
+    /** Cómo volver a permitirlas, según dónde está abierta. */
+    comoDesbloquear: {
+      iphone: `Para activarlas, entrá a Ajustes › Notificaciones › ${NOMBRE} y prendé "Permitir notificaciones". Después volvé acá.`,
+      androidApp: `Para activarlas, mantené apretado el ícono de ${NOMBRE}, tocá "Información de la app" › Notificaciones y permitilas. Después volvé acá.`,
+      android:
+        'Para activarlas, tocá el ícono que está a la izquierda de la dirección, entrá a Permisos y elegí Permitir en Notificaciones. Después volvé acá.',
+      computadora:
+        'Para activarlas, tocá el ícono que está a la izquierda de la dirección y permití las notificaciones. Después volvé acá.',
+    },
+    noSoportado: 'Este navegador no puede mostrar notificaciones. Probá con Chrome o Safari.',
+  },
   editarReporte: {
     titulo: 'Editar reporte',
     intro:
@@ -437,6 +524,47 @@ export const t = {
       descripcionGenerica:
         'Animales perdidos y encontrados en Montevideo. Si viste uno, avisá: así vuelve a casa.',
     },
+  },
+  /**
+   * "Compartir en historias": la imagen de 1080 × 1920 que se arma en el
+   * celular (src/features/historias/). Sin contactos, quién publicó ni dónde.
+   */
+  historia: {
+    boton: 'Compartir en historias',
+    titulo: 'Compartir en historias',
+    intro:
+      'Una imagen para tu historia de Instagram o tu estado de WhatsApp, sin datos de contacto ni la ubicación.',
+    generando: 'Armando la imagen…',
+    /** Texto alternativo de la vista previa. */
+    vistaPrevia: (titulo: string) => `Vista previa de la historia de ${titulo}`,
+    compartir: 'Compartir la imagen',
+    descargar: 'Descargar la imagen',
+    /** Antes de compartir. */
+    pistaAntes:
+      'Al compartirla copiamos el link del caso: en Instagram, sumalo con el sticker de enlace.',
+    /** Después de copiar el link. */
+    pista: 'Copiamos el link: sumalo con el sticker de enlace de Instagram.',
+    sinCompartirArchivos:
+      'Este navegador no puede mandar la imagen a otra app. Descargala y subila a tu historia.',
+    descargada: 'Descargamos la imagen. Subila a tu historia desde la galería.',
+    errorGenerar: 'No pudimos armar la imagen. Probá de nuevo.',
+    errorCompartir: 'No pudimos compartir la imagen. Probá descargarla.',
+    reintentar: 'Probar de nuevo',
+    /** En la imagen: una etiqueta en mayúsculas, como un cartel (DISENO.md, 6.18). */
+    etiqueta: { perdido: 'SE PERDIÓ', encontrado: 'ENCONTRADO' } satisfies Record<
+      TipoReporte,
+      string
+    >,
+    /** "Se perdió el 17 de octubre". */
+    fecha: {
+      perdido: (cuando: string) => `Se perdió ${cuando}`,
+      encontrado: (cuando: string) => `Lo encontraron ${cuando}`,
+    } satisfies Record<TipoReporte, (cuando: string) => string>,
+    ayuda: {
+      perdido: `Ayudá a encontrarlo en ${NOMBRE}`,
+      encontrado: `Ayudá a encontrar a su familia en ${NOMBRE}`,
+    } satisfies Record<TipoReporte, string>,
+    nombreArchivo: 'spot-historia.jpg',
   },
   mensajes: {
     titulo: 'Mensajes',

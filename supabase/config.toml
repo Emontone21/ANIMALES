@@ -419,6 +419,10 @@ deno_version = 2
 [functions.reconocer]
 verify_jwt = false
 
+# La llama la base con pg_net (llamar_avisar) y X-Avisar-Secret: sin JWT de usuario.
+[functions.avisar]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

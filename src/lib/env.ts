@@ -50,6 +50,12 @@ export const ENV = {
    * al registrarse, ingresar ni recuperar la contraseña.
    */
   turnstileSiteKey: process.env.EXPO_PUBLIC_TURNSTILE_SITE_KEY?.trim() || null,
+  /**
+   * La clave VAPID pública de las notificaciones en el celular (Web Push), la
+   * misma que el secreto VAPID_PUBLIC_KEY de la función avisar. La privada va
+   * solo en la función. Sin ella, la app no ofrece notificaciones.
+   */
+  vapidPublicKey: process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY?.trim() || null,
   /** Sitio publicado: base de los links que se comparten (<sitio>/animal/<id>). */
   siteUrl: (process.env.EXPO_PUBLIC_SITE_URL?.trim() || 'https://animales-blue.vercel.app').replace(
     /\/+$/,

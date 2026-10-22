@@ -25,6 +25,7 @@ import { Texto } from '@/components/ui/Texto';
 import { AnchoMaximo, Espacio } from '@/constants/tema';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { usePublicarAnimal } from '@/features/reportes/api';
+import { marcarRecienPublicado } from '@/features/reportes/recienPublicado';
 import { t } from '@/i18n/es-UY';
 import { mensajeDeError } from '@/lib/errores';
 import type { CambiosReporte, LngLat, TipoReporte } from '@/types/dominio';
@@ -108,7 +109,9 @@ function FormularioPublicar({ usuarioId }: { usuarioId: string }) {
         vistoEn: perdido ? fechaPerdidoDe(cuandoPerdido) : fechaDe(cuando),
       },
       {
+        // En el caso, la pregunta de las notificaciones del celular (AvisosCelular).
         onSuccess: (animalId) => {
+          marcarRecienPublicado(animalId);
           router.replace(`/animal/${animalId}`);
         },
       },

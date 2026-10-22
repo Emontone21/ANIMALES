@@ -359,6 +359,37 @@ export type Database = {
         };
         Relationships: [];
       };
+      /** Web Push (0024): una por navegador. Se guardan con guardar_suscripcion_push. */
+      suscripciones_push: {
+        Row: {
+          id: string;
+          usuario_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          created_at: string;
+          actualizada_en: string;
+        };
+        Insert: {
+          id?: string;
+          usuario_id: string;
+          endpoint: string;
+          p256dh: string;
+          auth: string;
+          created_at?: string;
+          actualizada_en?: string;
+        };
+        Update: {
+          id?: string;
+          usuario_id?: string;
+          endpoint?: string;
+          p256dh?: string;
+          auth?: string;
+          created_at?: string;
+          actualizada_en?: string;
+        };
+        Relationships: [];
+      };
       notificaciones: {
         Row: {
           id: string;
@@ -759,6 +790,10 @@ export type Database = {
       };
     };
     Functions: {
+      guardar_suscripcion_push: {
+        Args: { p_endpoint: string; p_p256dh: string; p_auth: string };
+        Returns: string;
+      };
       abrir_conversacion: {
         Args: { p_animal_id: string; p_otro_usuario: string };
         Returns: string;

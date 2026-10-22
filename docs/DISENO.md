@@ -25,7 +25,7 @@ Quien perdió un animal está angustiado y apurado. La app tiene que sentirse tr
 - **El mapa es el protagonista** de la pantalla principal.
 - **Las fotos aportan el color.** Las fotos de los animales son lo único con color fuerte.
 - **Formas suaves.** Bordes redondeados, sombras solo en lo que flota sobre el mapa.
-- **Nada de mayúsculas sostenidas ni emojis.** Los textos van en oraciones cortas, con voseo.
+- **Nada de mayúsculas sostenidas ni emojis.** Los textos van en oraciones cortas, con voseo. Única excepción: la etiqueta "SE PERDIÓ" o "ENCONTRADO" de la historia para compartir (6.18), que funciona como un cartel.
 
 Significado de los colores:
 
@@ -109,6 +109,9 @@ Todo texto supera 4,5:1.
 | Botón primario | 5,9:1 | 6,7:1 |
 | Etiqueta perdido | 5,5:1 | 7,9:1 |
 | Etiqueta encontrado | 7,5:1 | 8,1:1 |
+| Etiqueta de la historia, perdido (`textoPerdido` sobre `superficie`) | 6,7:1 | 9,5:1 |
+| Etiqueta de la historia, encontrado (`textoEncontrado` sobre `superficie`) | 9,1:1 | 10,5:1 |
+| Texto de la historia sobre su fondo (6.18) | 5,5:1 o más | 5,5:1 o más |
 
 Lo que no es texto pero hay que ver para usarlo (el contorno de un campo) supera 3:1 contra lo que lo rodea:
 
@@ -471,6 +474,30 @@ Texto de cada evento:
 
 Todos van con radio `l` y relleno de 14 a 16. El indicador de carga usa `primario`.
 
+### 6.17 Notificaciones en el celular (solo web)
+
+- **La pregunta después de publicar,** arriba del contenido del caso recién publicado (una sola vez): bloque `superficieSuave`, radio `l`, relleno de 16. "¿Querés que te avisemos al celular cuando alguien lo vea?" en `cuerpoFuerte` y, debajo, "Sí, avisame" (`primario`, `notifications-outline`) y "Ahora no" (`fantasma`), en fila y repartidos. Si dice que sí, queda el mensaje de éxito "Listo: te vamos a avisar en este celular.".
+  - *iPhone sin instalar:* en vez de "Sí, avisame", la explicación en `secundario` y "Instalar la app" (`secundario`, `download-outline`), que abre la hoja de los pasos (7.10).
+  - *Navegadores de WhatsApp, Instagram y Facebook:* la explicación y "Abrir en Chrome o Safari" (`secundario`, `open-outline`), que abre la hoja de 7.10.
+  - *Ya activadas, bloqueadas o un navegador que no puede:* no aparece.
+- **El interruptor de Perfil** (La app, con cuenta, primero): `Interruptor` "Notificaciones en este celular" y, debajo, la ayuda en `secundario` (qué avisa y que en la pantalla bloqueada no se ven nombres, mensajes ni direcciones). Al prenderlo o apagarlo, un mensaje de éxito o de error. Si está bloqueado, en vez del interruptor la etiqueta sola y un mensaje de información con cómo volver a permitirlas (en el iPhone, en Android instalada, en Android en el navegador, en la computadora). En iPhone sin instalar y en los navegadores de las apps, lo mismo que la pregunta.
+- **La notificación** la dibuja el sistema: el ícono de la app (`public/iconos/icono-192.png`), el título y una línea. Sin colores propios.
+
+### 6.18 Historia para compartir
+
+Una imagen de 1080 × 1920 que se arma en el celular (`src/features/historias/disenio.ts`) para las historias de Instagram o los estados de WhatsApp. Sigue la apariencia de la app (claro u oscuro). Instagram tapa unos 200 px arriba y abajo: todo va entre 200 y 1720.
+
+- **Fondo:** el color dominante de la foto (como las tapas de Spotify), llevado hacia `superficie` en claro o hacia `fondo` en oscuro, de a 5 %, hasta que `texto` tenga 5,5:1; siempre se mueve al menos 35 % (claro) o 25 % (oscuro), para que la foto se despegue. Sin foto que se pueda dibujar, el mismo cálculo desde el color de la especie (`ColorHistoria` en `tema.ts`: perro `#A0703F`, gato `#5E7189`, otro `#556B2F`), que solo se usa acá.
+- **Etiqueta** (x 80, y 214): cápsula de 84 de alto en `superficie`, relleno de 36, con un punto de 24 en `perdido` o `encontrado` y "SE PERDIÓ" o "ENCONTRADO" en Figtree 700 38, en `textoPerdido` o `textoEncontrado`. Es la única mayúscula sostenida del diseño: un cartel.
+- **Foto** (x 80, y 334, 920 × 856, radio 64): llena el recuadro, recortada y centrada. Sin foto, el recuadro en `superficieSuave` con la chapita (`spot-marca` del esquema) de 240 en el centro.
+- **Nombre** (línea de base 1306): el nombre o, si no tiene (o parece un contacto), la especie, en Fredoka 600 112 (se achica hasta 64 si no entra; después se corta con "…").
+- **Qué animal** (1378): con nombre, "Perro marrón"; sin nombre, el color y el tamaño ("Gris, mediano"). Figtree 600 46. Si no hay nada, no va.
+- **Fecha** (1444, o 1378 si no hay línea anterior): "Se perdió el 17 de octubre" o "Lo encontraron el 21 de octubre". Figtree 400 42.
+- **Pedido** (1566): "Ayudá a encontrarlo en Spot" o "Ayudá a encontrar a su familia en Spot", Figtree 700 44.
+- **Logo** (x 80, y 1600, 288 de ancho): el completo del esquema (`spot-logo.svg` o `spot-logo-oscuro.svg`), sobre el fondo liso.
+- Todo el texto en `texto` del esquema. **Nunca** contactos, quién publicó, la descripción libre ni la ubicación.
+- **La hoja** "Compartir en historias" (`MenuOpciones`): la vista previa de 320 de alto (9:16, radio `m`, sobre `superficieSuave`), un mensaje de información con la pista del sticker de enlace y el botón `primario` "Compartir la imagen" (`share-outline`) o, si el navegador no puede mandar archivos, "Descargar la imagen" (`download-outline`). Al copiar el link, el mensaje pasa a éxito: "Copiamos el link: sumalo con el sticker de enlace de Instagram.". Mientras se arma, el indicador y "Armando la imagen…"; si falla, el error y "Probar de nuevo".
+
 ## 7. Pantallas
 
 Esta sección describe la versión de celular (compacta). La sección 8 indica cómo cambia en pantallas más anchas.
@@ -492,7 +519,8 @@ Esta sección describe la versión de celular (compacta). La sección 8 indica c
 
 - Foto de 380 de alto como máximo (el menor entre 380 y el 45 % del alto), con esquinas inferiores de radio `cabecera`.
 - Botones redondos flotantes: Volver a la izquierda; Seguir y Más opciones a la derecha.
-- "Más opciones" contiene Editar el reporte y Borrar el reporte (solo para quien lo publicó) y Denunciar. Compartir es un botón redondo del encabezado.
+- "Más opciones" contiene Editar el reporte y Borrar el reporte (solo para quien lo publicó) y Denunciar. Compartir es un botón redondo del encabezado y, a su derecha, "Compartir en historias" (`logo-instagram`; solo web y con el caso abierto, 6.18).
+- Recién publicado, arriba del contenido va la pregunta de las notificaciones (6.17).
 - La foto nunca se oscurece ni se filtra, tampoco en modo oscuro.
 
 **Contenido** (relleno de 24), en este orden:
@@ -551,6 +579,7 @@ Esta sección describe la versión de celular (compacta). La sección 8 indica c
   - ayuda: "Automático sigue la configuración de tu teléfono o computadora."
 - **Mis reportes:** filas con miniatura de radio `s`, etiqueta de estado, texto y chevron.
 - **La app** (sección nueva, con o sin cuenta, antes de "Términos y privacidad"):
+  - "Notificaciones en este celular": con cuenta y solo en web, primero (6.17).
   - "Instalar la app": botón `secundario` con `download-outline` y, debajo, la ayuda en `secundario`. Solo en web, si el navegador la puede instalar y no está instalada (ver 7.10).
   - "Reportar un error": botón `secundario` con `bug-outline`. Al mandarlo, un mensaje de éxito debajo.
 - **Cerrar sesión:** botón `peligro`.
@@ -775,6 +804,14 @@ El mapa en grande del recorrido no es una columna: ocupa toda el área de conten
 | `mapa.cantidadCasos(n)` | 1 caso / 7 casos / Ningún caso con estos filtros |
 | `perfil.laApp` | La app |
 | `instalar.boton` | Instalar la app |
+| `celular.interruptor` | Notificaciones en este celular |
+| `celular.pregunta` | ¿Querés que te avisemos al celular cuando alguien lo vea? |
+| `celular.si` / `celular.ahoraNo` | Sí, avisame / Ahora no |
+| `avisosPush.visto.titulo(aAnimal)` | Alguien vio a Toby (en la pantalla bloqueada; ver `t.avisosPush`) |
+| `avisosPush.mensaje.titulo(elAnimal)` | Tenés un mensaje nuevo sobre Toby |
+| `historia.boton` | Compartir en historias |
+| `historia.etiqueta` | SE PERDIÓ / ENCONTRADO (solo en la imagen) |
+| `historia.pista` | Copiamos el link: sumalo con el sticker de enlace de Instagram. |
 | `errores.boton` | Reportar un error |
 | `errores.moderacion.errores` | Errores |
 | `mapa.recorrido.verEnGrande` | Ver el mapa en grande |

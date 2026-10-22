@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { lazy, Suspense, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 
 import { EnlacesLegales } from '@/components/legal/EnlacesLegales';
 import { Avatar } from '@/components/ui/Avatar';
@@ -25,6 +25,7 @@ import { usePerfil } from '@/features/perfil/api';
 import { useMisAnimales } from '@/features/reportes/api';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
+import { ENV } from '@/lib/env';
 import { mensajeDeError } from '@/lib/errores';
 import { haceCuanto } from '@/lib/fechas';
 
@@ -32,6 +33,13 @@ import { haceCuanto } from '@/lib/fechas';
 // cargan al tocar sus botones, no con la app.
 const HojaInstalar = lazy(() => import('@/components/instalar/HojaInstalar'));
 const FormularioError = lazy(() => import('@/components/errores/FormularioError'));
+// Las notificaciones del celular (solo web), también aparte; el mismo bloque
+// que la pregunta después de publicar.
+const InterruptorAvisos = lazy(() =>
+  import('@/components/notificaciones/AvisosCelular').then((m) => ({
+    default: m.InterruptorAvisos,
+  })),
+);
 
 const OPCIONES_APARIENCIA = PREFERENCIAS_APARIENCIA.map((valor) => ({
   valor,
@@ -247,6 +255,12 @@ export default function PantallaPerfil() {
         <Texto variante="subtitulo" accessibilityRole="header">
           {t.perfil.laApp}
         </Texto>
+        {/* Con cuenta, en web y con la clave VAPID: el push nativo va por Expo. */}
+        {usuario && Platform.OS === 'web' && ENV.vapidPublicKey ? (
+          <Suspense fallback={null}>
+            <InterruptorAvisos />
+          </Suspense>
+        ) : null}
         {/* Solo en web, si el navegador la puede instalar y todavía no está instalada. */}
         {instalacion.forma !== 'ninguna' ? (
           <>

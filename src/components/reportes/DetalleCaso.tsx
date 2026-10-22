@@ -1,8 +1,9 @@
 import { Image } from 'expo-image';
-import { type ReactNode, useState } from 'react';
+import { lazy, type ReactNode, Suspense, useState } from 'react';
 import {
   ActivityIndicator,
   type ImageStyle,
+  Platform,
   ScrollView,
   type StyleProp,
   useWindowDimensions,
@@ -35,6 +36,11 @@ import type {
   EventoHistorial,
 } from '@/types/dominio';
 
+// La pregunta de las notificaciones va aparte (el mismo bloque que el interruptor de Perfil).
+const OfertaAvisos = lazy(() =>
+  import('@/components/notificaciones/AvisosCelular').then((m) => ({ default: m.OfertaAvisos })),
+);
+
 type Props = {
   animal: AnimalDetalle;
   /** Más nuevo primero. */
@@ -50,6 +56,8 @@ type Props = {
   onVolver: () => void;
   /** Abre el mapa en grande del recorrido. */
   onVerMapa: () => void;
+  /** Recién publicado: pregunta si avisar al celular (solo web). */
+  ofrecerAvisos?: boolean;
 };
 
 /**
@@ -63,6 +71,7 @@ export function DetalleCaso({
   historial,
   onVolver,
   onVerMapa,
+  ofrecerAvisos = false,
 }: Props) {
   const { c } = useTema();
   const estilos = useEstilos(crear);
@@ -151,6 +160,13 @@ export function DetalleCaso({
             onPress={acciones.compartir}
           />
         ) : null}
+        {acciones.puedeHistoria ? (
+          <BotonRedondo
+            icono="logo-instagram"
+            accessibilityLabel={t.historia.boton}
+            onPress={acciones.compartirHistoria}
+          />
+        ) : null}
         <BotonRedondo
           icono={acciones.siguiendo ? 'notifications' : 'notifications-outline'}
           color={acciones.siguiendo ? 'primario' : 'texto'}
@@ -172,6 +188,11 @@ export function DetalleCaso({
 
   const contenido = (
     <>
+      {ofrecerAvisos && Platform.OS === 'web' ? (
+        <Suspense fallback={null}>
+          <OfertaAvisos />
+        </Suspense>
+      ) : null}
       {a.oculto ? <Mensaje texto={t.animal.oculto} tipo="error" /> : null}
       {a.estado === 'reunido' ? <Mensaje texto={t.animal.casoCerrado} tipo="exito" /> : null}
       <View style={estilos.filaEstado}>

@@ -76,6 +76,15 @@ export function desdeCuando(fecha: string | Date, ahora: Date = new Date()): str
   return t.fechas.elDiaDelMes(numero, minuscula(formatoMes.format(momento)));
 }
 
+/** "el 17 de octubre", en horario de Uruguay: una fecha que no envejece (la historia). */
+export function elDiaDelMes(fecha: string | Date): string {
+  const momento = typeof fecha === 'string' ? new Date(fecha) : fecha;
+  return t.fechas.elDiaDelMes(
+    formatoNumeroDia.format(momento),
+    minuscula(formatoMes.format(momento)),
+  );
+}
+
 // Algunos motores devuelven "Octubre" o "Sábado"; en español van en minúscula.
 function minuscula(texto: string): string {
   return texto.toLocaleLowerCase('es-UY');

@@ -1,7 +1,7 @@
 import type Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
-import { type ComponentProps, type ReactNode, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { type ComponentProps, lazy, type ReactNode, Suspense, useEffect, useState } from 'react';
+import { Platform, View } from 'react-native';
 
 import { HojaTerminos } from '@/components/legal/AceptarTerminos';
 import { ModalAvistamiento } from '@/components/reportes/ModalAvistamiento';
@@ -37,12 +37,16 @@ import type { AnimalDetalle, AvistamientoDetalle, CambioEstadoDetalle } from '@/
 
 type NombreIcono = ComponentProps<typeof Ionicons>['name'];
 
+// La historia (con su generador de la imagen) va en un bloque aparte: se carga al tocar el botón.
+const HojaHistoria = lazy(() => import('@/components/historias/HojaHistoria'));
+
 type ModalCaso =
   | 'avistamiento'
   | 'denuncia'
   | TipoCambio
   | 'opciones'
   | 'compartir'
+  | 'historia'
   | 'borrar'
   | 'destinatario'
   | 'cuenta'
@@ -338,6 +342,15 @@ export function useAccionesCaso(
           { titulo: t.compartir.copiar, icono: 'copy-outline', onPress: () => void copiar() },
         ]}
       />
+      {modal === 'historia' ? (
+        <Suspense fallback={null}>
+          <HojaHistoria
+            animal={animal}
+            encontradoEn={avistamientos.find((a) => a.tipo === 'encontrado')?.visto_en ?? null}
+            onCerrar={() => setModal(null)}
+          />
+        </Suspense>
+      ) : null}
       <MenuOpciones
         visible={modal === 'destinatario'}
         titulo={t.mensajes.elegirDestinatario}
@@ -382,6 +395,9 @@ export function useAccionesCaso(
     abrirOpciones: () => setModal('opciones'),
     puedeCompartir: permisos.puedeCompartir,
     compartir: () => void compartir(),
+    /** "Compartir en historias": solo en web (la imagen la dibuja un canvas) y con el caso abierto. */
+    puedeHistoria: Platform.OS === 'web' && permisos.puedeCompartir && abierto,
+    compartirHistoria: () => setModal('historia'),
     escribir,
     seguir,
     modales,

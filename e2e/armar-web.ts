@@ -4,6 +4,7 @@
  * localhost (e2e/servidor.mjs). Sin captcha: spot-pruebas no lo tiene.
  */
 import { spawn } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -23,6 +24,13 @@ function marcaCoincide(entorno: Entorno): boolean {
   return marca.supabaseUrl === entorno.supabaseUrl && marca.sitio === SITIO;
 }
 
+/** 0x04 y 64 bytes al azar, en base64url: la forma de una clave pública de P-256. */
+function clavePushDePrueba(): string {
+  const punto = randomBytes(65);
+  punto[0] = 4;
+  return punto.toString('base64url');
+}
+
 async function exportar(entorno: Entorno): Promise<void> {
   const publishable = entorno.tipoClavePublica === 'publishable';
   const env: NodeJS.ProcessEnv = {
@@ -36,6 +44,9 @@ async function exportar(entorno: Entorno): Promise<void> {
     EXPO_PUBLIC_SUPABASE_ANON_KEY: publishable ? '' : entorno.clavePublica,
     EXPO_PUBLIC_SITE_URL: SITIO,
     EXPO_PUBLIC_TURNSTILE_SITE_KEY: '',
+    // Una clave con la forma de una VAPID pública, nueva en cada build: las pruebas
+    // simulan el push del navegador (ayudas.ts) y no mandan nada.
+    EXPO_PUBLIC_VAPID_PUBLIC_KEY: clavePushDePrueba(),
   };
   // La secreta no tiene nada que hacer en el proceso del build.
   delete env.E2E_SUPABASE_SECRET_KEY;
