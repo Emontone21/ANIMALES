@@ -161,6 +161,9 @@ function Navegacion() {
             options={{ title: t.mapa.recorrido.titulo, headerShown: false }}
           />
           <Stack.Screen name="casos" options={{ title: t.mapa.lista.titulo }} />
+          {/* Públicas y sin cuenta. */}
+          <Stack.Screen name="reencuentros/index" options={{ title: t.reencuentros.titulo }} />
+          <Stack.Screen name="reencuentros/[id]" options={{ title: t.reencuentros.titulo }} />
           <Stack.Screen name="conversacion/[id]" options={{ title: t.mensajes.titulo }} />
           <Stack.Screen name="moderacion" options={{ title: t.moderacion.titulo }} />
           {/* Se leen sin cuenta. */}
@@ -197,6 +200,10 @@ function Navegacion() {
             <Stack.Screen name="cuenta/editar" options={{ title: t.cuenta.editar.titulo }} />
             <Stack.Screen name="cuenta/borrar" options={{ title: t.cuenta.borrar.titulo }} />
             <Stack.Screen name="animal/[id]/editar" options={{ title: t.editarReporte.titulo }} />
+            <Stack.Screen
+              name="animal/[id]/reencuentro"
+              options={{ title: t.reencuentros.contar.titulo }}
+            />
           </Stack.Protected>
         </Stack>
       </View>

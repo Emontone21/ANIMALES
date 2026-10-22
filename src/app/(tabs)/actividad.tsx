@@ -42,6 +42,7 @@ const ICONO: Record<TipoNotificacion, ComponentProps<typeof Ionicons>['name']> =
   estado: 'heart-outline',
   mensaje: 'chatbubble-outline',
   error: 'bug-outline',
+  agradecimiento: 'heart-circle-outline',
 };
 
 export default function PantallaActividad() {

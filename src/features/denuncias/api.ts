@@ -1,16 +1,16 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 
 import { supabase } from '@/lib/supabase';
-import type { MotivoDenuncia } from '@/types/dominio';
 
-const clave = (usuarioId: string, animalId: string) => ['denuncias', usuarioId, animalId] as const;
+/**
+ * Si ya denunció el caso, para el menú del detalle. Mandar una denuncia está en
+ * denunciar.ts, que usa solo la hoja (va en un bloque aparte). La denuncia de
+ * la historia de un reencuentro es otra (`historia`, 0026): la consulta el muro
+ * (src/features/reencuentros/muro.ts).
+ */
 
-export type NuevaDenuncia = {
-  animalId: string;
-  avistamientoId?: string | null;
-  motivo: MotivoDenuncia;
-  detalle: string;
-};
+export const claveDenuncia = (usuarioId: string, animalId: string) =>
+  ['denuncias', usuarioId, animalId] as const;
 
 export async function yaDenuncio(usuarioId: string, animalId: string): Promise<boolean> {
   const { data, error } = await supabase
@@ -18,41 +18,17 @@ export async function yaDenuncio(usuarioId: string, animalId: string): Promise<b
     .select('id')
     .eq('usuario_id', usuarioId)
     .eq('animal_id', animalId)
+    .eq('historia', false)
     .maybeSingle();
   if (error) throw error;
   return data !== null;
 }
 
-export async function denunciar(usuarioId: string, nueva: NuevaDenuncia): Promise<void> {
-  const { error } = await supabase.from('denuncias').insert({
-    usuario_id: usuarioId,
-    animal_id: nueva.animalId,
-    avistamiento_id: nueva.avistamientoId ?? null,
-    motivo: nueva.motivo,
-    detalle: nueva.detalle.trim() || null,
-  });
-  if (error) throw error;
-}
-
 export function useDenuncia(usuarioId: string | null | undefined, animalId: string | undefined) {
-  const queryClient = useQueryClient();
-  const habilitado = Boolean(usuarioId && animalId);
-
   const consulta = useQuery({
-    queryKey: clave(usuarioId ?? '', animalId ?? ''),
+    queryKey: claveDenuncia(usuarioId ?? '', animalId ?? ''),
     queryFn: () => yaDenuncio(usuarioId as string, animalId as string),
-    enabled: habilitado,
+    enabled: Boolean(usuarioId && animalId),
   });
-
-  const enviar = useMutation({
-    mutationFn: (nueva: NuevaDenuncia) => {
-      if (!usuarioId) throw new Error('Sin sesión');
-      return denunciar(usuarioId, nueva);
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: clave(usuarioId ?? '', animalId ?? '') });
-    },
-  });
-
-  return { yaDenuncio: consulta.data ?? false, enviar };
+  return { yaDenuncio: consulta.data ?? false, refrescar: () => void consulta.refetch() };
 }

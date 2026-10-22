@@ -5,7 +5,6 @@ import { Platform, View } from 'react-native';
 
 import { HojaTerminos } from '@/components/legal/AceptarTerminos';
 import { ModalAvistamiento } from '@/components/reportes/ModalAvistamiento';
-import { ModalDenuncia } from '@/components/reportes/ModalDenuncia';
 import { ModalEstado, type TipoCambio } from '@/components/reportes/ModalEstado';
 import { Boton } from '@/components/ui/Boton';
 import { MenuOpciones } from '@/components/ui/MenuOpciones';
@@ -39,6 +38,8 @@ type NombreIcono = ComponentProps<typeof Ionicons>['name'];
 
 // La historia (con su generador de la imagen) va en un bloque aparte: se carga al tocar el botón.
 const HojaHistoria = lazy(() => import('@/components/historias/HojaHistoria'));
+// La denuncia también: la comparte con el muro de reencuentros (si no, iría a __common).
+const ModalDenuncia = lazy(() => import('@/components/reportes/ModalDenuncia'));
 
 type ModalCaso =
   | 'avistamiento'
@@ -51,6 +52,8 @@ type ModalCaso =
   | 'destinatario'
   | 'cuenta'
   | 'terminos'
+  /** Recién reunido, a la familia: "¡Qué alegría! ¿Querés contar cómo volvió?". */
+  | 'alegria'
   | null;
 
 type Novedad = { tipo: TipoCambio; titulo: string; icono: NombreIcono };
@@ -244,7 +247,12 @@ export function useAccionesCaso(
               tipoReporte={animal.tipo_reporte}
               usuarioId={usuario.id}
               onCerrar={() => setModal(null)}
-              onExito={() => cerrarConAviso(t.comunes.listo)}
+              onExito={() =>
+                // La familia de un perdido que volvió: se le ofrece contar cómo y agradecer.
+                modal === 'reunido' && permisos.esPerdido && permisos.esCreador
+                  ? setModal('alegria')
+                  : cerrarConAviso(t.comunes.listo)
+              }
             />
           ) : null}
           <HojaTerminos
@@ -261,13 +269,20 @@ export function useAccionesCaso(
               accion?.();
             }}
           />
-          <ModalDenuncia
-            visible={modal === 'denuncia'}
-            animalId={animal.id}
-            usuarioId={usuario.id}
-            onCerrar={() => setModal(null)}
-            onExito={() => cerrarConAviso(t.animal.modalDenuncia.exito)}
-          />
+          {modal === 'denuncia' ? (
+            <Suspense fallback={null}>
+              <ModalDenuncia
+                visible
+                animalId={animal.id}
+                usuarioId={usuario.id}
+                onCerrar={() => setModal(null)}
+                onExito={() => {
+                  denuncia.refrescar();
+                  cerrarConAviso(t.animal.modalDenuncia.exito);
+                }}
+              />
+            </Suspense>
+          ) : null}
         </>
       ) : null}
       <MenuOpciones
@@ -345,8 +360,11 @@ export function useAccionesCaso(
       {modal === 'historia' ? (
         <Suspense fallback={null}>
           <HojaHistoria
-            animal={animal}
-            encontradoEn={avistamientos.find((a) => a.tipo === 'encontrado')?.visto_en ?? null}
+            de={{
+              tipo: 'caso',
+              animal,
+              encontradoEn: avistamientos.find((a) => a.tipo === 'encontrado')?.visto_en ?? null,
+            }}
             onCerrar={() => setModal(null)}
           />
         </Suspense>
@@ -364,6 +382,26 @@ export function useAccionesCaso(
           deshabilitado: conversacion.isPending,
           onPress: () => escribirA(d.usuarioId),
         }))}
+      />
+      <MenuOpciones
+        visible={modal === 'alegria'}
+        titulo={t.reencuentros.alegria.titulo}
+        descripcion={t.reencuentros.alegria.pregunta}
+        textoCerrar={t.reencuentros.alegria.ahoraNo}
+        onCerrar={() => setModal(null)}
+        opciones={[
+          {
+            titulo: t.reencuentros.alegria.contar,
+            icono: 'heart-outline',
+            variante: 'primario',
+            onPress: () =>
+              cerrarYNavegar(
+                () => setModal(null),
+                () =>
+                  router.push({ pathname: '/animal/[id]/reencuentro', params: { id: animal.id } }),
+              ),
+          },
+        ]}
       />
       <MenuOpciones
         visible={modal === 'cuenta'}

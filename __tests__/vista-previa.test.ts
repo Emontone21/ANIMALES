@@ -2,6 +2,8 @@
  * @jest-environment node
  */
 // La función de Vercel corre en Node: fetch, Request y Response del runtime.
+import fs from 'node:fs';
+import path from 'node:path';
 
 const ID = 'b0000000-0000-4000-8000-000000000004';
 const SITIO = 'https://animales.test';
@@ -24,12 +26,30 @@ const toby: Caso = {
   oculto: false,
 };
 
+/** Lo que devuelve historia_reencuentro (sin cuenta): lo mismo que el muro. */
+const historiaDeToby: Caso = {
+  animal_id: ID,
+  nombre: 'Toby',
+  especie: 'perro',
+  foto_path: FOTO,
+  frase: 'Una vecina lo vio en la plaza y nos escribió',
+  dias: 3,
+  reunido_en: '2026-10-20T15:00:00Z',
+  oculta: false,
+};
+
 /** Simula la plantilla del deploy, la API de Supabase y Storage. */
 function simularRed({
   caso = toby as Caso | null,
+  historia = historiaDeToby as Caso | null,
   plantilla = true,
   miniatura = true,
-}: { caso?: Caso | null; plantilla?: boolean; miniatura?: boolean } = {}) {
+}: {
+  caso?: Caso | null;
+  historia?: Caso | null;
+  plantilla?: boolean;
+  miniatura?: boolean;
+} = {}) {
   const pedidos: { url: string; init?: RequestInit }[] = [];
   globalThis.fetch = jest.fn(async (entrada: RequestInfo | URL, init?: RequestInit) => {
     const url = String(entrada);
@@ -39,6 +59,9 @@ function simularRed({
     }
     if (url.includes('/rest/v1/animales')) {
       return Response.json(caso ? [caso] : []);
+    }
+    if (url.endsWith('/rest/v1/rpc/historia_reencuentro')) {
+      return Response.json(historia ? [historia] : []);
     }
     if (url.includes('/storage/v1/object/public/')) {
       return new Response(null, { status: miniatura ? 200 : 404 });
@@ -183,7 +206,7 @@ describe('vista previa del link de un caso', () => {
   });
 
   test('"$`" o "$&" en un nombre se insertan tal cual, sin pedazos del <head> (S-B1)', async () => {
-    simularRed({ caso: { ...toby, nombre: 'Toby $` $& $\'' } });
+    simularRed({ caso: { ...toby, nombre: "Toby $` $& $'" } });
     const { html } = await pedir(`/api/vista-previa?id=${ID}`);
     expect(html).toContain('<title>Se perdió Toby $` $&amp; $&#39; · Spot</title>');
     expect(html.match(/<head>/g)).toHaveLength(1);
@@ -205,5 +228,98 @@ describe('vista previa del link de un caso', () => {
     const { respuesta, html } = await pedir(`/api/vista-previa?id=${ID}`, 'HEAD');
     expect(respuesta.headers.get('content-type')).toContain('text/html');
     expect(html).toBe('');
+  });
+});
+
+describe('vista previa del link de una historia del muro', () => {
+  test('el nombre, los días y la foto; el link a la historia', async () => {
+    simularRed();
+    const { html } = await pedir(`/api/vista-previa?historia=${ID}`);
+    expect(html).toContain('<title>Toby volvió a casa · Spot</title>');
+    expect(html).toContain('<meta property="og:title" content="Toby volvió a casa" />');
+    expect(html).toContain(
+      '<meta property="og:description" content="Volvió a casa después de 3 días. Mirá más reencuentros en Spot." />',
+    );
+    expect(html).toContain(
+      `<meta property="og:url" content="https://spot.test/reencuentros/${ID}" />`,
+    );
+    expect(html).toContain('abc.miniatura.jpg');
+  });
+
+  test('la pide por la misma RPC que el muro, con la clave pública', async () => {
+    const pedidos = simularRed();
+    await pedir(`/reencuentros/${ID}`);
+    const consulta = pedidos.find((p) => p.url.includes('/rest/v1/rpc/historia_reencuentro'));
+    expect(consulta!.init!.method).toBe('POST');
+    expect(JSON.parse(String(consulta!.init!.body))).toEqual({ p_animal_id: ID });
+    expect(consulta!.init!.headers).toMatchObject({ apikey: 'clave-de-prueba' });
+    // De una historia no se consulta el caso: el link es de la historia.
+    expect(pedidos.some((p) => p.url.includes('/rest/v1/animales'))).toBe(false);
+  });
+
+  test('sin el nombre (la familia no quiso), la especie; nunca la frase', async () => {
+    simularRed({ historia: { ...historiaDeToby, nombre: null, dias: 0 } });
+    const { html } = await pedir(`/api/vista-previa?historia=${ID}`);
+    expect(html).toContain('<meta property="og:title" content="Un perro volvió a casa" />');
+    expect(html).toContain('Volvió a casa el mismo día.');
+    expect(html).not.toContain('Toby');
+    expect(html).not.toContain('vecina');
+  });
+
+  test.each([
+    ['oculta por moderación', { ...historiaDeToby, oculta: true }],
+    ['inexistente', null],
+  ])('una historia %s lleva la vista previa genérica del muro', async (_nombre, historia) => {
+    simularRed({ historia });
+    const { html } = await pedir(`/api/vista-previa?historia=${ID}`);
+    expect(html).toContain('<title>Reencuentros en Spot</title>');
+    expect(html).toContain(
+      `<meta property="og:url" content="https://spot.test/reencuentros/${ID}" />`,
+    );
+    expect(html).not.toContain('Toby');
+    expect(html).not.toContain('og:image');
+  });
+
+  test('un caso y una historia a la vez: las genéricas, sin consultar la base', async () => {
+    const otro = 'b0000000-0000-4000-8000-000000000005';
+    const pedidos = simularRed();
+    const { html } = await pedir(`/reencuentros/${ID}?id=${otro}`);
+    expect(pedidos.some((p) => p.url.includes('/rest/v1/'))).toBe(false);
+    expect(html).not.toContain('Toby');
+    expect(html).toContain('<meta property="og:url" content="https://spot.test" />');
+  });
+
+  test('la ruta y el parámetro del rewrite con el mismo id cuentan una vez', async () => {
+    simularRed();
+    const { html } = await pedir(`/reencuentros/${ID}?historia=${ID.toUpperCase()}`);
+    expect(html).toContain('<meta property="og:title" content="Toby volvió a casa" />');
+  });
+
+  test('un id que no es un UUID no consulta la base', async () => {
+    const pedidos = simularRed();
+    await pedir('/api/vista-previa?historia=no-es-un-id');
+    expect(pedidos.some((p) => p.url.includes('/rest/v1/'))).toBe(false);
+  });
+});
+
+describe('vercel.json manda a los bots a la vista previa', () => {
+  type Reescritura = {
+    source: string;
+    destination: string;
+    has?: { type: string; key: string; value: string }[];
+  };
+  const { rewrites } = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '..', 'vercel.json'), 'utf8'),
+  ) as { rewrites: Reescritura[] };
+
+  test('el link de un caso y el de una historia, con los mismos bots y antes del resto', () => {
+    const caso = rewrites.find((r) => r.source === '/animal/:id');
+    const historia = rewrites.find((r) => r.source === '/reencuentros/:id');
+    expect(caso?.destination).toBe('/api/vista-previa?id=:id');
+    expect(historia?.destination).toBe('/api/vista-previa?historia=:id');
+    expect(historia?.has).toEqual(caso?.has);
+    expect(historia?.has?.[0]).toMatchObject({ type: 'header', key: 'user-agent' });
+    const resto = rewrites.findIndex((r) => r.source === '/:path*');
+    expect(rewrites.indexOf(historia!)).toBeLessThan(resto);
   });
 });

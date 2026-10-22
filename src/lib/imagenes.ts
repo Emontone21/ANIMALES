@@ -70,6 +70,16 @@ export function urlFoto(ruta: string): string {
 }
 
 /**
+ * URL de la versión mediana (la foto entera a 640 de lado mayor), o de la
+ * original si es una URL externa. Las fotos de antes de la 0020 no la tienen:
+ * quien la muestra pasa a la original si no carga.
+ */
+export function urlMediana(ruta: string): string {
+  const mediana = rutaMediana(ruta);
+  return mediana ? urlPublica(mediana) : ruta;
+}
+
+/**
  * URL de la miniatura, o de la original si es una URL externa. Las fotos
  * subidas antes de la Fase 8 no tienen miniatura: quien la muestra pasa a la
  * original si no carga (FotoMiniatura).

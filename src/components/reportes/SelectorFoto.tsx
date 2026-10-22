@@ -19,10 +19,18 @@ type Props = {
   error?: string | null;
   /** Por defecto, "Foto". */
   etiqueta?: string;
+  /** La foto que queda si no se elige otra (por ejemplo, la del caso), en vez del recuadro vacío. */
+  vistaPrevia?: string | null;
 };
 
 /** Elegir la foto del animal con la cámara o desde la galería, con vista previa. */
-export function SelectorFoto({ foto, onCambio, error, etiqueta = t.publicar.foto }: Props) {
+export function SelectorFoto({
+  foto,
+  onCambio,
+  error,
+  etiqueta = t.publicar.foto,
+  vistaPrevia = null,
+}: Props) {
   const { c } = useTema();
   const estilos = useEstilos(crear);
   const { aviso, sacarFoto, elegirDeGaleria } = useElegirFoto(onCambio);
@@ -30,9 +38,9 @@ export function SelectorFoto({ foto, onCambio, error, etiqueta = t.publicar.foto
   return (
     <View style={estilos.contenedor}>
       <Texto variante="etiquetaCampo">{etiqueta}</Texto>
-      {foto ? (
+      {foto || vistaPrevia ? (
         <Image
-          source={{ uri: foto.uri }}
+          source={{ uri: foto?.uri ?? vistaPrevia ?? undefined }}
           accessibilityLabel={etiqueta}
           style={estilos.vistaPrevia}
           contentFit="cover"
@@ -56,7 +64,7 @@ export function SelectorFoto({ foto, onCambio, error, etiqueta = t.publicar.foto
       )}
       <View style={estilos.botones}>
         <Boton
-          titulo={foto ? t.publicar.cambiarFoto : t.publicar.sacarFoto}
+          titulo={foto || vistaPrevia ? t.publicar.cambiarFoto : t.publicar.sacarFoto}
           icono="camera-outline"
           variante="secundario"
           onPress={() => void sacarFoto()}

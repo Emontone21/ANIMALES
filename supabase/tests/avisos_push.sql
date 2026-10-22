@@ -23,11 +23,13 @@ update public.perfiles
 set terminos_version = public.version_terminos(), terminos_aceptados_en = now()
 where id::text like '00000000-0000-4000-8000-00000000240_';
 
+-- El tope de la migración (lo usa la sección del tope por hora). La URL y el
+-- secreto de la función se cargan acá, dentro de la transacción: corre igual
+-- con la función ya conectada en config_app.
 do $$
 begin
-  if public.config_numero('avisos_push_por_hora', 0) <> 6
-     or public.config_texto('avisar_url', 'x') <> '' then
-    raise exception 'FALLA 0: config_app no tiene avisos_push_por_hora en 6 y avisar_url vacía';
+  if public.config_numero('avisos_push_por_hora', 0) <> 6 then
+    raise exception 'FALLA 0: config_app no tiene avisos_push_por_hora en 6';
   end if;
 end $$;
 

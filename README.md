@@ -146,7 +146,7 @@ Para push en la app nativa (Android/iOS) hace falta un proyecto de EAS (`npx eas
 
 ## Pruebas de punta a punta
 
-`npm run e2e` corre los flujos principales de `docs/PRUEBAS-MANUALES.md` que no necesitan cámara, mail real, Google ni teléfono, con Playwright, en tamaño de teléfono y de computadora: publicar un perdido y un encontrado con foto, activar las notificaciones del celular (con el push del navegador simulado) y una notificación de verdad del service worker, compartir en historias, "Lo vi", resguardar con foto, reunido, mensajes, bloquear, denunciar y moderar, editar y borrar, compartir, perfil, reportar un error y borrar la cuenta. Falla si el navegador muestra un error en la consola.
+`npm run e2e` corre los flujos principales de `docs/PRUEBAS-MANUALES.md` que no necesitan cámara, mail real, Google ni teléfono, con Playwright, en tamaño de teléfono y de computadora: publicar un perdido y un encontrado con foto, activar las notificaciones del celular (con el push del navegador simulado) y una notificación de verdad del service worker, compartir en historias, "Lo vi", resguardar con foto, reunido, contar cómo volvió y agradecer, el muro de reencuentros, mensajes, bloquear, denunciar y moderar, editar y borrar, compartir, perfil, reportar un error y borrar la cuenta. Falla si el navegador muestra un error en la consola.
 - **Siempre contra el proyecto de pruebas** (sección 1b), nunca contra producción: si la URL es la de producción, no arranca.
 - **Variables** (en tu terminal, nunca en un archivo del repo): `E2E_SUPABASE_URL`, `E2E_SUPABASE_PUBLISHABLE_KEY` (o `E2E_SUPABASE_ANON_KEY`) y `E2E_SUPABASE_SECRET_KEY`, todas del proyecto de pruebas (Supabase → **Project Settings → API Keys**). La secreta solo se usa para crear y borrar las cuentas de prueba y sus fotos.
 - **Qué hace:** arma la web apuntada al proyecto de pruebas (`e2e/.dist`), la sirve en `http://localhost:4173`, crea dos cuentas de prueba por tamaño (familia y vecina), corre los flujos y al final borra las cuentas y sus fotos.
@@ -250,6 +250,14 @@ Con las migraciones 0017 a 0020 aplicadas y la función desplegada (paso 5):
 
 Probado en la base: `supabase/tests/reconocimiento_ia.sql` y `vision.sql`. La función: `deno test --allow-env` en `supabase/functions/reconocer` (con la API simulada). A mano: el paso 26 de `docs/PRUEBAS-MANUALES.md`.
 
+**Muro de reencuentros** (migraciones 0025 y 0026)
+1. **Contar cómo volvió:** al marcar su perdido como reunido, la familia ve "¡Qué alegría! ¿Querés contar cómo volvió?" (también después, desde "Cómo volvió" en el caso): una frase de hasta 280 caracteres, una foto opcional y si se muestra el nombre. Los teléfonos, links y emails se tapan. La edita o la borra cuando quiera.
+2. **Agradecer:** en el mismo paso, quienes participaron (avisaron que lo vieron, lo resguardaron o le escribieron) con su nombre público; a quien marca le llega "La familia de Toby te agradeció" en Actividad y, con la función `avisar` desplegada de nuevo, al celular. En su Perfil: "Ayudaste a reunir a N familias".
+3. **El muro:** `/reencuentros`, sin cuenta: "N animales volvieron a casa con Spot" (con menos de 5, "Los primeros reencuentros de Spot") y las historias más recientes, sin nombrar a nadie. Se llega desde una tarjeta al final de "Cerca tuyo" y desde Perfil. Cada historia se comparte con su link (con vista previa) y como historia de Instagram ("VOLVIÓ A CASA").
+4. **Moderación:** las historias se denuncian aparte del caso y se ocultan desde el panel.
+
+Probado en la base: `supabase/tests/reencuentros.sql`. La función: `deno test --allow-env` en `supabase/functions/avisar`. De punta a punta: `npm run e2e`. A mano: el paso 32 de `docs/PRUEBAS-MANUALES.md`. Pasos para producción: `docs/reportes/2026-10-22-reencuentros.md`.
+
 **Notificaciones en el celular e historias de Instagram** (migración 0024)
 1. **Después de publicar,** el caso pregunta "¿Querés que te avisemos al celular cuando alguien lo vea?"; en **Perfil → La app**, el interruptor "Notificaciones en este celular". Con la función configurada (paso 6), cuando alguien ve el caso llega "Alguien vio a Toby"; tocarla abre el caso.
 2. **Compartir en historias,** al lado de Compartir en un caso abierto: una imagen de 1080 × 1920 con la foto, "SE PERDIÓ" o "ENCONTRADO", el nombre, la fecha y el logo, que se manda a Instagram (y copia el link para el sticker de enlace) o se descarga.
@@ -278,12 +286,12 @@ El mismo código compila para Android e iOS (MapLibre React Native, push con Exp
 
 ```
 src/app/            rutas (Expo Router): (tabs)/ mapa·publicar·actividad·perfil, animal/[id] (detalle, editar y mapa del recorrido), casos (lista), conversacion/[id], moderacion, auth/, cuenta/, legal/
-src/components/     ui/ (botones, inputs, chips, casillas, avatar, modales), mapa/ (nativo .tsx y web .web.tsx), reportes/, auth/, legal/, errores/, instalar/, moderacion/, notificaciones/ (pregunta e interruptor del push web), historias/ (hoja de la historia)
-src/features/       auth, reportes, seguimientos, denuncias, coincidencias, notificaciones (también Web Push: celular.web.ts y formaDeAvisar.ts), mensajes, moderacion, perfil, bloqueos, cuenta, legal, mapa, instalar, errores, historias (diseño y generador de la imagen)
+src/components/     ui/ (botones, inputs, chips, casillas, avatar, modales), mapa/ (nativo .tsx y web .web.tsx), reportes/, auth/, legal/, errores/, instalar/, moderacion/, notificaciones/ (pregunta e interruptor del push web), historias/ (hoja de la historia), reencuentros/ (el muro, en un bloque aparte, y el contador)
+src/features/       auth, reportes, seguimientos, denuncias, coincidencias, notificaciones (también Web Push: celular.web.ts y formaDeAvisar.ts), mensajes, moderacion, perfil, bloqueos, cuenta, legal, mapa, instalar, errores, historias (diseño y generador de la imagen), reencuentros (historias, agradecimientos y el muro)
 src/lib/            supabase, imágenes (convención de miniaturas), fotos (comprimir, subir, borrar), compartir, ubicación, fechas, errores, env
 src/i18n/es-UY.ts   todos los textos
 src/types/          database.ts (esquema), dominio.ts
-supabase/           migrations/ (0001–0024), tests/ (pruebas SQL por fase, errores.sql, vision.sql, reconocimiento_ia.sql, contacto_al_cerrar.sql, auditoria_2.sql y avisos_push.sql), functions/reconocer (Edge Function del reconocimiento con la API de Claude y sus pruebas), functions/avisar (Edge Function de las notificaciones del celular, Web Push, y sus pruebas), templates/ (plantillas de mail de Auth), seed.sql, config.toml
+supabase/           migrations/ (0001–0026), tests/ (pruebas SQL por fase, errores.sql, vision.sql, reconocimiento_ia.sql, contacto_al_cerrar.sql, auditoria_2.sql, avisos_push.sql y reencuentros.sql), functions/reconocer (Edge Function del reconocimiento con la API de Claude y sus pruebas), functions/avisar (Edge Function de las notificaciones del celular, Web Push, y sus pruebas), templates/ (plantillas de mail de Auth), seed.sql, config.toml
 api/                función de Vercel: vista previa del link de un caso (Open Graph)
 __tests__/          pruebas de jest-expo (npm run test)
 e2e/                pruebas de punta a punta con Playwright (npm run e2e), contra el proyecto de pruebas

@@ -6,21 +6,55 @@ import { Mensaje } from '@/components/ui/Mensaje';
 import { MenuOpciones, type OpcionMenu } from '@/components/ui/MenuOpciones';
 import { Texto } from '@/components/ui/Texto';
 import { Espacio, Radio } from '@/constants/tema';
-import { datosDeHistoria } from '@/features/historias/disenio';
+import {
+  datosDeHistoria,
+  datosDeReencuentro,
+  type FuenteHistoria,
+} from '@/features/historias/disenio';
 import { generarHistoria } from '@/features/historias/generarHistoria';
+import type { HistoriaMuro } from '@/features/reencuentros/historia';
 import { crearEstilos, useEstilos, useTema } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
-import { linkDelCaso } from '@/lib/compartir';
+import { linkDeHistoria, linkDelCaso } from '@/lib/compartir';
 import { copiarLink } from '@/lib/hojaCompartir';
 import { urlFoto } from '@/lib/imagenes';
 import type { AnimalDetalle } from '@/types/dominio';
 
-type Props = {
-  animal: AnimalDetalle;
-  /** Un encontrado: cuándo lo vio quien lo encontró (la fecha de la historia). */
-  encontradoEn: string | null;
-  onCerrar: () => void;
-};
+/** Lo que se comparte: un caso abierto o la historia de un reencuentro (6.18 y 6.18.1). */
+export type DeQueHistoria =
+  | {
+      tipo: 'caso';
+      animal: AnimalDetalle;
+      /** Un encontrado: cuándo lo vio quien lo encontró (la fecha de la historia). */
+      encontradoEn: string | null;
+    }
+  | { tipo: 'reencuentro'; historia: HistoriaMuro };
+
+type Props = { de: DeQueHistoria; onCerrar: () => void };
+
+/** Qué se dibuja, con qué foto, a dónde lleva el link y cómo se nombra. */
+function armar(de: DeQueHistoria) {
+  if (de.tipo === 'caso') {
+    const a = de.animal;
+    return {
+      fuente: { tipo: 'caso', datos: datosDeHistoria(a, de.encontradoEn) } satisfies FuenteHistoria,
+      foto: a.foto_principal_path ? urlFoto(a.foto_principal_path) : null,
+      link: linkDelCaso(a.id),
+      titulo: t.animal.tituloCaso(a.nombre, a.especie, a.color, a.tamanio),
+      intro: t.historia.intro,
+      pistaAntes: t.historia.pistaAntes,
+    };
+  }
+  const h = de.historia;
+  return {
+    fuente: { tipo: 'reencuentro', datos: datosDeReencuentro(h) } satisfies FuenteHistoria,
+    foto: urlFoto(h.foto_path),
+    link: linkDeHistoria(h.animal_id),
+    titulo: t.reencuentros.tituloHistoria(h.nombre, h.especie),
+    intro: t.historia.reencuentro.intro,
+    pistaAntes: t.historia.reencuentro.pistaAntes,
+  };
+}
 
 type Estado =
   { fase: 'generando' } | { fase: 'lista'; archivo: File; vista: string } | { fase: 'error' };
@@ -37,27 +71,25 @@ function puedeCompartirArchivo(archivo: File): boolean {
 /**
  * "Compartir en historias" (solo web): arma la imagen en el celular, la
  * muestra y la manda con la hoja del sistema (o la descarga, si el navegador
- * no puede mandar archivos). A la vez copia el link del caso, para sumarlo con
- * el sticker de enlace de Instagram. Va en un bloque aparte con el generador:
- * se carga al tocar el botón.
+ * no puede mandar archivos). A la vez copia el link del caso (o de la historia
+ * del reencuentro), para sumarlo con el sticker de enlace de Instagram. Va en
+ * un bloque aparte con el generador: se carga al tocar el botón.
  */
-export default function HojaHistoria({ animal, encontradoEn, onCerrar }: Props) {
+export default function HojaHistoria({ de, onCerrar }: Props) {
   const { esquema } = useTema();
   const estilos = useEstilos(crear);
   const [estado, setEstado] = useState<Estado>({ fase: 'generando' });
   const [intento, setIntento] = useState(0);
   const [aviso, setAviso] = useState<Aviso | null>(null);
-  const link = linkDelCaso(animal.id);
-  const titulo = t.animal.tituloCaso(animal.nombre, animal.especie, animal.color, animal.tamanio);
+  // La hoja se monta al abrirla: lo que se comparte es lo de ese momento (quien
+  // la abre arma `de` en cada render, y la imagen no se tiene que rehacer por eso).
+  const [inicial] = useState(() => armar(de));
+  const { link, titulo, intro, pistaAntes } = inicial;
 
   useEffect(() => {
     let activo = true;
     let vista: string | null = null;
-    generarHistoria(
-      datosDeHistoria(animal, encontradoEn),
-      animal.foto_principal_path ? urlFoto(animal.foto_principal_path) : null,
-      esquema,
-    )
+    generarHistoria(inicial.fuente, inicial.foto, esquema)
       .then(({ archivo }) => {
         if (!activo) return;
         vista = URL.createObjectURL(archivo);
@@ -71,7 +103,7 @@ export default function HojaHistoria({ animal, encontradoEn, onCerrar }: Props) 
       activo = false;
       if (vista) URL.revokeObjectURL(vista);
     };
-  }, [animal, encontradoEn, esquema, intento]);
+  }, [inicial, esquema, intento]);
 
   /** El link se copia en el mismo toque que comparte o descarga (el portapapeles lo pide). */
   const copiar = () =>
@@ -134,11 +166,7 @@ export default function HojaHistoria({ animal, encontradoEn, onCerrar }: Props) 
           <Mensaje texto={aviso.texto} tipo={aviso.tipo} />
         ) : (
           <Mensaje
-            texto={
-              conHoja
-                ? t.historia.pistaAntes
-                : `${t.historia.sinCompartirArchivos} ${t.historia.pistaAntes}`
-            }
+            texto={conHoja ? pistaAntes : `${t.historia.sinCompartirArchivos} ${pistaAntes}`}
           />
         )}
       </View>
@@ -169,7 +197,7 @@ export default function HojaHistoria({ animal, encontradoEn, onCerrar }: Props) 
     <MenuOpciones
       visible
       titulo={t.historia.titulo}
-      descripcion={t.historia.intro}
+      descripcion={intro}
       contenido={contenido}
       opciones={opciones}
       onCerrar={onCerrar}

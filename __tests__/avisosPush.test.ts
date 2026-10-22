@@ -12,7 +12,9 @@ import { TEXTOS } from '../supabase/functions/avisar/textos';
 
 type Texto = { titulo: string | ((valor: string | null) => string); cuerpo: string };
 
-const ARGUMENTOS = ['a Toby', 'al perro', 'Toby', 'el gato', 'el animal'];
+const ARGUMENTOS = ['a Toby', 'al perro', 'Toby', 'el gato', 'el animal', 'de Toby', 'del perro'];
+/** Las formas de la especie ("al perro", "el perro", "del perro"): no son textos. */
+const ESPECIES = ['animalA', 'animalEl', 'animalDe'];
 /** Los que aceptan null: sin nombre (coincidencia de la familia) o sin caso (mensaje). */
 const CON_NULL = ['coincidenciaFamilia', 'mensaje'];
 
@@ -34,8 +36,9 @@ describe('textos de las notificaciones del celular', () => {
   test('dicen lo mismo, con y sin nombre', () => {
     expect(TEXTOS.animalA).toEqual(t.avisosPush.animalA);
     expect(TEXTOS.animalEl).toEqual(t.avisosPush.animalEl);
+    expect(TEXTOS.animalDe).toEqual(t.avisosPush.animalDe);
     for (const clave of Object.keys(app)) {
-      if (clave === 'animalA' || clave === 'animalEl') continue;
+      if (ESPECIES.includes(clave)) continue;
       expect([clave, ...salidas(clave, funcion[clave] as Texto)]).toEqual([
         clave,
         ...salidas(clave, app[clave] as Texto),
@@ -45,13 +48,17 @@ describe('textos de las notificaciones del celular', () => {
 
   test('voseo y sin datos de personas: ningún texto fijo nombra a alguien ni trae números', () => {
     for (const clave of Object.keys(app)) {
-      if (clave === 'animalA' || clave === 'animalEl') continue;
+      if (ESPECIES.includes(clave)) continue;
       for (const frase of salidas(clave, app[clave] as Texto)) {
         expect(frase).not.toMatch(/\d|@|https?:|\btú\b|\btienes\b/i);
       }
     }
     expect(t.avisosPush.mensaje.titulo('Toby')).toBe('Tenés un mensaje nuevo sobre Toby');
     expect(t.avisosPush.visto.titulo('a Toby')).toBe('Alguien vio a Toby');
+    expect(t.avisosPush.agradecimiento.titulo('de Toby')).toBe('La familia de Toby te agradeció');
+    expect(t.avisosPush.agradecimiento.titulo(t.avisosPush.animalDe.perro)).toBe(
+      'La familia del perro te agradeció',
+    );
   });
 
   test('el título de respaldo del service worker es el nombre de la app', () => {

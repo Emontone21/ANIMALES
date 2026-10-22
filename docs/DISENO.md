@@ -112,6 +112,8 @@ Todo texto supera 4,5:1.
 | Etiqueta de la historia, perdido (`textoPerdido` sobre `superficie`) | 6,7:1 | 9,5:1 |
 | Etiqueta de la historia, encontrado (`textoEncontrado` sobre `superficie`) | 9,1:1 | 10,5:1 |
 | Texto de la historia sobre su fondo (6.18) | 5,5:1 o más | 5,5:1 o más |
+| Contador y tarjeta de reencuentros (`textoPrimarioSuave` sobre `primarioSuave`, 6.7 y 6.19) | 7,5:1 | 8,1:1 |
+| "Ver historias" (`primario` sobre `primarioSuave`, 6.7) | 4,9:1 | 4,7:1 |
 
 Lo que no es texto pero hay que ver para usarlo (el contorno de un campo) supera 3:1 contra lo que lo rodea:
 
@@ -146,6 +148,7 @@ Cualquier combinación nueva de colores se verifica antes de usarla.
 
 | Variante | Fuente | Tamaño / interlineado | Uso |
 | --- | --- | --- | --- |
+| `contador` | Fredoka 600 | 56 / 60 | El número del muro de reencuentros (6.19) |
 | `display` | Fredoka 600 | 40 / 42 | Nombre del animal en el detalle |
 | `titulo` | Fredoka 600 | 28 / 32 | Título de pantalla (Publicar, Actividad, Perfil) |
 | `subtitulo` | Fredoka 600 | 22 / 28 | Secciones: Cerca tuyo, Historial |
@@ -344,6 +347,7 @@ De 44 a 52, fondo `superficie` con sombra y ícono en `texto`. El de mi ubicaci�
 - **Accesible:** el botón se anuncia "Ocultar casos" o "Mostrar casos", con `aria-expanded`, y funciona con Enter y Espacio. Plegada, el carrusel no se dibuja (no se llega a sus tarjetas con Tab).
 - Al tocar un marcador con la hoja plegada, se despliega con esa tarjeta primera.
 - La posición se guarda en el dispositivo, como la apariencia. Sin casos, la hoja es solo la barra.
+- **Al final del carrusel, la entrada al muro de reencuentros** (`TarjetaReencuentros`): del ancho de una tarjeta (224) y del mismo alto, fondo `primarioSuave`, borde de 1,5 del mismo color (con hover o presionada, `primario`), radio `l` y relleno de 16. Arriba, un círculo de 44 en `superficie` con `heart-outline` de 22 en `textoPrimarioSuave`; abajo, "34 volvieron a casa" (o, con menos de 5, "Los primeros reencuentros de Spot") en `tituloTarjeta` y `textoPrimarioSuave`, y "Ver historias" en `etiquetaCampo` y `primario`. Es un link: lleva a `/reencuentros`. Se pide recién cuando el mapa mostró sus casos; si el contador no carga, no aparece. En medio y amplio va como fila al final de la lista del panel (en fila, relleno de 12). Sin casos cerca, la hoja es solo la barra y no se ve: el muro sigue a mano desde Perfil.
 
 ### 6.8 Tarjeta de caso
 
@@ -498,6 +502,44 @@ Una imagen de 1080 × 1920 que se arma en el celular (`src/features/historias/di
 - Todo el texto en `texto` del esquema. **Nunca** contactos, quién publicó, la descripción libre ni la ubicación.
 - **La hoja** "Compartir en historias" (`MenuOpciones`): la vista previa de 320 de alto (9:16, radio `m`, sobre `superficieSuave`), un mensaje de información con la pista del sticker de enlace y el botón `primario` "Compartir la imagen" (`share-outline`) o, si el navegador no puede mandar archivos, "Descargar la imagen" (`download-outline`). Al copiar el link, el mensaje pasa a éxito: "Copiamos el link: sumalo con el sticker de enlace de Instagram.". Mientras se arma, el indicador y "Armando la imagen…"; si falla, el error y "Probar de nuevo".
 
+### 6.18.1 Historia "VOLVIÓ A CASA"
+
+La misma base de 6.18 (fondo, foto, logo y medidas), para compartir una historia del muro (`disenioReencuentro`):
+
+- **Etiqueta:** "VOLVIÓ A CASA", con el punto en `encontrado` y el texto en `textoEncontrado`: el verde de "ya está en casa".
+- **Nombre** (1306): el nombre si la familia quiso mostrarlo o, si no, la especie ("Perro").
+- **Días** (1378): "Volvió a casa después de 5 días" o "el mismo día", Figtree 600 46 (se achica hasta 36).
+- **La frase** (1440), entre comillas latinas («»), Figtree 400 38, en dos líneas como mucho con 50 de interlineado; si no entra, la segunda termina en "…»" (`partirEnLineas`).
+- **Pedido** (1566): "Conocé más reencuentros en Spot".
+- Lleva la frase porque la imagen la ve antes quien la comparte; nunca quién ayudó, contactos ni dónde. El link que se copia es el de la historia (`/reencuentros/<id>`).
+
+### 6.19 Muro de reencuentros
+
+`/reencuentros`, una columna de 720 (`AnchoMaximo.lista`), sin cuenta:
+
+- **Arriba,** la introducción en `secundario` ("Animales que volvieron a casa, contados por sus familias.").
+- **El contador:** un bloque `primarioSuave` de radio `xl`, relleno de 20 y 120 de alto como mínimo. El número en `contador` y, debajo, "animales volvieron a casa con Spot" en `cuerpoFuerte`, los dos en `textoPrimarioSuave`. Con menos de 5 reencuentros no hay número: "Los primeros reencuentros de Spot" en `titulo`. Para los lectores de pantalla es un encabezado con la frase entera ("34 animales volvieron a casa con Spot"). Mientras carga, el mismo bloque con el indicador; si falla, no se muestra.
+- **Las historias,** separadas 16, de la más reciente a la más vieja, de a 20 ("Ver más historias", botón `fantasma`). Cada una es una tarjeta `superficie` con borde de 1 en `borde` y radio `xl`:
+  - la foto del reencuentro (la mediana; si no carga, la original), a todo el ancho y en 4:3, sin oscurecer ni filtrar; las de la primera tarjeta, con prioridad alta;
+  - el nombre (o "Un perro", "Un gato") en `tituloTarjeta`, como encabezado;
+  - "Volvió a casa después de 5 días" en `cuerpoFuerte`;
+  - la frase en `cuerpo` y `textoCuerpo`;
+  - la fecha ("El 22 de octubre") en `pequeno`;
+  - abajo a la derecha, botones redondos sin sombra: Compartir (`share-social-outline`), Compartir en historias (`logo-instagram`, solo web) y Más opciones (`ellipsis-horizontal`: "Ver el caso" y "Denunciar la historia", que pide cuenta y términos como denunciar un caso).
+- **Sin historias:** "Todavía no hay historias…" en `secundario`.
+- **`/reencuentros/<id>`** (el link de una): esa tarjeta sola y el botón `secundario` "Ver todos los reencuentros" (`heart-outline`). Si no existe o está oculta para quien mira, "Esta historia no está disponible.". La familia y moderación la ven aunque esté oculta, con el aviso de error arriba y sin los botones de compartir.
+- **Nunca** ubicación, quién publicó, quién ayudó ni contactos. Capturas en `docs/reportes/2026-10-22-reencuentros/`.
+
+### 6.20 Contar cómo volvió
+
+- **Al marcar el caso como reunido** (solo la familia de un perdido), en vez del aviso "Listo" se abre un `MenuOpciones`: "¡Qué alegría!", con "¿Querés contar cómo volvió? También podés agradecerle a quien te ayudó.", la opción `primario` "Contar cómo volvió" (`heart-outline`) y "Ahora no" para cerrar.
+- **En el detalle de un caso reunido,** después de Novedades del caso, "Cómo volvió" (`subtitulo`) con la tarjeta de la historia (sin el nombre, que ya es el título de la pantalla, y sin Más opciones), "Editar la historia" (familia, `secundario`) y "Ver todos los reencuentros" (`fantasma`). Si todavía no hay historia, solo la familia ve una invitación en `superficieSuave` de radio `l`: "¿Querés contar cómo volvió?" en `tituloTarjeta`, la ayuda en `secundario` y el botón `primario` "Contar cómo volvió".
+- **El formulario** (`/animal/<id>/reencuentro`, columna de 560), con la intro de que es opcional y se puede editar o borrar:
+  - *Tu historia (opcional):* el selector de foto con la del caso como vista previa y "Si no elegís una, usamos la foto del caso." (con una foto nueva, el botón `fantasma` "Usar la foto del caso"); el mensaje de información "Si en la foto aparecen personas, que estén de acuerdo en que se publique."; el campo "¿Cómo volvió?" (varias líneas) con "n de 280 · Hasta 280 caracteres. Los teléfonos, links y emails no se publican." en `pequeno` (en `peligro` si se pasa); y el interruptor "Mostrar el nombre (Toby)" con su ayuda.
+  - *Agradecer (opcional):* la intro en `secundario` y una fila por persona que participó, separadas por `borde`: casilla de 24 (borde de 2 en `bordeCampo`, marcada en `primario` con `checkmark` en `textoSobrePrimario`), avatar de 40, el nombre en `cuerpoFuerte` y cómo ayudó en `secundario` ("Avisó que lo vio · Te escribió"). A quien ya se le agradeció, marcada, sin poder tocarla y con "Ya le agradeciste". Es un `checkbox` con `aria-checked`. Debajo, "Mensaje (opcional)". Sin participantes: "Nadie más participó en el caso.".
+  - *Abajo, fijo,* el botón `primario`: "Publicar la historia", "Guardar los cambios" o, sin frase, "Agradecer" (`heart-circle-outline`), con los errores encima. Con la historia publicada, lleva a su página del muro.
+  - *Editando,* al final, "Borrar la historia" (`peligro`), que confirma en un `MenuOpciones`.
+
 ## 7. Pantallas
 
 Esta sección describe la versión de celular (compacta). La sección 8 indica cómo cambia en pantallas más anchas.
@@ -534,9 +576,10 @@ Esta sección describe la versión de celular (compacta). La sección 8 indica c
 7. **"Novedades del caso":** botones `secundario` para "Me lo llevé / está resguardado", "Se reunió con su familia" y "Se volvió a escapar", según las reglas actuales de quién ve cada uno.
 8. Visto por última vez (6.9). Tocar el mini mapa abre el mapa en grande (6.9.1).
 9. Posibles coincidencias (6.10), si el caso no está reunido.
-10. Historial (6.11).
-11. Aviso contra estafas (6.12).
-12. Espacio final igual al alto de la barra de acciones (6.13).
+10. "Cómo volvió", si el caso está reunido (6.20).
+11. Historial (6.11).
+12. Aviso contra estafas (6.12).
+13. Espacio final igual al alto de la barra de acciones (6.13).
 
 **Si el caso fue vinculado,** se mantiene el comportamiento actual: el mensaje de redirección al caso principal (el bug B1 se corrigió en la migración 0007).
 
@@ -561,6 +604,7 @@ Esta sección describe la versión de celular (compacta). La sección 8 indica c
   - tiempo en `pequeno`;
   - punto de no leída en `primario`;
   - separadores de 1 en `borde`.
+- Un agradecimiento ("La familia de Toby te agradeció", con el mensaje de la familia) lleva `heart-circle-outline` y abre el caso.
 
 ### 7.5 Conversación
 
@@ -578,6 +622,7 @@ Esta sección describe la versión de celular (compacta). La sección 8 indica c
   - chips Automático, Claro y Oscuro;
   - ayuda: "Automático sigue la configuración de tu teléfono o computadora."
 - **Mis reportes:** filas con miniatura de radio `s`, etiqueta de estado, texto y chevron.
+- **Reencuentros** (con o sin cuenta, antes de Apariencia): con cuenta y si alguna familia le agradeció, "Ayudaste a reunir a 3 familias." en `cuerpoFuerte` (solo cuenta lo que una familia agradeció); y el botón `secundario` "Ver las historias" (`heart-outline`), que lleva al muro.
 - **La app** (sección nueva, con o sin cuenta, antes de "Términos y privacidad"):
   - "Notificaciones en este celular": con cuenta y solo en web, primero (6.17).
   - "Instalar la app": botón `secundario` con `download-outline` y, debajo, la ayuda en `secundario`. Solo en web, si el navegador la puede instalar y no está instalada (ver 7.10).
@@ -598,7 +643,7 @@ Contenido centrado, de 420 de ancho como máximo:
 ### 7.8 Moderación y página no encontrada
 
 - **Moderación:** arriba, chips "Denuncias", "Errores" y "Reconocimiento" (activo en `inverso`). El aviso de un error nuevo abre "Errores".
-  - *Denuncias:* misma lista que Actividad. La marca "Oculta" usa una etiqueta con `peligroSuave` y `peligro`.
+  - *Denuncias:* misma lista que Actividad. La marca "Oculta" usa una etiqueta con `peligroSuave` y `peligro`. La denuncia de una historia del muro lleva la etiqueta "Historia del reencuentro", la frase y los botones "Ver la historia" y "Ocultar la historia" (o "Volver a mostrar la historia"), aparte de los del caso.
   - *Errores:* chips "Pendientes (n)" y "Resueltos (n)". Cada reporte es una fila con la etiqueta "Pendiente" (`avisoFondo` y `texto`) o "Resuelto" (`superficieSuave` y `textoSecundario`), "Sin cuenta" si se mandó así, quién y cuándo en `pequeno`, qué pasó en `cuerpo` y un bloque `superficieSuave` de radio `l` con los datos (cada etiqueta en Figtree 700). "Ver la captura" (botón `fantasma`) la muestra entera, de 320 de alto, sobre `superficieSuave`. Los pendientes terminan con un campo "Nota para quien lo reportó (opcional)" y el botón `primario` "Marcar como resuelto"; los resueltos, con quién lo resolvió, cuándo y la nota.
   - *Reconocimiento:* el estado del reconocimiento con IA, sin la dirección de la función ni su secreto.
     - Arriba, una línea en `secundario` que explica qué hace: "La inteligencia artificial describe cada foto nueva…" (sin nombrar la marca; siempre confirma una persona).
@@ -697,7 +742,8 @@ Una columna centrada con ancho máximo:
 | Pantalla | Ancho máximo |
 | --- | --- |
 | Publicar | 560 |
-| Actividad, Perfil, Conversación, Moderación | 720 |
+| Actividad, Perfil, Conversación, Moderación, muro de reencuentros | 720 |
+| Contar cómo volvió | 560 |
 | Ingresar y registrarse | 420 |
 
 En amplio, el riel de navegación queda a la izquierda.
@@ -820,6 +866,16 @@ El mapa en grande del recorrido no es una columna: ocupa toda el área de conten
 | `mapa.recorrido.posicion(n, total)` | 2 de 5 |
 | `mapa.recorrido.aproximada` | Ubicación aproximada, unos 100 m a la redonda. |
 | `animal.queHizo(tipo, nombre)` | Lo vio Carla / Se perdió acá (el Historial y el mapa en grande) |
+| `reencuentros.contadorPrimeros` | Los primeros reencuentros de Spot |
+| `reencuentros.contadorDetalle(n)` | animales volvieron a casa con Spot |
+| `reencuentros.tarjeta(n)` / `reencuentros.verHistorias` | 34 volvieron a casa / Ver historias |
+| `reencuentros.dias(n)` | Volvió a casa después de 5 días / el mismo día |
+| `reencuentros.alegria.titulo` / `.pregunta` | ¡Qué alegría! / ¿Querés contar cómo volvió? También podés agradecerle a quien te ayudó. |
+| `reencuentros.contar.avisoPersonas` | Si en la foto aparecen personas, que estén de acuerdo en que se publique. |
+| `reencuentros.contar.comoAyudo` | Avisó que lo vio / Lo resguardó / Te escribió |
+| `avisosPush.agradecimiento.titulo(deAnimal)` | La familia de Toby te agradeció |
+| `perfil.ayudaste(n)` | Ayudaste a reunir a 1 familia. / a 3 familias. |
+| `historia.reencuentro.etiqueta` | VOLVIÓ A CASA (solo en la imagen) |
 
 El lema actual sigue en uso para el título de la página web.
 

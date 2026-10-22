@@ -5,13 +5,18 @@ import {
   colorDominante,
   CONTRASTE_FONDO,
   datosDeHistoria,
+  datosDeReencuentro,
   deHex,
+  disenioDe,
   disenioHistoria,
   type DisenioHistoria,
+  disenioReencuentro,
   fondoDeHistoria,
   nombreParaHistoria,
+  partirEnLineas,
   type Rgb,
   textosDeHistoria,
+  textosDeReencuentro,
 } from '@/features/historias/disenio';
 import { contraste } from '@/lib/contraste';
 
@@ -166,6 +171,130 @@ describe('la historia para compartir', () => {
     expect(datos.nombre).toBeNull();
     expect(datos.color).toBeNull();
     expect(textosDeHistoria(datos).titulo).toBe('Perro');
+  });
+});
+
+/** Una historia como la devuelve muro_reencuentros (con lo que no puede ir en la imagen). */
+const REENCUENTRO = {
+  animal_id: '11111111-2222-4333-8444-555555555555',
+  nombre: 'Toby',
+  especie: 'perro' as const,
+  foto_path: 'u/foto.jpg',
+  frase: 'Una vecina lo vio en la plaza   y nos escribió. ¡Gracias!',
+  dias: 3,
+  reunido_en: '2026-10-20T15:00:00Z',
+};
+
+/** Un ancho falso y parejo: cada carácter mide 20 px a 38 (la frase entra en ~46 por línea). */
+const medir = (texto: string) => [...texto].length * 20;
+
+describe('la historia "VOLVIÓ A CASA"', () => {
+  test('la misma base: 1080 × 1920, todo adentro y la frase entre los días y el pedido', () => {
+    for (const esquema of ESQUEMAS) {
+      const d = disenioReencuentro(datosDeReencuentro(REENCUENTRO), esquema, [180, 120, 60]);
+      expect([d.ancho, d.alto]).toEqual([1080, 1920]);
+      const base = disenioHistoria(datosDeHistoria(CASO), esquema, [180, 120, 60]);
+      expect(d.foto).toEqual(base.foto);
+      expect(d.logo).toEqual(base.logo);
+      expect(d.etiqueta.texto.texto).toBe('VOLVIÓ A CASA');
+      // El punto, del color de los encontrados (el verde): ya está en casa.
+      expect(d.etiqueta.colorPunto).toBe(paletas[esquema].encontrado);
+      for (const x of d.textos) {
+        expect(x.x + x.maxAncho).toBeLessThanOrEqual(ANCHO);
+        expect(x.y - x.tamanio).toBeGreaterThanOrEqual(d.foto.y + d.foto.alto);
+      }
+      // La frase en dos líneas como mucho: la última no pisa el pedido de abajo.
+      const [, dias, frase, ayuda] = d.textos;
+      expect(frase.lineas).toEqual({ maximo: 2, interlineado: 50 });
+      expect(frase.y - frase.tamanio).toBeGreaterThan(dias.y);
+      const ultima = frase.y + (frase.lineas!.maximo - 1) * frase.lineas!.interlineado;
+      expect(ultima).toBeLessThan(ayuda.y - ayuda.tamanio);
+      expect(ayuda.y).toBeLessThan(d.logo.y);
+      expect(
+        disenioDe(
+          { tipo: 'reencuentro', datos: datosDeReencuentro(REENCUENTRO) },
+          esquema,
+          [180, 120, 60],
+        ),
+      ).toEqual(d);
+    }
+  });
+
+  test('el texto se lee con cualquier foto, en claro y en oscuro', () => {
+    for (const esquema of ESQUEMAS) {
+      for (const color of COLORES) {
+        const d = disenioReencuentro(datosDeReencuentro(REENCUENTRO), esquema, color);
+        expect(contraste(d.etiqueta.texto.color, d.etiqueta.texto.sobre)).toBeGreaterThanOrEqual(
+          4.5,
+        );
+        for (const x of d.textos) {
+          expect(x.sobre).toBe(d.fondo);
+          expect(contraste(x.color, d.fondo)).toBeGreaterThanOrEqual(CONTRASTE_FONDO);
+        }
+      }
+    }
+  });
+
+  test('los textos: el nombre (o la especie), los días y la frase entre comillas', () => {
+    expect(textosDeReencuentro(datosDeReencuentro(REENCUENTRO))).toEqual({
+      etiqueta: 'VOLVIÓ A CASA',
+      titulo: 'Toby',
+      dias: 'Volvió a casa después de 3 días',
+      frase: '«Una vecina lo vio en la plaza y nos escribió. ¡Gracias!»',
+      ayuda: 'Conocé más reencuentros en Spot',
+    });
+    const sinNombre = datosDeReencuentro({
+      ...REENCUENTRO,
+      nombre: null,
+      especie: 'gato',
+      dias: 0,
+    });
+    expect(textosDeReencuentro(sinNombre).titulo).toBe('Gato');
+    expect(textosDeReencuentro(sinNombre).dias).toBe('Volvió a casa el mismo día');
+    // Un nombre que parece un contacto no entra.
+    expect(datosDeReencuentro({ ...REENCUENTRO, nombre: 'Toby 099123456' }).nombre).toBeNull();
+  });
+
+  test('sin datos privados: solo el nombre, la especie, los días y la frase', () => {
+    const datos = datosDeReencuentro({
+      ...REENCUENTRO,
+      // Lo que nunca puede llegar a la imagen, aunque venga en el objeto.
+      ...{ familia_id: 'u', contacto_familia: '099 123 456', lat: -34.9, lng: -56.1 },
+    });
+    expect(Object.keys(datos).sort()).toEqual(['dias', 'especie', 'frase', 'nombre']);
+    const textos = todosLosTextos(disenioReencuentro(datos, 'claro', null)).join(' | ');
+    expect(textos).not.toMatch(/099|-34|-56|foto\.jpg|2026/);
+  });
+});
+
+describe('partir la frase en líneas', () => {
+  test('entra entera: una o dos líneas, sin cortar palabras', () => {
+    expect(partirEnLineas('«Volvió solo»', 920, 2, medir)).toEqual(['«Volvió solo»']);
+    const lineas = partirEnLineas(`«${'palabra '.repeat(10).trim()}»`, 920, 2, medir);
+    expect(lineas).toHaveLength(2);
+    for (const linea of lineas) expect(medir(linea)).toBeLessThanOrEqual(920);
+    expect(lineas.join(' ')).toBe(`«${'palabra '.repeat(10).trim()}»`);
+  });
+
+  test('si no entra, la última línea termina en "…" (o "…»" entre comillas)', () => {
+    const larga = `«${'palabra '.repeat(40).trim()}»`;
+    const lineas = partirEnLineas(larga, 920, 2, medir);
+    expect(lineas).toHaveLength(2);
+    expect(lineas[1].endsWith('…»')).toBe(true);
+    for (const linea of lineas) expect(medir(linea)).toBeLessThanOrEqual(920);
+    const sinComillas = partirEnLineas('palabra '.repeat(40).trim(), 920, 2, medir);
+    expect(sinComillas[1].endsWith('…')).toBe(true);
+    expect(sinComillas[1].endsWith('…»')).toBe(false);
+    // Antes del corte no queda un signo suelto: "plaza,…" pasa a "plaza…".
+    const conComa = partirEnLineas('una, dos, tres, cuatro, cinco, seis', 200, 1, medir);
+    expect(conComa[0]).toMatch(/[^,\s]…$/);
+  });
+
+  test('una palabra más larga que la línea se corta', () => {
+    const lineas = partirEnLineas('a'.repeat(60), 920, 2, medir);
+    expect(lineas[0]).toBe('a'.repeat(46));
+    expect(lineas[1]).toBe('a'.repeat(14));
+    expect(partirEnLineas('', 920, 2, medir)).toEqual([]);
   });
 });
 

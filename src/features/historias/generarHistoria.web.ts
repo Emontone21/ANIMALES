@@ -5,9 +5,10 @@ import marcaOscura from '@/assets/marca/spot-marca-oscuro.svg';
 import type { Esquema } from '@/constants/tema';
 import {
   colorDominante,
-  type DatosHistoria,
-  disenioHistoria,
+  disenioDe,
   type DisenioHistoria,
+  type FuenteHistoria,
+  partirEnLineas,
   type TextoEnHistoria,
 } from '@/features/historias/disenio';
 import { activarFuentesWeb } from '@/lib/fuentesWeb';
@@ -109,10 +110,21 @@ function textoQueEntra(ctx: CanvasRenderingContext2D, x: TextoEnHistoria) {
 }
 
 function escribir(ctx: CanvasRenderingContext2D, x: TextoEnHistoria) {
-  const texto = textoQueEntra(ctx, x);
   ctx.fillStyle = x.color;
   ctx.textBaseline = 'alphabetic';
-  ctx.fillText(texto, x.x, x.y);
+  if (x.lineas) {
+    // En varias líneas, con el tamaño fijo: se parte por palabras y la última se corta con "…".
+    ctx.font = `${x.tamanio}px "${x.familia}"`;
+    const lineas = partirEnLineas(
+      x.texto,
+      x.maxAncho,
+      x.lineas.maximo,
+      (texto) => ctx.measureText(texto).width,
+    );
+    lineas.forEach((linea, i) => ctx.fillText(linea, x.x, x.y + i * (x.lineas?.interlineado ?? 0)));
+    return;
+  }
+  ctx.fillText(textoQueEntra(ctx, x), x.x, x.y);
 }
 
 function dibujarFoto(
@@ -160,12 +172,12 @@ function dibujarEtiqueta(ctx: CanvasRenderingContext2D, d: DisenioHistoria) {
 export type Historia = { archivo: Blob; disenio: DisenioHistoria };
 
 export async function generarHistoria(
-  datos: DatosHistoria,
+  fuente: FuenteHistoria,
   urlDeLaFoto: string | null,
   esquema: Esquema,
 ): Promise<Historia> {
   const foto = urlDeLaFoto ? await cargarFoto(urlDeLaFoto).catch(() => null) : null;
-  const d = disenioHistoria(datos, esquema, foto ? colorDeLaFoto(foto) : null);
+  const d = disenioDe(fuente, esquema, foto ? colorDeLaFoto(foto) : null);
   const [logo, marca] = await Promise.all([
     cargarImagen(uriDe(esquema === 'claro' ? logoClaro : logoOscuro)).catch(() => null),
     d.conFoto

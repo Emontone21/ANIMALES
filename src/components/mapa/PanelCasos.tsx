@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useRef } from 'react';
 import { FlatList, View } from 'react-native';
 
 import { TarjetaCaso, TARJETAS_A_LA_VISTA } from '@/components/mapa/TarjetaCaso';
+import { TarjetaReencuentros } from '@/components/mapa/TarjetaReencuentros';
 import { Cargando } from '@/components/ui/Cargando';
 import { Texto } from '@/components/ui/Texto';
 import { Espacio, Radio, sombraFlotante } from '@/constants/tema';
@@ -77,6 +78,8 @@ export function PanelCasos({
               onResaltar={onResaltar}
             />
           )}
+          // Al final de la lista: la entrada al muro de reencuentros, como en la hoja del celular.
+          ListFooterComponent={<TarjetaReencuentros forma="fila" habilitado={!cargando} />}
         />
       )}
     </View>

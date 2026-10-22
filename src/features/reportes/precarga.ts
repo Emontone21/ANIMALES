@@ -7,23 +7,29 @@ import {
   listarCambiosEstado,
   obtenerAnimal,
 } from '@/features/reportes/api';
-import { urlFoto } from '@/lib/imagenes';
+import { clavesReencuentros } from '@/features/reencuentros/claves';
+import { type HistoriaPublica, obtenerHistoria } from '@/features/reencuentros/historia';
+import { urlFoto, urlMediana } from '@/lib/imagenes';
 import { precargarImagen } from '@/lib/precargar';
 import type { AnimalDetalle } from '@/types/dominio';
 
-export type ConsultaInicial = { tipo: 'mapa' } | { tipo: 'caso'; id: string } | null;
+export type ConsultaInicial =
+  { tipo: 'mapa' } | { tipo: 'caso'; id: string } | { tipo: 'historia'; id: string } | null;
 
 /**
- * Qué datos muestra la ruta con la que se entra a la app: el mapa (/ y /casos)
- * o un caso (/animal/<id>, el link que se comparte). El resto no se adelanta.
+ * Qué datos muestra la ruta con la que se entra a la app: el mapa (/ y /casos),
+ * un caso (/animal/<id>) o la historia de un reencuentro (/reencuentros/<id>),
+ * los links que se comparten. El resto no se adelanta.
  */
 export function consultaInicial(ruta: string): ConsultaInicial {
   const limpia = ruta.replace(/\/+$/, '') || '/';
   if (limpia === '/' || limpia === '/casos') return { tipo: 'mapa' };
   const caso = /^\/animal\/([^/]+)$/.exec(limpia);
-  if (!caso) return null;
+  const historia = /^\/reencuentros\/([^/]+)$/.exec(limpia);
+  const encontrado = caso ?? historia;
+  if (!encontrado) return null;
   try {
-    return { tipo: 'caso', id: decodeURIComponent(caso[1]) };
+    return { tipo: caso ? 'caso' : 'historia', id: decodeURIComponent(encontrado[1]) };
   } catch {
     return null;
   }
@@ -40,6 +46,21 @@ export function precargarRutaInicial(queryClient: QueryClient, ruta: string): vo
   if (!consulta) return;
   if (consulta.tipo === 'mapa') {
     void queryClient.prefetchQuery({ queryKey: clavesReportes.mapa, queryFn: listarAnimalesMapa });
+    return;
+  }
+  if (consulta.tipo === 'historia') {
+    const { id } = consulta;
+    void queryClient
+      .prefetchQuery({
+        queryKey: clavesReencuentros.historia(id),
+        queryFn: () => obtenerHistoria(id),
+      })
+      .then(() => {
+        const historia = queryClient.getQueryData<HistoriaPublica | null>(
+          clavesReencuentros.historia(id),
+        );
+        if (historia?.foto_path) precargarImagen(urlMediana(historia.foto_path));
+      });
     return;
   }
   const { id } = consulta;

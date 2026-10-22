@@ -276,6 +276,8 @@ export const Fuentes = {
 
 /** Escala tipográfica (sección 3). Sin colores: el color lo pone Texto según el esquema. */
 export const Tipografia = {
+  /** El número grande del muro de reencuentros (6.19). */
+  contador: { ...Fuentes.titulo, fontSize: 56, lineHeight: 60 },
   display: { ...Fuentes.titulo, fontSize: 40, lineHeight: 42 },
   titulo: { ...Fuentes.titulo, fontSize: 28, lineHeight: 32 },
   subtitulo: { ...Fuentes.titulo, fontSize: 22, lineHeight: 28 },
@@ -294,6 +296,7 @@ export type VarianteTexto = keyof typeof Tipografia;
 
 /** Color por defecto de cada variante. */
 export const ColorTexto: Record<VarianteTexto, keyof Paleta> = {
+  contador: 'texto',
   display: 'texto',
   titulo: 'texto',
   subtitulo: 'texto',
