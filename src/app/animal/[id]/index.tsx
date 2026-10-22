@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { AvisoCaso, DetalleCaso } from '@/components/reportes/DetalleCaso';
 import { Boton } from '@/components/ui/Boton';
@@ -11,12 +11,16 @@ import {
   useAvistamientos,
   useCambiosEstado,
 } from '@/features/reportes/api';
+import { esRecienPublicado, olvidarRecienPublicado } from '@/features/reportes/recienPublicado';
 import { t } from '@/i18n/es-UY';
 import { mensajeDeError } from '@/lib/errores';
 
 export default function PantallaAnimal() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  // Recién publicado: se pregunta por las notificaciones del celular una sola vez.
+  const [recienPublicado] = useState(() => esRecienPublicado(id));
+  useEffect(() => olvidarRecienPublicado(id), [id]);
   const animal = useAnimal(id);
   const avistamientos = useAvistamientos(id);
   const cambios = useCambiosEstado(id);
@@ -88,6 +92,7 @@ export default function PantallaAnimal() {
       }}
       onVolver={volver}
       onVerMapa={() => router.push(`/animal/${id}/mapa`)}
+      ofrecerAvisos={recienPublicado}
     />
   );
 }

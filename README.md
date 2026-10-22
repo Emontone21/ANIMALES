@@ -66,6 +66,7 @@ cp .env.example .env
 Completá `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (o, de respaldo, `EXPO_PUBLIC_SUPABASE_ANON_KEY`; si están las dos, se usa la publishable). En Vercel van en **Settings → Environment Variables**. Opcionales:
 - `EXPO_PUBLIC_SITE_URL`: la base de los links que se comparten (`<sitio>/animal/<id>`); si falta, `https://animales-blue.vercel.app`.
 - `EXPO_PUBLIC_TURNSTILE_SITE_KEY`: la clave del sitio de Cloudflare Turnstile; sin ella no hay captcha.
+- `EXPO_PUBLIC_VAPID_PUBLIC_KEY`: la clave VAPID pública de las notificaciones en el celular (paso 6); sin ella la app no las ofrece.
 
 ### 3. Correr la web
 
@@ -79,7 +80,7 @@ Abre `http://localhost:8081`. En PowerShell, si `npx` está bloqueado por la pol
 ### 4. Vercel
 
 1. En [vercel.com](https://vercel.com) → **Add New Project** → importá `Emontone21/ANIMALES`. En **Framework Preset** elegí **Other**: Vercel suele detectar **FastAPI** por el servicio de visión en `services/vision/` y el build falla en `uv pip install`. `vercel.json` ya trae build (`npx expo export -p web`, con el commit del deploy y la fecha como versión para los reportes de errores) y salida (`dist`). El commit sale de `VERCEL_GIT_COMMIT_SHA`: dejá activado **Settings → Environment Variables → Automatically expose System Environment Variables** (viene así); si no, la versión dice la fecha del build. Si el proyecto ya existe, se cambia en **Settings → Build and Deployment → Framework Preset**.
-2. Cargá `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (o la anon, `EXPO_PUBLIC_SUPABASE_ANON_KEY`), y opcionalmente `EXPO_PUBLIC_MAP_STYLE_URL`, `EXPO_PUBLIC_SITE_URL` y `EXPO_PUBLIC_TURNSTILE_SITE_KEY`, para Production y Preview. Cambiar una variable pide un deploy nuevo: van dentro del build.
+2. Cargá `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (o la anon, `EXPO_PUBLIC_SUPABASE_ANON_KEY`), y opcionalmente `EXPO_PUBLIC_MAP_STYLE_URL`, `EXPO_PUBLIC_SITE_URL`, `EXPO_PUBLIC_TURNSTILE_SITE_KEY` y `EXPO_PUBLIC_VAPID_PUBLIC_KEY`, para Production y Preview. Cambiar una variable pide un deploy nuevo: van dentro del build.
 3. Deploy. Cada push a `main` redeploya. Volvé a Supabase y poné la URL de Vercel como Site URL.
 
 Además de la web estática, Vercel publica una función: `api/vista-previa.ts`. `vercel.json` le manda solo a los bots de vista previa (WhatsApp, Facebook, Telegram…) los pedidos de `/animal/<id>`, y la función devuelve el `index.html` con la foto y el título del caso. Usa las mismas variables `EXPO_PUBLIC_*`, no necesita otras. `.vercelignore` deja afuera `services/`, para que Vercel no vuelva a detectar Python.
@@ -103,9 +104,25 @@ Claude mira las fotos desde la Edge Function `supabase/functions/reconocer` (det
 
 Sin este paso la app funciona igual; solo no aparecen "posibles coincidencias". El estado, las llamadas de hoy y el costo del mes se ven en **Moderación → Reconocimiento**. El servicio de embeddings en Python (`services/vision`) queda como alternativa sin desplegar.
 
-### 6. Push (solo app nativa)
+### 6. Notificaciones en el celular
 
-Las notificaciones in-app funcionan en web sin configurar nada. Para push en Android/iOS hace falta un proyecto de EAS (`npx eas-cli init`, que agrega `extra.eas.projectId` a `app.json`) y un development build. La web muestra las mismas novedades en la pestaña Actividad.
+Las novedades se ven en **Actividad** sin configurar nada. Para que además lleguen como notificación del celular en la web (Android, computadora y iPhone con la app instalada), la Edge Function `supabase/functions/avisar` las manda con Web Push (detalle en [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md), "Notificaciones en el celular"):
+
+1. Generá un par de claves VAPID (P-256) sin guardarlas en archivos y cargalas: la pública y la privada como secretos de la función (`npx supabase secrets set VAPID_PUBLIC_KEY=… VAPID_PRIVATE_KEY=…`, en base64url: la pública, los 65 bytes del punto; la privada, los 32 del escalar) y la pública también en Vercel (`EXPO_PUBLIC_VAPID_PUBLIC_KEY`). Opcional: `VAPID_SUBJECT` (por defecto, el sitio).
+2. Desplegá la función:
+   ```bash
+   npx supabase functions deploy avisar --use-api --no-verify-jwt
+   ```
+3. Con la migración 0024 aplicada, en el SQL Editor (el secreto, 32 bytes en hexadecimal; no lo guardes en ningún archivo):
+   ```sql
+   update config_app set valor = 'https://<ref>.supabase.co/functions/v1/avisar', updated_at = now() where clave = 'avisar_url';
+   update config_app set valor = encode(extensions.gen_random_bytes(32), 'hex'), updated_at = now() where clave = 'avisar_secret';
+   ```
+4. Redeploy de Vercel (la clave pública va dentro del build).
+
+El tope por persona y por hora es `config_app.avisos_push_por_hora` (6). Sin la función configurada, nada cambia: los avisos quedan en Actividad.
+
+Para push en la app nativa (Android/iOS) hace falta un proyecto de EAS (`npx eas-cli init`, que agrega `extra.eas.projectId` a `app.json`) y un development build.
 
 ## Scripts
 
@@ -118,6 +135,7 @@ Las notificaciones in-app funcionan en web sin configurar nada. Para push en And
 | `npm run test` | Pruebas de la lógica de la app y de la vista previa (jest-expo, `__tests__/`) |
 | `npm run e2e` | Pruebas de punta a punta en el navegador, contra el proyecto de pruebas (abajo, "Pruebas de punta a punta") |
 | `deno test --allow-env` (en `supabase/functions/reconocer`) | Pruebas de la función de reconocimiento, con la API de Claude simulada |
+| `deno test --allow-env` (en `supabase/functions/avisar`) | Pruebas de la función de notificaciones, con un servicio de push simulado |
 | `deno run … scripts/evaluar-ia.ts` | Evalúa el reconocimiento con fotos de animales conocidos y la API real (ver el reporte de la tarea). Guardá las fotos en `evaluar-fotos/` y la salida como `evaluacion*.json`: git los ignora |
 | `pytest` (en `services/vision`) | Pruebas del servicio de embeddings (sin desplegar), con un modelo falso: `pip install -r requirements-pruebas.txt` |
 | `python3 scripts/iconos-web.py` | Íconos de la web (`public/iconos/`) desde `assets/images/icon.png` (ver `docs/DISENO.md`, "Ícono de la app") |
@@ -128,7 +146,7 @@ Las notificaciones in-app funcionan en web sin configurar nada. Para push en And
 
 ## Pruebas de punta a punta
 
-`npm run e2e` corre los flujos principales de `docs/PRUEBAS-MANUALES.md` que no necesitan cámara, mail real, Google ni teléfono, con Playwright, en tamaño de teléfono y de computadora: publicar un perdido y un encontrado con foto, "Lo vi", resguardar con foto, reunido, mensajes, bloquear, denunciar y moderar, editar y borrar, compartir, perfil, reportar un error y borrar la cuenta. Falla si el navegador muestra un error en la consola.
+`npm run e2e` corre los flujos principales de `docs/PRUEBAS-MANUALES.md` que no necesitan cámara, mail real, Google ni teléfono, con Playwright, en tamaño de teléfono y de computadora: publicar un perdido y un encontrado con foto, activar las notificaciones del celular (con el push del navegador simulado) y una notificación de verdad del service worker, compartir en historias, "Lo vi", resguardar con foto, reunido, mensajes, bloquear, denunciar y moderar, editar y borrar, compartir, perfil, reportar un error y borrar la cuenta. Falla si el navegador muestra un error en la consola.
 - **Siempre contra el proyecto de pruebas** (sección 1b), nunca contra producción: si la URL es la de producción, no arranca.
 - **Variables** (en tu terminal, nunca en un archivo del repo): `E2E_SUPABASE_URL`, `E2E_SUPABASE_PUBLISHABLE_KEY` (o `E2E_SUPABASE_ANON_KEY`) y `E2E_SUPABASE_SECRET_KEY`, todas del proyecto de pruebas (Supabase → **Project Settings → API Keys**). La secreta solo se usa para crear y borrar las cuentas de prueba y sus fotos.
 - **Qué hace:** arma la web apuntada al proyecto de pruebas (`e2e/.dist`), la sirve en `http://localhost:4173`, crea dos cuentas de prueba por tamaño (familia y vecina), corre los flujos y al final borra las cuentas y sus fotos.
@@ -232,6 +250,12 @@ Con las migraciones 0017 a 0020 aplicadas y la función desplegada (paso 5):
 
 Probado en la base: `supabase/tests/reconocimiento_ia.sql` y `vision.sql`. La función: `deno test --allow-env` en `supabase/functions/reconocer` (con la API simulada). A mano: el paso 26 de `docs/PRUEBAS-MANUALES.md`.
 
+**Notificaciones en el celular e historias de Instagram** (migración 0024)
+1. **Después de publicar,** el caso pregunta "¿Querés que te avisemos al celular cuando alguien lo vea?"; en **Perfil → La app**, el interruptor "Notificaciones en este celular". Con la función configurada (paso 6), cuando alguien ve el caso llega "Alguien vio a Toby"; tocarla abre el caso.
+2. **Compartir en historias,** al lado de Compartir en un caso abierto: una imagen de 1080 × 1920 con la foto, "SE PERDIÓ" o "ENCONTRADO", el nombre, la fecha y el logo, que se manda a Instagram (y copia el link para el sticker de enlace) o se descarga.
+
+Probado en la base: `supabase/tests/avisos_push.sql`. La función: `deno test --allow-env` en `supabase/functions/avisar`. A mano: los pasos 30 y 31 de `docs/PRUEBAS-MANUALES.md`.
+
 **Spot y preparación para el piloto** (migraciones 0021 y 0022)
 1. **Nombre e ícono:** la pestaña, la pantalla de carga, ingresar y la app instalada dicen Spot, con el pin y la huella.
 2. **Captcha:** con `EXPO_PUBLIC_TURNSTILE_SITE_KEY`, registrarse, ingresar con email y recuperar la contraseña muestran la comprobación de Cloudflare; Google no. Sin la variable, todo sigue como antes.
@@ -254,19 +278,19 @@ El mismo código compila para Android e iOS (MapLibre React Native, push con Exp
 
 ```
 src/app/            rutas (Expo Router): (tabs)/ mapa·publicar·actividad·perfil, animal/[id] (detalle, editar y mapa del recorrido), casos (lista), conversacion/[id], moderacion, auth/, cuenta/, legal/
-src/components/     ui/ (botones, inputs, chips, casillas, avatar, modales), mapa/ (nativo .tsx y web .web.tsx), reportes/, auth/, legal/, errores/, instalar/, moderacion/
-src/features/       auth, reportes, seguimientos, denuncias, coincidencias, notificaciones, mensajes, moderacion, perfil, bloqueos, cuenta, legal, mapa, instalar, errores
+src/components/     ui/ (botones, inputs, chips, casillas, avatar, modales), mapa/ (nativo .tsx y web .web.tsx), reportes/, auth/, legal/, errores/, instalar/, moderacion/, notificaciones/ (pregunta e interruptor del push web), historias/ (hoja de la historia)
+src/features/       auth, reportes, seguimientos, denuncias, coincidencias, notificaciones (también Web Push: celular.web.ts y formaDeAvisar.ts), mensajes, moderacion, perfil, bloqueos, cuenta, legal, mapa, instalar, errores, historias (diseño y generador de la imagen)
 src/lib/            supabase, imágenes (convención de miniaturas), fotos (comprimir, subir, borrar), compartir, ubicación, fechas, errores, env
 src/i18n/es-UY.ts   todos los textos
 src/types/          database.ts (esquema), dominio.ts
-supabase/           migrations/ (0001–0023), tests/ (pruebas SQL por fase, errores.sql, vision.sql, reconocimiento_ia.sql, contacto_al_cerrar.sql y auditoria_2.sql), functions/reconocer (Edge Function del reconocimiento con la API de Claude y sus pruebas), templates/ (plantillas de mail de Auth), seed.sql, config.toml
+supabase/           migrations/ (0001–0024), tests/ (pruebas SQL por fase, errores.sql, vision.sql, reconocimiento_ia.sql, contacto_al_cerrar.sql, auditoria_2.sql y avisos_push.sql), functions/reconocer (Edge Function del reconocimiento con la API de Claude y sus pruebas), functions/avisar (Edge Function de las notificaciones del celular, Web Push, y sus pruebas), templates/ (plantillas de mail de Auth), seed.sql, config.toml
 api/                función de Vercel: vista previa del link de un caso (Open Graph)
 __tests__/          pruebas de jest-expo (npm run test)
 e2e/                pruebas de punta a punta con Playwright (npm run e2e), contra el proyecto de pruebas
 services/vision/    alternativa sin desplegar: microservicio Python de embeddings (Google Cloud Run), desplegar.sh, evaluar.py y tests/
 scripts/            evaluar-ia.ts (evaluar el reconocimiento con fotos), tipos de la base, íconos de la web (iconos-web.py), plantillas de mail y lo que copia postinstall
 assets/             marca/ (el logo en SVG, fuente oficial) e images/ (íconos de la app y pantalla de carga nativa)
-public/             estáticos de la web: index.html, manifest y service worker de la app instalable, íconos (scripts/iconos-web.py), robots.txt y lo que copia postinstall (worker y estilos de MapLibre, fuentes)
+public/             estáticos de la web: index.html, manifest y service worker (instalar y notificaciones del celular), íconos (scripts/iconos-web.py), robots.txt y lo que copia postinstall (worker y estilos de MapLibre, fuentes)
 docs/               arquitectura, decisiones, diseño, pruebas manuales y reportes
 vercel.json         despliegue (y qué pedidos van a la función de api/)
 ```

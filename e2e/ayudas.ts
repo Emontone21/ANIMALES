@@ -4,11 +4,11 @@
  * selectores son los roles y nombres accesibles que arma react-native-web
  * (accessibilityRole → role, accessibilityLabel → aria-label).
  */
-import type { Locator, Page } from '@playwright/test';
+import type { BrowserContext, Locator, Page } from '@playwright/test';
 
 import { t } from '../src/i18n/es-UY';
 import type { Cuenta } from './cuentas';
-import { RUTAS } from './entorno';
+import { RUTAS, SITIO } from './entorno';
 import { expect } from './fixtures';
 
 /** Una persona de los flujos: su cuenta y su pestaña (cada una en su navegador). */
@@ -154,4 +154,85 @@ export async function mandarMensaje(pagina: Page, texto: string): Promise<void> 
   await entrada.fill(texto);
   await boton(pagina, t.mensajes.enviar).click();
   await expect(entrada).toHaveValue('');
+}
+
+/**
+ * El push del navegador, simulado: Chromium sin un servicio de push (sin
+ * cuenta de Google, en un contenedor) no puede suscribirse de verdad. La
+ * suscripción es falsa pero con la forma de una real (un endpoint de FCM y
+ * claves en base64url), así que la base la acepta, y dura lo que la pestaña
+ * (sessionStorage), como el permiso. El service worker de verdad se prueba aparte
+ * (notificaciones.spec.ts). Lo que pide la app queda en window.__pedidoPush.
+ */
+export async function simularPushDelNavegador(contexto: BrowserContext): Promise<void> {
+  await contexto.addInitScript((origen: string) => {
+    // Solo en la app: no en otras pestañas (WhatsApp) ni en otros sitios.
+    if (location.origin !== origen || !navigator.serviceWorker) return;
+    const ventana = window as Window & {
+      __pedidoPush?: { userVisibleOnly: boolean; bytesDeLaClave: number };
+    };
+    const base64url = (bytes: Uint8Array) =>
+      btoa(String.fromCharCode(...bytes))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+    const CLAVE = 'e2e-suscripcion-push';
+    const crear = (endpoint: string, p256dh: string, auth: string) => ({
+      endpoint,
+      toJSON: () => ({ endpoint, keys: { p256dh, auth } }),
+      unsubscribe: async () => {
+        sessionStorage.removeItem(CLAVE);
+        return true;
+      },
+    });
+    const guardada = () => {
+      const datos = sessionStorage.getItem(CLAVE);
+      if (!datos) return null;
+      const { endpoint, p256dh, auth } = JSON.parse(datos) as Record<string, string>;
+      return crear(endpoint, p256dh, auth);
+    };
+    const pushManager = {
+      getSubscription: async () => guardada(),
+      subscribe: async (opciones: PushSubscriptionOptionsInit) => {
+        ventana.__pedidoPush = {
+          userVisibleOnly: opciones.userVisibleOnly === true,
+          bytesDeLaClave: (opciones.applicationServerKey as Uint8Array).byteLength,
+        };
+        const punto = crypto.getRandomValues(new Uint8Array(65));
+        punto[0] = 4;
+        const datos = {
+          endpoint: `https://fcm.googleapis.com/fcm/send/e2e-${crypto.randomUUID()}`,
+          p256dh: base64url(punto),
+          auth: base64url(crypto.getRandomValues(new Uint8Array(16))),
+        };
+        sessionStorage.setItem(CLAVE, JSON.stringify(datos));
+        return crear(datos.endpoint, datos.p256dh, datos.auth);
+      },
+    };
+    const registro = { pushManager };
+    // El permiso también: el Chromium de las pruebas lo niega siempre. Empieza
+    // sin pedir, como la primera vez, y el toque de la persona lo concede.
+    const PERMISO = 'e2e-permiso-notificaciones';
+    Object.defineProperty(Notification, 'permission', {
+      configurable: true,
+      get: () => sessionStorage.getItem(PERMISO) ?? 'default',
+    });
+    Object.defineProperty(Notification, 'requestPermission', {
+      configurable: true,
+      value: async () => {
+        sessionStorage.setItem(PERMISO, 'granted');
+        return 'granted';
+      },
+    });
+    const contenedor = navigator.serviceWorker;
+    Object.defineProperty(contenedor, 'register', {
+      configurable: true,
+      value: async () => registro,
+    });
+    Object.defineProperty(contenedor, 'getRegistration', {
+      configurable: true,
+      value: async () => registro,
+    });
+    Object.defineProperty(contenedor, 'ready', { configurable: true, get: async () => registro });
+  }, new URL(SITIO).origin);
 }

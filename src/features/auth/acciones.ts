@@ -186,6 +186,16 @@ export async function crearSesionDesdeUrl(url: string): Promise<void> {
 }
 
 export async function cerrarSesion(): Promise<void> {
+  // Este navegador deja de recibir las notificaciones de la cuenta: con la
+  // sesión todavía abierta, para poder borrar su suscripción.
+  if (Platform.OS === 'web') {
+    try {
+      const { olvidarEsteCelular } = await import('@/features/notificaciones/celular');
+      await olvidarEsteCelular();
+    } catch {
+      // Sin red: la suscripción se borra cuando el servicio de push la dé por vencida.
+    }
+  }
   const { error } = await supabase.auth.signOut();
   if (error) throw traducirError(error);
 }

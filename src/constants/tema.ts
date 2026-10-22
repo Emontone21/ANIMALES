@@ -1,6 +1,6 @@
 import { Platform, type TextStyle, type ViewStyle } from 'react-native';
 
-import type { EstadoAnimal, TipoReporte } from '@/types/dominio';
+import type { Especie, EstadoAnimal, TipoReporte } from '@/types/dominio';
 
 /**
  * Tema "Calma oliva" (ver docs/DISENO.md). Único archivo con colores escritos:
@@ -135,6 +135,18 @@ const oscuro = conEquivalencias({
 export type Esquema = 'claro' | 'oscuro';
 
 export const paletas: Record<Esquema, Paleta> = { claro, oscuro };
+
+/**
+ * La historia para compartir (docs/DISENO.md, 6.18): el fondo sale del color
+ * dominante de la foto. Si la foto no se puede dibujar (de otro sitio), sale
+ * de la especie. En los dos casos se aclara (claro) u oscurece (oscuro) hasta
+ * que el texto se lea (src/features/historias/disenio.ts).
+ */
+export const ColorHistoria: Record<Especie, string> = {
+  perro: '#A0703F',
+  gato: '#5E7189',
+  otro: '#556B2F',
+};
 
 // --- Estado de cada caso -----------------------------------------------------
 

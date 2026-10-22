@@ -9,6 +9,7 @@
  */
 import { LIMITES_REPORTE } from '../src/features/errores/reporte';
 import { t } from '../src/i18n/es-UY';
+import { contraste } from '../src/lib/contraste';
 import type { DatosCompartir } from '../src/types/dominio';
 import {
   abrirIngresar,
@@ -25,6 +26,7 @@ import {
   mandarMensaje,
   opcion,
   type Persona,
+  simularPushDelNavegador,
   tarjeta,
   texto,
   titulo,
@@ -85,6 +87,8 @@ test.describe.serial('Spot de punta a punta', () => {
   test('la familia publica a su perro perdido, con foto, ubicación y contacto', async () => {
     const p = familia.pagina;
     const { tipos } = t.publicar;
+    // Para la prueba siguiente: el push del navegador, simulado desde esta carga.
+    await simularPushDelNavegador(p.context());
     await p.goto('/publicar');
     await boton(p, `${tipos.perdido.titulo}. ${tipos.perdido.detalle}`).click();
     await expect(opcion(p, tipos.perdido.titulo)).toHaveAttribute('aria-checked', 'true');
@@ -120,6 +124,47 @@ test.describe.serial('Spot de punta a punta', () => {
     // El historial empieza en "Se perdió acá"; la foto subió y se ve.
     await expect(texto(p, t.tipoAvistamiento.perdido)).toBeVisible();
     await esperarFoto(p.getByRole('img', { name: textos.toby.nombre, exact: true }).first());
+  });
+
+  test('después de publicar, la app ofrece las notificaciones del celular; Perfil las apaga', async () => {
+    const p = familia.pagina;
+    // Sigue en el caso recién publicado: la pregunta está arriba.
+    await expect(texto(p, t.celular.pregunta)).toBeVisible();
+    const guardado = p.waitForResponse((r) =>
+      r.url().includes('/rest/v1/rpc/guardar_suscripcion_push'),
+    );
+    await boton(p, t.celular.si).click();
+    expect((await guardado).ok()).toBe(true);
+    await expect(texto(p, t.celular.activadas)).toBeVisible();
+    await expect(boton(p, t.celular.si)).toHaveCount(0);
+    // La clave VAPID pública del build, como la pide el navegador.
+    expect(
+      await p.evaluate(() => (window as Window & { __pedidoPush?: unknown }).__pedidoPush),
+    ).toEqual({ userVisibleOnly: true, bytesDeLaClave: 65 });
+
+    // Al volver al caso no pregunta de nuevo.
+    await p.reload();
+    await expect(titulo(p, textos.toby.nombre)).toBeVisible();
+    await expect(texto(p, t.celular.pregunta)).toHaveCount(0);
+
+    // En Perfil, el interruptor prendido; apagarlo la borra de la base y prenderlo la vuelve a guardar.
+    await p.goto('/perfil');
+    const interruptor = p.getByRole('switch', { name: t.celular.interruptor });
+    await expect(interruptor).toBeChecked();
+    await expect(texto(p, t.celular.ayuda)).toBeVisible();
+    const borrado = p.waitForResponse(
+      (r) => r.url().includes('/rest/v1/suscripciones_push') && r.request().method() === 'DELETE',
+    );
+    await interruptor.click();
+    expect((await borrado).ok()).toBe(true);
+    await expect(texto(p, t.celular.desactivadas)).toBeVisible();
+    await expect(interruptor).not.toBeChecked();
+    const deNuevo = p.waitForResponse((r) =>
+      r.url().includes('/rest/v1/rpc/guardar_suscripcion_push'),
+    );
+    await interruptor.click();
+    expect((await deNuevo).ok()).toBe(true);
+    await expect(interruptor).toBeChecked();
   });
 
   test('la vecina publica un animal encontrado, con foto y ubicación', async () => {
@@ -217,6 +262,85 @@ test.describe.serial('Spot de punta a punta', () => {
 
     await boton(compartir, t.comunes.cancelar).click();
     await expect(compartir).toHaveCount(0);
+  });
+
+  test('compartir en historias: la imagen de 1080 × 1920 con contraste, el archivo y el link copiado', async () => {
+    const p = familia.pagina;
+    await p.goto(urlToby());
+    await expect(titulo(p, textos.toby.nombre)).toBeVisible();
+    const link = `${SITIO}/animal/${ids.toby}`;
+    // Con hoja del sistema que acepta archivos (los celulares): se simula y se anota el archivo.
+    await p.evaluate(() => {
+      const ventana = window as Window & { __archivos?: File[] };
+      Object.defineProperty(navigator, 'canShare', {
+        configurable: true,
+        value: (datos: ShareData) => Array.isArray(datos.files),
+      });
+      Object.defineProperty(navigator, 'share', {
+        configurable: true,
+        value: async (datos: ShareData) => {
+          ventana.__archivos = datos.files;
+        },
+      });
+    });
+    await boton(p, t.historia.boton).click();
+    const historia = hoja(p, t.historia.titulo);
+    await expect(
+      historia.getByRole('img', { name: t.historia.vistaPrevia(textos.toby.nombre) }),
+    ).toBeVisible();
+    await expect(texto(historia, t.historia.pistaAntes)).toBeVisible();
+    await boton(historia, t.historia.compartir).click();
+    await expect(texto(historia, t.historia.pista)).toBeVisible();
+    expect(await p.evaluate(() => navigator.clipboard.readText())).toBe(link);
+
+    // El archivo: un JPEG de 1080 × 1920. El contraste se mide en la imagen: el
+    // fondo contra el píxel más distinto de la franja del nombre (sus letras).
+    const imagen = await p.evaluate(async () => {
+      const [archivo] = (window as Window & { __archivos?: File[] }).__archivos ?? [];
+      const mapa = await createImageBitmap(archivo);
+      const lienzo = new OffscreenCanvas(mapa.width, mapa.height);
+      const ctx = lienzo.getContext('2d') as OffscreenCanvasRenderingContext2D;
+      ctx.drawImage(mapa, 0, 0);
+      const aHex = (d: Uint8ClampedArray, i: number) =>
+        `#${[d[i], d[i + 1], d[i + 2]].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+      const fondo = aHex(ctx.getImageData(30, 30, 1, 1).data, 0);
+      const franja = ctx.getImageData(80, 1210, 920, 110).data;
+      const letras: string[] = [];
+      for (let i = 0; i < franja.length; i += 4 * 7) letras.push(aHex(franja, i));
+      return {
+        nombre: archivo.name,
+        tipo: archivo.type,
+        ancho: mapa.width,
+        alto: mapa.height,
+        fondo,
+        letras,
+      };
+    });
+    expect([imagen.nombre, imagen.tipo, imagen.ancho, imagen.alto]).toEqual([
+      t.historia.nombreArchivo,
+      'image/jpeg',
+      1080,
+      1920,
+    ]);
+    const mejor = Math.max(...imagen.letras.map((color) => contraste(color, imagen.fondo)));
+    expect(mejor).toBeGreaterThanOrEqual(4.5);
+    await boton(historia, t.comunes.cancelar).click();
+    await expect(historia).toHaveCount(0);
+
+    // Sin poder mandar archivos (el navegador de WhatsApp): la descarga, con la misma pista.
+    await p.evaluate(() => {
+      Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => false });
+    });
+    await boton(p, t.historia.boton).click();
+    await expect(
+      texto(historia, `${t.historia.sinCompartirArchivos} ${t.historia.pistaAntes}`),
+    ).toBeVisible();
+    const descarga = p.waitForEvent('download');
+    await boton(historia, t.historia.descargar).click();
+    expect((await descarga).suggestedFilename()).toBe(t.historia.nombreArchivo);
+    await expect(texto(historia, t.historia.pista)).toBeVisible();
+    await boton(historia, t.comunes.cancelar).click();
+    await expect(historia).toHaveCount(0);
   });
 
   test('la vecina avisa que lo vio, con foto, ubicación y una nota', async () => {

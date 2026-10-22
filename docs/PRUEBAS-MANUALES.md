@@ -8,6 +8,7 @@ Recorrido de toda la app, paso a paso, para hacer en la web publicada (https://a
   - **[SMTP]** necesita SMTP propio en Supabase. Sin eso, Supabase solo manda mails a las direcciones del equipo del proyecto (y pocos por hora).
   - **[Captcha]** necesita el captcha configurado: la clave del sitio de Cloudflare Turnstile en Vercel (`EXPO_PUBLIC_TURNSTILE_SITE_KEY`) y la secreta en Supabase. Sin eso, ingresar y registrarse no muestran la comprobación.
   - **[Visión]** necesita el reconocimiento con IA configurado: la función `reconocer` desplegada y su dirección en `config_app.vision_url`. Sin eso, ese paso se simula con el SQL que está ahí mismo.
+  - **[Push]** necesita las notificaciones del celular configuradas: la función `avisar` desplegada con sus claves VAPID, `config_app.avisar_url` y `avisar_secret`, y `EXPO_PUBLIC_VAPID_PUBLIC_KEY` en Vercel (pasos en `docs/reportes/2026-10-22-avisos-historias.md`). Sin eso, Perfil no muestra el interruptor y después de publicar no se pregunta.
 - **Si algo falla:** anotá el número del paso, el dispositivo y una captura. Los problemas que ya se conocen están al final.
 
 Tené a mano dos fotos parecidas de un mismo perro (o de dos perros parecidos) en cada celular.
@@ -627,6 +628,68 @@ Esperado:
 
 - [ ] Computadora · Chrome
 - [ ] Android · Chrome
+
+## 30. Notificaciones en el celular · 10 min · [Push]
+
+Cuentas: familia y vecina. Familia en el celular que se prueba; vecina en otro dispositivo.
+
+**Android · Chrome** (en el navegador y, después, instalada):
+1. Familia: publicá un perdido de prueba ("Toby prueba"). Arriba del caso aparece la pregunta; tocá **Sí, avisame** y aceptá la ventana del navegador.
+2. Bloqueá la pantalla. Vecina: abrí el caso y tocá **Lo vi** (con foto y ubicación).
+3. Tocá la notificación.
+4. Vecina: escribile a la familia tres mensajes seguidos.
+5. Familia: **Perfil → La app → Notificaciones en este celular**: apagalo y que vecina avise otra vez que lo vio. Volvé a prenderlo.
+6. Familia: en Chrome, **candado → Permisos → Notificaciones → Bloquear**. Volvé a **Perfil**.
+7. Familia: cerrá sesión e ingresá con otra cuenta en el mismo navegador; que vecina avise otra vez.
+8. Instalá la app (22) y repetí 1 a 3 desde la app instalada.
+
+**iPhone · Safari:**
+9. Sin instalar: publicá o andá a **Perfil**. Después instalá la app (22), abrila desde la pantalla de inicio y activalas en **Perfil**. Repetí 2 y 3.
+
+**Navegadores de WhatsApp, Instagram y Facebook:**
+10. Mandate el link de la app por WhatsApp, abrilo ahí (Android) y andá a **Perfil**. Lo mismo desde Instagram (iPhone).
+
+Esperado:
+- **Nunca** se pide el permiso al abrir la app: solo con **Sí, avisame** o el interruptor. Si se toca **Ahora no**, la pregunta se va y no vuelve en ese caso.
+- La notificación dice "Alguien vio a Toby prueba" y "Tocá para ver dónde lo vieron.", con el ícono de Spot. En la pantalla bloqueada no aparecen el nombre de la vecina, el texto de los mensajes ni lugares.
+- Tocarla abre el caso (o la conversación, en los mensajes), aunque la app estuviera cerrada.
+- Los tres mensajes no son tres notificaciones: queda una ("Tenés un mensaje nuevo sobre Toby prueba"), que no vuelve a sonar. Todo sigue en **Actividad**.
+- Apagado, no llega nada al celular (sí a **Actividad**); prendido, vuelve.
+- Bloqueadas, **Perfil** no muestra el interruptor sino cómo volver a permitirlas, según el dispositivo.
+- Después de cerrar sesión, ese celular no recibe más los avisos de la familia.
+- **iPhone sin instalar:** dice que las notificaciones llegan con Spot instalada, con **Instalar la app**, que abre los pasos. Instalada, funciona como en Android.
+- **WhatsApp e Instagram:** dice que su navegador no muestra notificaciones y ofrece abrir en Chrome o Safari (la misma hoja de 22).
+
+- [ ] Android · Chrome
+- [ ] Android · instalada
+- [ ] iPhone · instalada
+- [ ] Navegadores de WhatsApp e Instagram
+
+## 31. Compartir en historias · 5 min
+
+Cuenta: ninguna. Un caso abierto con foto subida desde la app (Toby prueba) y uno de los de demo (foto de otro sitio).
+
+1. **Android · Chrome:** abrí el caso y tocá **Compartir en historias** (el ícono de Instagram, al lado de Compartir).
+2. Mirá la vista previa y tocá **Compartir la imagen**. Elegí **Instagram → Historias**.
+3. En Instagram, agregá el sticker de **Enlace** y pegá.
+4. **Perfil → Apariencia → Oscuro** y repetí 1.
+5. Abrí el caso de demo y repetí 1.
+6. Abrí el link del caso desde WhatsApp (su navegador) y repetí 1.
+7. **iPhone · Safari:** repetí 1 a 3.
+8. **Computadora:** repetí 1.
+
+Esperado:
+- La imagen es vertical (1080 × 1920): arriba "SE PERDIÓ" (o "ENCONTRADO"), la foto grande con esquinas redondeadas, el nombre, qué animal es, la fecha, "Ayudá a encontrarlo en Spot" y el logo. El fondo tiene el color de la foto y el texto se lee bien.
+- No aparecen el contacto, la descripción, quién lo publicó ni dónde.
+- Al compartir dice "Copiamos el link: sumalo con el sticker de enlace de Instagram." y el link pegado es el del caso.
+- En oscuro, el fondo es oscuro y el texto claro.
+- El caso de demo sale igual: con la foto, o con el color de la especie y la chapita si la foto no se puede usar.
+- En el navegador de WhatsApp (o una computadora sin hoja de compartir) el botón es **Descargar la imagen**, baja `spot-historia.jpg` y copia el link.
+- Un caso reunido o de otra persona oculto no muestra el botón.
+
+- [ ] Android · Chrome
+- [ ] iPhone · Safari
+- [ ] Computadora
 
 ## Al terminar
 
