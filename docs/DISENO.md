@@ -525,7 +525,7 @@ La misma base de 6.18 (fondo, foto, logo y medidas), para compartir una historia
   - "Volvió a casa después de 5 días" en `cuerpoFuerte`;
   - la frase en `cuerpo` y `textoCuerpo`;
   - la fecha ("El 22 de octubre") en `pequeno`;
-  - abajo a la derecha, botones redondos sin sombra: Compartir (`share-social-outline`), Compartir en historias (`logo-instagram`, solo web) y Más opciones (`ellipsis-horizontal`: "Ver el caso" y "Denunciar la historia", que pide cuenta y términos como denunciar un caso).
+  - abajo a la derecha, botones redondos sin sombra: Compartir (`share-social-outline`), Compartir en historias (`logo-instagram`, solo web) y Más opciones (`ellipsis-horizontal`): "Denunciar la historia", que pide cuenta y términos como denunciar un caso, y, solo para la familia y moderación, "Ver el caso" (el caso tiene el mapa, la zona donde se perdió y los nombres del historial, y el formulario promete "sin tus datos ni dónde fue").
 - **Sin historias:** "Todavía no hay historias…" en `secundario`.
 - **`/reencuentros/<id>`** (el link de una): esa tarjeta sola y el botón `secundario` "Ver todos los reencuentros" (`heart-outline`). Si no existe o está oculta para quien mira, "Esta historia no está disponible.". La familia y moderación la ven aunque esté oculta, con el aviso de error arriba y sin los botones de compartir.
 - **Nunca** ubicación, quién publicó, quién ayudó ni contactos. Capturas en `docs/reportes/2026-10-22-reencuentros/`.

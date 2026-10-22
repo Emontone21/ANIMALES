@@ -86,6 +86,17 @@ export function tarjeta(pagina: Page, ...contenidos: (string | Locator)[]): Loca
   return candidatos.last();
 }
 
+/** "Más opciones" de una historia del muro (o de su página): la hoja con lo que ofrece. */
+export async function abrirOpcionesDeHistoria(
+  pagina: Page,
+  alcance: Alcance = pagina,
+): Promise<Locator> {
+  await boton(alcance, t.reencuentros.opciones).click();
+  const opciones = hoja(pagina, t.reencuentros.opciones);
+  await expect(opciones).toBeVisible();
+  return opciones;
+}
+
 /** Ingresar, el formulario de email y contraseña (/auth/ingresar), desde Perfil. */
 export async function abrirIngresar(pagina: Page): Promise<void> {
   await pagina.goto('/perfil');

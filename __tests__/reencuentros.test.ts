@@ -1,4 +1,5 @@
 import { MINIMO_PARA_EL_NUMERO, numeroVisible } from '@/features/reencuentros/contador';
+import { opcionesDeHistoria } from '@/features/reencuentros/muro';
 import {
   accionDelFormulario,
   comoParticipo,
@@ -54,6 +55,14 @@ describe('los textos de una historia', () => {
   test('en el perfil de quien ayudó', () => {
     expect(t.perfil.ayudaste(1)).toBe('Ayudaste a reunir a 1 familia.');
     expect(t.perfil.ayudaste(3)).toBe('Ayudaste a reunir a 3 familias.');
+  });
+});
+
+describe('las opciones de una historia en el muro', () => {
+  test('"Ver el caso" (el mapa, la zona y el historial) solo para la familia y moderación', () => {
+    expect(opcionesDeHistoria(true)).toEqual(['verCaso', 'denunciar']);
+    // Sin cuenta o con otra cuenta: solo denunciar.
+    expect(opcionesDeHistoria(false)).toEqual(['denunciar']);
   });
 });
 

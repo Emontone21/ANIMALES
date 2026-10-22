@@ -39,6 +39,46 @@ export function useHistoria(id: string | undefined) {
   });
 }
 
+export type OpcionHistoria = 'verCaso' | 'denunciar';
+
+/**
+ * "Más opciones" de una historia en el muro y en su link. "Ver el caso" (el
+ * mapa, la zona donde se perdió y los nombres del historial) solo para la
+ * familia y moderación: el muro promete "sin tus datos ni dónde fue".
+ * Denunciar, para todos (sin cuenta, pide ingresar).
+ */
+export function opcionesDeHistoria(familiaOModeracion: boolean): OpcionHistoria[] {
+  return familiaOModeracion ? ['verCaso', 'denunciar'] : ['denunciar'];
+}
+
+/**
+ * Si quien mira es la familia o moderación: la tabla (su RLS) les devuelve la
+ * fila de la historia, y a nadie más.
+ */
+export async function esDeLaFamiliaOModeracion(animalId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('historias_reencuentro')
+    .select('animal_id')
+    .eq('animal_id', animalId)
+    .maybeSingle();
+  if (error) throw error;
+  return data !== null;
+}
+
+/** Sin cuenta no pregunta: no es ni la familia ni moderación. Mientras carga, tampoco. */
+export function useFamiliaOModeracion(
+  usuarioId: string | null | undefined,
+  animalId: string | undefined,
+): boolean {
+  const consulta = useQuery({
+    queryKey: clavesReencuentros.acceso(usuarioId ?? '', animalId ?? ''),
+    queryFn: () => esDeLaFamiliaOModeracion(animalId as string),
+    enabled: Boolean(usuarioId && animalId),
+    staleTime: 5 * 60_000,
+  });
+  return consulta.data ?? false;
+}
+
 /**
  * Si ya denunció la historia (no el caso: esa es otra denuncia, la de
  * src/features/denuncias/api.ts). Mandarla es de ModalDenuncia.

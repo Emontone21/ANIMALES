@@ -13,4 +13,5 @@ export const clavesReencuentros = {
   participantes: (id: string) => ['reencuentros', 'participantes', id] as const,
   ayude: (usuarioId: string) => ['reencuentros', 'ayude', usuarioId] as const,
   denuncia: (usuarioId: string, id: string) => ['reencuentros', 'denuncia', usuarioId, id] as const,
+  acceso: (usuarioId: string, id: string) => ['reencuentros', 'acceso', usuarioId, id] as const,
 };

@@ -16,7 +16,13 @@ import { AnchoMaximo, Espacio, Radio } from '@/constants/tema';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { useTerminos } from '@/features/legal/terminos';
 import type { HistoriaMuro } from '@/features/reencuentros/historia';
-import { useDenunciaDeHistoria, useHistoria, useMuro } from '@/features/reencuentros/muro';
+import {
+  opcionesDeHistoria,
+  useDenunciaDeHistoria,
+  useFamiliaOModeracion,
+  useHistoria,
+  useMuro,
+} from '@/features/reencuentros/muro';
 import { cerrarYNavegar } from '@/hooks/useCerrarConAtras';
 import { useFotoPrioritaria } from '@/hooks/useFotoPrioritaria';
 import { crearEstilos, useEstilos } from '@/hooks/useTema';
@@ -67,6 +73,8 @@ function useAccionesHistoria() {
   const [aviso, setAviso] = useState<string | null>(null);
   const historia = abierta?.historia ?? null;
   const denuncia = useDenunciaDeHistoria(usuario?.id, historia?.animal_id);
+  // "Ver el caso" solo para la familia y moderación (opcionesDeHistoria).
+  const familiaOModeracion = useFamiliaOModeracion(usuario?.id, historia?.animal_id);
   const cerrar = () => setAbierta(null);
 
   const mensaje = (h: HistoriaMuro) => {
@@ -107,20 +115,21 @@ function useAccionesHistoria() {
         visible={abierta?.modal === 'opciones'}
         titulo={t.reencuentros.opciones}
         onCerrar={cerrar}
-        opciones={[
-          {
-            titulo: t.reencuentros.verCaso,
-            icono: 'open-outline',
-            onPress: () => irA(`/animal/${historia.animal_id}`),
-          },
-          {
-            titulo: denuncia.yaDenuncio ? t.reencuentros.denunciada : t.reencuentros.denunciar,
-            icono: 'flag-outline',
-            variante: 'peligro',
-            deshabilitado: denuncia.yaDenuncio,
-            onPress: () => denunciar(historia),
-          },
-        ]}
+        opciones={opcionesDeHistoria(familiaOModeracion).map((opcion) =>
+          opcion === 'verCaso'
+            ? {
+                titulo: t.reencuentros.verCaso,
+                icono: 'open-outline' as const,
+                onPress: () => irA(`/animal/${historia.animal_id}`),
+              }
+            : {
+                titulo: denuncia.yaDenuncio ? t.reencuentros.denunciada : t.reencuentros.denunciar,
+                icono: 'flag-outline' as const,
+                variante: 'peligro' as const,
+                deshabilitado: denuncia.yaDenuncio,
+                onPress: () => denunciar(historia),
+              },
+        )}
       />
       <MenuOpciones
         visible={abierta?.modal === 'compartir'}

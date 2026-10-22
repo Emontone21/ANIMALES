@@ -13,6 +13,7 @@ import { contraste } from '../src/lib/contraste';
 import type { DatosCompartir } from '../src/types/dominio';
 import {
   abrirIngresar,
+  abrirOpcionesDeHistoria,
   boton,
   campo,
   completarIngreso,
@@ -519,6 +520,12 @@ test.describe.serial('Spot de punta a punta', () => {
     await expect(texto(f, textos.historiaPublicada)).toBeVisible();
     await expect(f.getByText('099 123 456')).toHaveCount(0);
     await esperarFoto(f.getByRole('img', { name: t.reencuentros.fotoDe(textos.toby.nombre) }));
+    // La familia (y moderación) tiene "Ver el caso" en las opciones de su historia.
+    const opcionesFamilia = await abrirOpcionesDeHistoria(f);
+    await expect(boton(opcionesFamilia, t.reencuentros.verCaso)).toBeVisible();
+    await expect(boton(opcionesFamilia, t.reencuentros.denunciar)).toBeVisible();
+    await boton(opcionesFamilia, t.comunes.cancelar).click();
+    await expect(opcionesFamilia).toHaveCount(0);
 
     // En el caso, "Cómo volvió", y la familia la puede editar.
     await f.goto(urlToby());
@@ -562,6 +569,12 @@ test.describe.serial('Spot de punta a punta', () => {
     ]) {
       await expect(anonima.getByText(privado)).toHaveCount(0);
     }
+    // Sin "Ver el caso", que lleva al mapa, la zona donde se perdió y el historial: solo denunciar.
+    const opciones = await abrirOpcionesDeHistoria(anonima, laHistoria);
+    await expect(boton(opciones, t.reencuentros.denunciar)).toBeVisible();
+    await expect(boton(opciones, t.reencuentros.verCaso)).toHaveCount(0);
+    await boton(opciones, t.comunes.cancelar).click();
+    await expect(opciones).toHaveCount(0);
 
     // Compartir: sin hoja del sistema, el link de la historia a la vista.
     const link = `${SITIO}/reencuentros/${ids.toby}`;
@@ -589,10 +602,14 @@ test.describe.serial('Spot de punta a punta', () => {
     await boton(historia, t.comunes.cancelar).click();
     await expect(historia).toHaveCount(0);
 
-    // El link abre la historia, también sin cuenta.
+    // El link abre la historia, también sin cuenta, y tampoco ofrece "Ver el caso".
     await anonima.goto(`/reencuentros/${ids.toby}`);
     await expect(titulo(anonima, textos.toby.nombre)).toBeVisible();
     await expect(texto(anonima, textos.historiaPublicada)).toBeVisible();
+    const opcionesLink = await abrirOpcionesDeHistoria(anonima);
+    await expect(boton(opcionesLink, t.reencuentros.denunciar)).toBeVisible();
+    await expect(boton(opcionesLink, t.reencuentros.verCaso)).toHaveCount(0);
+    await boton(opcionesLink, t.comunes.cancelar).click();
     await navegador.cerrar(anonima);
   });
 
@@ -604,6 +621,17 @@ test.describe.serial('Spot de punta a punta', () => {
     await expect(texto(v, textos.agradecimiento)).toBeVisible();
     await v.goto('/perfil');
     await expect(texto(v, t.perfil.ayudaste(1))).toBeVisible();
+
+    // Quien ayudó tampoco tiene "Ver el caso" desde la historia: la base no le da la fila.
+    await v.goto(`/reencuentros/${ids.toby}`);
+    await expect(titulo(v, textos.toby.nombre)).toBeVisible();
+    const acceso = v.waitForResponse((r) => r.url().includes('/rest/v1/historias_reencuentro'));
+    const opcionesVecina = await abrirOpcionesDeHistoria(v);
+    await acceso;
+    await expect(boton(opcionesVecina, t.reencuentros.denunciar)).toBeVisible();
+    await expect(boton(opcionesVecina, t.reencuentros.verCaso)).toHaveCount(0);
+    await boton(opcionesVecina, t.comunes.cancelar).click();
+    await expect(opcionesVecina).toHaveCount(0);
 
     // La familia no recibe nada ni lo cuenta: el agradecimiento es de ella.
     const f = familia.pagina;

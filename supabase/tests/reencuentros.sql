@@ -368,6 +368,33 @@ begin
     (select ruta from fotos where nombre = 'reencuentro2'));
 end $$;
 
+-- "Ver el caso" desde el muro: la app lo ofrece solo si la tabla le devuelve
+-- la fila de la historia, y eso pasa solo con la familia y moderación.
+do $$
+declare
+  toby uuid := (select animal from casos where nombre = 'toby');
+  v_quien uuid;
+begin
+  foreach v_quien in array array['00000000-0000-4000-8000-000000002601',
+                                 '00000000-0000-4000-8000-000000002607']::uuid[] loop
+    perform pg_temp.como(v_quien);
+    if not exists (select 1 from public.historias_reencuentro where animal_id = toby) then
+      raise exception 'FALLA 4h: % (familia o moderadora) no lee la historia en la tabla', v_quien;
+    end if;
+  end loop;
+  -- Quien ayudó (lo vio, lo resguardó, le escribió) y una cuenta cualquiera: no.
+  foreach v_quien in array array['00000000-0000-4000-8000-000000002602',
+                                 '00000000-0000-4000-8000-000000002603',
+                                 '00000000-0000-4000-8000-000000002604',
+                                 '00000000-0000-4000-8000-000000002606']::uuid[] loop
+    perform pg_temp.como(v_quien);
+    if exists (select 1 from public.historias_reencuentro where animal_id = toby) then
+      raise exception 'FALLA 4h: % lee la historia en la tabla (vería "Ver el caso")', v_quien;
+    end if;
+  end loop;
+  perform pg_temp.como('00000000-0000-4000-8000-000000002601');
+end $$;
+
 -- -----------------------------------------------------------------------------
 -- 5. El contador: todos los reunidos, sin ocultos ni datos de demo.
 -- -----------------------------------------------------------------------------

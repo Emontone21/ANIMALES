@@ -712,6 +712,7 @@ Esperado:
 - El formulario avisa que las personas de la foto tienen que estar de acuerdo. La lista de quienes participaron muestra a la vecina con "Avisó que lo vio · Te escribió" (y "Lo resguardó" si lo resguardó); nunca a la familia ni a alguien bloqueado.
 - Publicada, se abre su página: el nombre, "Volvió a casa después de N días", la frase con "[dato oculto]" en lugar del teléfono y la fecha.
 - **El muro sin cuenta:** el contador (con menos de 5 reencuentros, "Los primeros reencuentros de Spot") y la historia arriba de todo. No aparecen el nombre de la familia ni de la vecina, el mensaje del agradecimiento, contactos ni dónde.
+- **Más opciones** de la historia, en el muro y en su link: sin cuenta y con la cuenta de la vecina, solo "Denunciar la historia"; la familia (y moderación) ve además "Ver el caso".
 - **"Cerca tuyo":** al final del carrusel, la tarjeta "N volvieron a casa · Ver historias" (o "Los primeros reencuentros de Spot"), que lleva al muro. En la computadora, al final de la lista del panel.
 - El link (`/reencuentros/<id>`) en WhatsApp muestra "Toby prueba volvió a casa" con la foto, sin la frase. La imagen de Instagram dice "VOLVIÓ A CASA", el nombre, los días y la frase (cortada con "…»" si es larga), y copia el link de la historia.
 - A la vecina le llega "La familia de Toby prueba te agradeció" con el mensaje, en **Actividad** y en el celular, y **Perfil** dice "Ayudaste a reunir a 1 familia.".
