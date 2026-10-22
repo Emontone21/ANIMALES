@@ -82,7 +82,7 @@ function FormularioEditar({ animal }: { animal: AnimalDetalle }) {
     contactoFamilia: animal.contacto_familia ?? '',
     tamanio: animal.tamanio,
     color: animal.color ?? '',
-    tieneCollar: animal.tiene_collar,
+    tieneCollar: animal.tiene_collar ?? false,
     descripcion: animal.descripcion ?? '',
   });
   const cambiar = (cambios: Partial<CambiosReporte>) =>

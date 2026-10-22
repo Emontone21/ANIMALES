@@ -576,12 +576,25 @@ Esta sección describe la versión de celular (compacta). La sección 8 indica c
 7. **"Novedades del caso":** botones `secundario` para "Me lo llevé / está resguardado", "Se reunió con su familia" y "Se volvió a escapar", según las reglas actuales de quién ve cada uno.
 8. Visto por última vez (6.9). Tocar el mini mapa abre el mapa en grande (6.9.1).
 9. Posibles coincidencias (6.10), si el caso no está reunido.
-10. "Cómo volvió", si el caso está reunido (6.20).
+10. "Cómo volvió", si el caso está reunido (6.20). Quien no participó en un caso reunido no ve este detalle, sino lo básico (7.2.1).
 11. Historial (6.11).
 12. Aviso contra estafas (6.12).
 13. Espacio final igual al alto de la barra de acciones (6.13).
 
 **Si el caso fue vinculado,** se mantiene el comportamiento actual: el mensaje de redirección al caso principal (el bug B1 se corrigió en la migración 0007).
+
+#### 7.2.1 Lo básico de un caso reunido
+
+Cuando el animal volvió a casa, quien no participó en el caso (con o sin cuenta) ve una pantalla corta en lugar del detalle (`CasoBasico`; la base marca `reservado` y no manda el resto, ver `docs/DECISIONES.md`, "Privacidad de los casos reunidos"):
+
+- Volver, como botón redondo arriba a la izquierda. Sin Compartir, Seguir ni Más opciones.
+- La foto, con radio `hoja`, 4:3 y 380 de alto como máximo.
+- El nombre, en `display`; si la familia no lo mostró en su historia, "Un perro" (el mismo título del muro).
+- "Volvió a casa", en un mensaje de éxito.
+- En `secundario`: "Para cuidar a su familia, el mapa, la zona y el historial de un caso que terminó los ven solo quienes ayudaron a buscarlo."
+- "Leer cómo volvió" (`secundario`, `heart-outline`), si la familia contó la historia y se ve: lleva a `/reencuentros/<id>`.
+
+Columna de 640 (`AnchoMaximo.detalle`) en todas las disposiciones. Sin mapa, zona, avisos, historial, coincidencias, contactos ni chips de datos. El mapa en grande (`/animal/<id>/mapa`) vuelve a esta pantalla. Quien participó y moderación ven el detalle de siempre.
 
 ### 7.3 Publicar
 

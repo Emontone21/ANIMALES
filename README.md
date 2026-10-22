@@ -250,6 +250,9 @@ Con las migraciones 0017 a 0020 aplicadas y la función desplegada (paso 5):
 
 Probado en la base: `supabase/tests/reconocimiento_ia.sql` y `vision.sql`. La función: `deno test --allow-env` en `supabase/functions/reconocer` (con la API simulada). A mano: el paso 26 de `docs/PRUEBAS-MANUALES.md`.
 
+**Privacidad de los casos reunidos** (migración 0027)
+Cuando el animal volvió a casa, quien no participó en el caso (con o sin cuenta) ve solo la foto, el nombre si la familia lo mostró, la especie, "Volvió a casa" y el link a su historia. El mapa, la zona, los avisos, el historial, las coincidencias y los contactos los ven solo quienes participaron (publicaron, avisaron que lo vieron, lo resguardaron o le escribieron antes de que volviera) y moderación. Lo aplica la base, también a la vista previa del link; si el caso se reabre, vuelve a verse todo. Probado en la base: `supabase/tests/privacidad_reunidos.sql`. De punta a punta: `npm run e2e`. A mano: el paso 33 de `docs/PRUEBAS-MANUALES.md`.
+
 **Muro de reencuentros** (migraciones 0025 y 0026)
 1. **Contar cómo volvió:** al marcar su perdido como reunido, la familia ve "¡Qué alegría! ¿Querés contar cómo volvió?" (también después, desde "Cómo volvió" en el caso): una frase de hasta 280 caracteres, una foto opcional y si se muestra el nombre. Los teléfonos, links y emails se tapan. La edita o la borra cuando quiera.
 2. **Agradecer:** en el mismo paso, quienes participaron (avisaron que lo vieron, lo resguardaron o le escribieron) con su nombre público; a quien marca le llega "La familia de Toby te agradeció" en Actividad y, con la función `avisar` desplegada de nuevo, al celular. En su Perfil: "Ayudaste a reunir a N familias".
@@ -291,7 +294,7 @@ src/features/       auth, reportes, seguimientos, denuncias, coincidencias, noti
 src/lib/            supabase, imágenes (convención de miniaturas), fotos (comprimir, subir, borrar), compartir, ubicación, fechas, errores, env
 src/i18n/es-UY.ts   todos los textos
 src/types/          database.ts (esquema), dominio.ts
-supabase/           migrations/ (0001–0026), tests/ (pruebas SQL por fase, errores.sql, vision.sql, reconocimiento_ia.sql, contacto_al_cerrar.sql, auditoria_2.sql, avisos_push.sql y reencuentros.sql), functions/reconocer (Edge Function del reconocimiento con la API de Claude y sus pruebas), functions/avisar (Edge Function de las notificaciones del celular, Web Push, y sus pruebas), templates/ (plantillas de mail de Auth), seed.sql, config.toml
+supabase/           migrations/ (0001–0027), tests/ (pruebas SQL por fase, errores.sql, vision.sql, reconocimiento_ia.sql, contacto_al_cerrar.sql, auditoria_2.sql, avisos_push.sql, reencuentros.sql y privacidad_reunidos.sql), functions/reconocer (Edge Function del reconocimiento con la API de Claude y sus pruebas), functions/avisar (Edge Function de las notificaciones del celular, Web Push, y sus pruebas), templates/ (plantillas de mail de Auth), seed.sql, config.toml
 api/                función de Vercel: vista previa del link de un caso (Open Graph)
 __tests__/          pruebas de jest-expo (npm run test)
 e2e/                pruebas de punta a punta con Playwright (npm run e2e), contra el proyecto de pruebas

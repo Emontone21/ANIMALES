@@ -724,6 +724,30 @@ Esperado:
 - [ ] iPhone · Safari
 - [ ] Computadora
 
+## 33. Privacidad de los casos reunidos · 6 min
+
+Cuentas: familia, vecina y ninguna. El caso de Toby reunido, con su historia contada (paso 32). Familia, moderadora (paso 1).
+
+1. **Sin cuenta** (ventana privada): abrí el link del caso (`/animal/<id>`, el mismo id de la historia). Después agregale `/mapa` al final.
+2. Tocá **Leer cómo volvió**.
+3. Pegá el link del caso en WhatsApp.
+4. **Vecina** (avisó que lo vio): abrí el caso.
+5. **Familia:** abrí el caso. Si la historia tiene **Mostrar el nombre** apagado, mirá el caso sin cuenta otra vez.
+6. **Familia:** tocá **Se volvió a escapar** (reabrir) y mirá el caso sin cuenta. Después marcalo de nuevo como reunido.
+
+Esperado:
+- **Sin cuenta:** la foto, "Toby prueba" (o "Un perro" si la familia apagó el nombre), "Volvió a casa", el texto "Para cuidar a su familia, el mapa, la zona y el historial…" y **Leer cómo volvió**. Nada más: ni mapa, ni "Visto por última vez", ni historial, ni la descripción, el color o el tamaño, ni nombres de personas, ni contactos, ni botones de compartir, seguir o más opciones.
+- Con `/mapa`, vuelve a esa misma pantalla.
+- **Leer cómo volvió** abre la historia del muro.
+- En WhatsApp: "Toby prueba volvió con su familia" (o "Perro, de vuelta en casa"), "Perro. Gracias a todos los que ayudaron a buscarlo." y la foto. Sin color, tamaño ni collar.
+- **Vecina y familia:** el caso de siempre, con el mapa, el historial y "Cómo volvió".
+- Reabierto, sin cuenta se ve todo otra vez; reunido de nuevo, vuelve a lo básico.
+- En la base, una cuenta que no participó tampoco lee los avisos, el historial ni la descripción pidiendo las tablas: lo prueba `supabase/tests/privacidad_reunidos.sql`.
+
+- [ ] Android · Chrome
+- [ ] iPhone · Safari
+- [ ] Computadora
+
 ## Al terminar
 
 - Borrá a familia y a vecina si no las vas a usar más: **Perfil → Borrar mi cuenta**, o desde **Authentication → Users**.

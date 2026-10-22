@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 
+import { CasoBasico } from '@/components/reportes/CasoBasico';
 import { AvisoCaso, DetalleCaso } from '@/components/reportes/DetalleCaso';
 import { Boton } from '@/components/ui/Boton';
 import { Cargando } from '@/components/ui/Cargando';
@@ -11,6 +12,7 @@ import {
   useAvistamientos,
   useCambiosEstado,
 } from '@/features/reportes/api';
+import { soloLoBasico } from '@/features/reportes/permisos';
 import { esRecienPublicado, olvidarRecienPublicado } from '@/features/reportes/recienPublicado';
 import { t } from '@/i18n/es-UY';
 import { mensajeDeError } from '@/lib/errores';
@@ -72,6 +74,9 @@ export default function PantallaAnimal() {
       </AvisoCaso>
     );
   }
+
+  // Un caso reunido, para quien no participó: la base manda solo lo básico.
+  if (soloLoBasico(animal.data)) return <CasoBasico animal={animal.data} onVolver={volver} />;
 
   return (
     <DetalleCaso

@@ -38,6 +38,7 @@ export function casoDetalle(cambios: Partial<AnimalDetalle> = {}): AnimalDetalle
     creador_nombre: 'Familia',
     oculto: false,
     perdido_desde: '2026-10-18T12:00:00Z',
+    reservado: false,
     ...cambios,
   } as AnimalDetalle;
 }
