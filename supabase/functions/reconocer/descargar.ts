@@ -4,7 +4,9 @@
  * de demo cargados por SQL, que guardan una URL https), la que hay. Así no
  * depende de que la API pueda bajarla ni de lo que el sitio diga del tipo
  * (placedog.net responde "image/jpg", que no existe): el tipo sale de los
- * primeros bytes. Con topes de tamaño y de tiempo.
+ * primeros bytes. Con topes de tamaño y de tiempo, solo de los orígenes
+ * permitidos y sin seguir redirecciones (auditoría 2, S-B3): una ruta guardada
+ * en la base no puede hacer que la función pida otra cosa.
  */
 
 /** Los tipos que acepta la API. */
@@ -15,6 +17,18 @@ export type FotoBajada = { media_type: TipoImagen; data: string; bytes: number }
 /** Lo que la API acepta por imagen. */
 export const TOPE_FOTO_BYTES = 5 * 1024 * 1024;
 export const TOPE_FOTO_MS = 10_000;
+
+/** Los sitios de las fotos de demo (supabase/seed.sql). El proyecto se suma en index.ts. */
+export const ORIGENES_DEMO: readonly string[] = ['https://placedog.net', 'https://cataas.com'];
+
+/** La URL es de uno de `origenes` (esquema, host y puerto exactos). */
+export function origenPermitido(url: string, origenes: readonly string[]): boolean {
+  try {
+    return origenes.includes(new URL(url).origin);
+  } catch {
+    return false;
+  }
+}
 
 /** El tipo por la firma del archivo, o null si no es JPEG, PNG, WebP ni GIF. */
 export function tipoPorBytes(b: Uint8Array): TipoImagen | null {
@@ -67,15 +81,21 @@ async function leerHasta(
 }
 
 /**
- * Baja una foto de otro sitio. null si no responde 200, tarda más de `topeMs`
- * (todo: conectar y leer), pesa más de `topeBytes` o no es una imagen que
- * acepte la API: la foto queda como "foto no disponible".
+ * Baja una foto de otro sitio. null si no es de `origenes`, no responde 200
+ * (una redirección tampoco vale), tarda más de `topeMs` (todo: conectar y
+ * leer), pesa más de `topeBytes` o no es una imagen que acepte la API: la foto
+ * queda como "foto no disponible".
  */
 export function bajarFoto(
   fetchFn: typeof fetch = fetch,
-  { topeMs = TOPE_FOTO_MS, topeBytes = TOPE_FOTO_BYTES }: { topeMs?: number; topeBytes?: number } = {},
+  { topeMs = TOPE_FOTO_MS, topeBytes = TOPE_FOTO_BYTES, origenes = ORIGENES_DEMO }: {
+    topeMs?: number;
+    topeBytes?: number;
+    origenes?: readonly string[];
+  } = {},
 ) {
   return async (url: string): Promise<FotoBajada | null> => {
+    if (!origenPermitido(url, origenes)) return null;
     const control = new AbortController();
     let lector: ReadableStreamDefaultReader<Uint8Array> | null = null;
     const reloj = setTimeout(() => {
@@ -83,7 +103,7 @@ export function bajarFoto(
       lector?.cancel().catch(() => {});
     }, topeMs);
     try {
-      const respuesta = await fetchFn(url, { signal: control.signal });
+      const respuesta = await fetchFn(url, { signal: control.signal, redirect: 'error' });
       if (!respuesta.ok || !respuesta.body) {
         await respuesta.body?.cancel();
         return null;

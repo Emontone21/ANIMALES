@@ -20,7 +20,8 @@ import type { Dependencias } from '../procesar.ts';
 import type { Descripcion } from '../validar.ts';
 
 export const SUPABASE = 'https://proyecto.supabase.co';
-export const SECRETO = 'secreto-de-prueba';
+/** Con la forma del real: 32 bytes en hexadecimal (servidor.ts rechaza otra forma sin ir a la base). */
+export const SECRETO = '0123456789abcdef'.repeat(4);
 
 export const DESCRIPCION_PERRO: Descripcion = {
   hay_animal: true,
@@ -98,6 +99,8 @@ export class BaseFalsa implements Base {
   descripciones: { id: string; descripcion: Descripcion; tokensEntrada: number; tokensSalida: number }[] = [];
   comparaciones: { id: string; resultados: ComparacionParaGuardar[]; modelo: string }[] = [];
   pausas: string[] = [];
+  /** Cuántas veces se leyó la configuración (el secreto). */
+  consultasConfig = 0;
 
   #fallar(operacion: keyof Base) {
     const error = this.falla[operacion];
@@ -105,6 +108,7 @@ export class BaseFalsa implements Base {
   }
 
   config() {
+    this.consultasConfig++;
     this.#fallar('config');
     return Promise.resolve({ ...this.config_ });
   }

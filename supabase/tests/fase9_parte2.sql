@@ -32,7 +32,7 @@ where id::text like '00000000-0000-4000-8000-000000000a%';
 update public.perfiles set es_moderador = true where id = '00000000-0000-4000-8000-000000000a09';
 
 insert into storage.objects (bucket_id, name)
-select 'fotos', u || '/t10-' || n || variante
+select 'fotos', u || '/00000000-0000-4000-8010-' || lpad(n::text, 12, '0') || variante
 from unnest(array[
   '00000000-0000-4000-8000-000000000a01', '00000000-0000-4000-8000-000000000a02',
   '00000000-0000-4000-8000-000000000a03', '00000000-0000-4000-8000-000000000a04',
@@ -59,21 +59,21 @@ declare
 begin
   -- F publica a P; V, B y D lo ven.
   perform set_config('request.jwt.claims', json_build_object('sub', f, 'role', 'authenticated')::text, true);
-  p := public.publicar_animal('perro', f || '/t10-1.jpg', -34.91, -56.16, now() - interval '1 day',
+  p := public.publicar_animal('perro', f || '/00000000-0000-4000-8010-000000000001.jpg', -34.91, -56.16, now() - interval '1 day',
     'mediano', 'marrón', true, null, 'perdido', 'Toby', 'Contacto de F');
   perform set_config('request.jwt.claims', json_build_object('sub', v, 'role', 'authenticated')::text, true);
-  perform public.registrar_avistamiento(p, v || '/t10-1.jpg', -34.905, -56.155);
+  perform public.registrar_avistamiento(p, v || '/00000000-0000-4000-8010-000000000001.jpg', -34.905, -56.155);
   perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
-  perform public.registrar_avistamiento(p, b || '/t10-1.jpg', -34.905, -56.155);
+  perform public.registrar_avistamiento(p, b || '/00000000-0000-4000-8010-000000000001.jpg', -34.905, -56.155);
   perform set_config('request.jwt.claims', json_build_object('sub', d, 'role', 'authenticated')::text, true);
-  perform public.registrar_avistamiento(p, d || '/t10-1.jpg', -34.905, -56.155);
+  perform public.registrar_avistamiento(p, d || '/00000000-0000-4000-8010-000000000001.jpg', -34.905, -56.155);
 
   -- X publica a E, W lo ve, y F confirma que es Toby: E se une a P y los
   -- avistamientos de E (el de X y el de W) pasan a P.
   perform set_config('request.jwt.claims', json_build_object('sub', x, 'role', 'authenticated')::text, true);
-  e := public.publicar_animal('perro', x || '/t10-1.jpg', -34.90, -56.15, now() - interval '3 hours');
+  e := public.publicar_animal('perro', x || '/00000000-0000-4000-8010-000000000001.jpg', -34.90, -56.15, now() - interval '3 hours');
   perform set_config('request.jwt.claims', json_build_object('sub', w, 'role', 'authenticated')::text, true);
-  perform public.registrar_avistamiento(e, w || '/t10-1.jpg', -34.90, -56.15);
+  perform public.registrar_avistamiento(e, w || '/00000000-0000-4000-8010-000000000001.jpg', -34.90, -56.15);
   insert into public.coincidencias (animal_origen, animal_candidato, similitud, distancia_m, horas_diferencia)
   values (least(p, e), greatest(p, e), 0.9, 500, 20)
   returning id into k_pe;
@@ -88,17 +88,17 @@ begin
   -- Q publica a H con contacto; V lo ve; Z lo resguarda con foto y contacto y le
   -- escribe a Q. W publica un encontrado parecido (K) y el sistema sugiere el par.
   perform set_config('request.jwt.claims', json_build_object('sub', q, 'role', 'authenticated')::text, true);
-  h := public.publicar_animal('gato', q || '/t10-1.jpg', -34.88, -56.18, now() - interval '1 day',
+  h := public.publicar_animal('gato', q || '/00000000-0000-4000-8010-000000000001.jpg', -34.88, -56.18, now() - interval '1 day',
     null, 'gris', false, null, 'perdido', 'Michi', 'Contacto de Q');
   perform set_config('request.jwt.claims', json_build_object('sub', v, 'role', 'authenticated')::text, true);
-  perform public.registrar_avistamiento(h, v || '/t10-2.jpg', -34.88, -56.18);
+  perform public.registrar_avistamiento(h, v || '/00000000-0000-4000-8010-000000000002.jpg', -34.88, -56.18);
   insert into public.denuncias (animal_id, usuario_id, motivo) values (h, v, 'spam');
   perform set_config('request.jwt.claims', json_build_object('sub', z, 'role', 'authenticated')::text, true);
-  perform public.cambiar_estado_animal(h, 'resguardado', 'Contacto de Z', null, null, null, z || '/t10-1.jpg');
+  perform public.cambiar_estado_animal(h, 'resguardado', 'Contacto de Z', null, null, null, z || '/00000000-0000-4000-8010-000000000001.jpg');
   conv := public.abrir_conversacion(h, q);
   insert into public.mensajes (conversacion_id, emisor_id, cuerpo) values (conv, z, 'Lo tengo yo');
   perform set_config('request.jwt.claims', json_build_object('sub', w, 'role', 'authenticated')::text, true);
-  k := public.publicar_animal('gato', w || '/t10-2.jpg', -34.88, -56.18, now() - interval '2 hours');
+  k := public.publicar_animal('gato', w || '/00000000-0000-4000-8010-000000000002.jpg', -34.88, -56.18, now() - interval '2 hours');
   insert into public.coincidencias (animal_origen, animal_candidato, similitud, distancia_m, horas_diferencia)
   values (least(h, k), greatest(h, k), 0.9, 100, 20);
 

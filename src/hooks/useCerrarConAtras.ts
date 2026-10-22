@@ -4,3 +4,9 @@
  * (useCerrarConAtras.web.ts).
  */
 export function useCerrarConAtras(_visible: boolean, _onCerrar: () => void) {}
+
+/** Cierra una hoja y después navega (en web espera al historial). */
+export function cerrarYNavegar(cerrar: () => void, navegar: () => void) {
+  cerrar();
+  navegar();
+}

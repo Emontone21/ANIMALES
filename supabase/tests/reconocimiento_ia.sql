@@ -25,13 +25,19 @@ set terminos_version = public.version_terminos(), terminos_aceptados_en = now()
 where id::text like '00000000-0000-4000-8000-000000000d0%';
 update public.perfiles set es_moderador = true where id = '00000000-0000-4000-8000-000000000d04';
 
-insert into storage.objects (bucket_id, name) values
-  ('fotos', '00000000-0000-4000-8000-000000000d01/ia-1.jpg'),
-  ('fotos', '00000000-0000-4000-8000-000000000d02/ia-1.jpg');
+-- Cada foto, nueva y "subida" por su dueño a su carpeta, con el nombre que
+-- sube la app (<uid>/<uuid>.jpg): desde la 0023 una foto no se usa dos veces.
+create function pg_temp.foto_nueva(p_uid uuid) returns text language sql security definer as $$
+  insert into storage.objects (bucket_id, name)
+  values ('fotos', p_uid::text || '/' || gen_random_uuid()::text || '.jpg')
+  returning name
+$$;
 
 update public.cola_vision set estado = 'hecho' where estado <> 'hecho';
 update public.config_app set valor = '' where clave in ('vision_url', 'ia_pausa');
 update public.config_app set valor = 'true' where clave = 'ia_activa';
+-- H publica más casos en una hora que el tope por cuenta (0023).
+update public.config_app set valor = '100' where clave = 'publicaciones_por_hora_cuenta';
 
 -- Los casos de la prueba, por nombre.
 create temp table casos (nombre text primary key, animal uuid, avistamiento uuid) on commit drop;
@@ -109,8 +115,6 @@ do $$
 declare
   f constant uuid := '00000000-0000-4000-8000-000000000d01';
   h constant uuid := '00000000-0000-4000-8000-000000000d02';
-  foto_f constant text := '00000000-0000-4000-8000-000000000d01/ia-1.jpg';
-  foto_h constant text := '00000000-0000-4000-8000-000000000d02/ia-1.jpg';
   -- Lugar donde se perdió P (Montevideo). 0,01° de latitud son unos 1,1 km.
   lat constant float := -34.910;
   lng constant float := -56.160;
@@ -119,32 +123,32 @@ declare
 begin
   perform set_config('request.jwt.claims', json_build_object('sub', f, 'role', 'authenticated')::text, true);
   insert into casos (nombre, animal) values
-    ('P', public.publicar_animal('perro', foto_f, lat, lng, now() - interval '2 days',
+    ('P', public.publicar_animal('perro', pg_temp.foto_nueva(f), lat, lng, now() - interval '2 days',
       'chico', 'negro', false, null, 'perdido', 'Toby')),
-    ('P2', public.publicar_animal('perro', foto_f, lat + 0.001, lng, now() - interval '1 day',
+    ('P2', public.publicar_animal('perro', pg_temp.foto_nueva(f), lat + 0.001, lng, now() - interval '1 day',
       null, null, false, null, 'perdido', 'Otro'));
 
   perform set_config('request.jwt.claims', json_build_object('sub', h, 'role', 'authenticated')::text, true);
   insert into casos (nombre, animal) values
     -- Candidatos: E2 más cerca que E1.
-    ('E1', public.publicar_animal('perro', foto_h, lat + 0.009, lng, now() - interval '1 hour')),
-    ('E2', public.publicar_animal('perro', foto_h, lat + 0.004, lng, now() - interval '2 hours')),
+    ('E1', public.publicar_animal('perro', pg_temp.foto_nueva(h), lat + 0.009, lng, now() - interval '1 hour')),
+    ('E2', public.publicar_animal('perro', pg_temp.foto_nueva(h), lat + 0.004, lng, now() - interval '2 hours')),
     -- Lejos (unos 20 km), otra especie, visto mucho antes de la pérdida.
-    ('Elejos', public.publicar_animal('perro', foto_h, lat + 0.18, lng, now() - interval '1 hour')),
-    ('Egato', public.publicar_animal('gato', foto_h, lat + 0.002, lng, now() - interval '1 hour')),
-    ('Eantes', public.publicar_animal('perro', foto_h, lat + 0.002, lng, now() - interval '6 days')),
+    ('Elejos', public.publicar_animal('perro', pg_temp.foto_nueva(h), lat + 0.18, lng, now() - interval '1 hour')),
+    ('Egato', public.publicar_animal('gato', pg_temp.foto_nueva(h), lat + 0.002, lng, now() - interval '1 hour')),
+    ('Eantes', public.publicar_animal('perro', pg_temp.foto_nueva(h), lat + 0.002, lng, now() - interval '6 days')),
     -- Cerrado y oculto.
-    ('Ecerrado', public.publicar_animal('perro', foto_h, lat + 0.002, lng, now() - interval '1 hour')),
-    ('Eoculto', public.publicar_animal('perro', foto_h, lat + 0.002, lng, now() - interval '1 hour')),
+    ('Ecerrado', public.publicar_animal('perro', pg_temp.foto_nueva(h), lat + 0.002, lng, now() - interval '1 hour')),
+    ('Eoculto', public.publicar_animal('perro', pg_temp.foto_nueva(h), lat + 0.002, lng, now() - interval '1 hour')),
     -- Blanco (P es negro), grande (P es chico), su foto sin animal.
-    ('Eblanco', public.publicar_animal('perro', foto_h, lat + 0.002, lng, now() - interval '1 hour')),
-    ('Egrande', public.publicar_animal('perro', foto_h, lat + 0.002, lng, now() - interval '1 hour', 'grande')),
-    ('Esinanimal', public.publicar_animal('perro', foto_h, lat + 0.002, lng, now() - interval '1 hour')),
+    ('Eblanco', public.publicar_animal('perro', pg_temp.foto_nueva(h), lat + 0.002, lng, now() - interval '1 hour')),
+    ('Egrande', public.publicar_animal('perro', pg_temp.foto_nueva(h), lat + 0.002, lng, now() - interval '1 hour', 'grande')),
+    ('Esinanimal', public.publicar_animal('perro', pg_temp.foto_nueva(h), lat + 0.002, lng, now() - interval '1 hour')),
     -- Ya comparado con P y con coincidencia con P.
-    ('Ecomparado', public.publicar_animal('perro', foto_h, lat + 0.002, lng, now() - interval '1 hour')),
-    ('Ecoincidencia', public.publicar_animal('perro', foto_h, lat + 0.002, lng, now() - interval '1 hour')),
+    ('Ecomparado', public.publicar_animal('perro', pg_temp.foto_nueva(h), lat + 0.002, lng, now() - interval '1 hour')),
+    ('Ecoincidencia', public.publicar_animal('perro', pg_temp.foto_nueva(h), lat + 0.002, lng, now() - interval '1 hour')),
     -- Para la ventana entre dos encontrados: visto hace 70 días, cerca de E1.
-    ('Eviejo', public.publicar_animal('perro', foto_h, lat + 0.009, lng + 0.001, now() - interval '70 days'));
+    ('Eviejo', public.publicar_animal('perro', pg_temp.foto_nueva(h), lat + 0.009, lng + 0.001, now() - interval '70 days'));
   perform set_config('request.jwt.claims', '', true);
 
   update casos set avistamiento = (
@@ -188,7 +192,8 @@ begin
   end if;
 
   -- El de cada candidato trae su foto y los datos del animal (sin personas).
-  if (select foto_path from public.candidatos_ia(pg_temp.foto('P')) where animal_id = pg_temp.caso('E1')) <> foto_h
+  if (select foto_path from public.candidatos_ia(pg_temp.foto('P')) where animal_id = pg_temp.caso('E1'))
+     is distinct from (select foto_principal_path from public.animales where id = pg_temp.caso('E1'))
      or (select descripcion ->> 'color_principal' from public.candidatos_ia(pg_temp.foto('P'))
          where animal_id = pg_temp.caso('E1')) <> 'marron'
      or (select descripcion from public.candidatos_ia(pg_temp.foto('P')) where animal_id = pg_temp.caso('E2')) is not null then
@@ -419,7 +424,7 @@ begin
 
   -- Una foto nueva queda en la cola, sin aviso; el cron tampoco llama.
   perform set_config('request.jwt.claims', json_build_object('sub', f, 'role', 'authenticated')::text, true);
-  p := public.publicar_animal('perro', '00000000-0000-4000-8000-000000000d01/ia-1.jpg', -34.95, -56.10);
+  p := public.publicar_animal('perro', pg_temp.foto_nueva('00000000-0000-4000-8000-000000000d01'), -34.95, -56.10);
   perform set_config('request.jwt.claims', '', true);
   insert into casos (nombre, animal, avistamiento)
   values ('Ptope', p, (select id from public.avistamientos where animal_id = p));
@@ -468,7 +473,7 @@ begin
     raise exception 'FALLA 6a: apagado, despertar_vision no dijo "apagado"';
   end if;
   perform set_config('request.jwt.claims', json_build_object('sub', f, 'role', 'authenticated')::text, true);
-  perform public.registrar_avistamiento(pg_temp.caso('P'), '00000000-0000-4000-8000-000000000d01/ia-1.jpg', -34.91, -56.16);
+  perform public.registrar_avistamiento(pg_temp.caso('P'), pg_temp.foto_nueva('00000000-0000-4000-8000-000000000d01'), -34.91, -56.16);
   perform set_config('request.jwt.claims', '', true);
   if pg_temp.pedidos('/procesar') + pg_temp.pedidos('/procesar-pendientes') <> v_antes then
     raise exception 'FALLA 6b: apagado, una foto nueva avisó a la función';
@@ -654,8 +659,6 @@ do $$
 declare
   f constant uuid := '00000000-0000-4000-8000-000000000d01';
   h constant uuid := '00000000-0000-4000-8000-000000000d02';
-  foto_f constant text := '00000000-0000-4000-8000-000000000d01/ia-1.jpg';
-  foto_h constant text := '00000000-0000-4000-8000-000000000d02/ia-1.jpg';
   -- Lejos de los casos de la parte 2 (unos 30 km al este).
   lat constant float := -34.900;
   lng constant float := -55.830;
@@ -667,15 +670,15 @@ begin
   update public.config_app set valor = '70' where clave = 'umbral_ia';
   perform set_config('request.jwt.claims', json_build_object('sub', f, 'role', 'authenticated')::text, true);
   insert into casos (nombre, animal) values
-    ('Q', public.publicar_animal('perro', foto_f, lat, lng, now() - interval '2 days', null, null, false, null, 'perdido', 'Beagle'));
+    ('Q', public.publicar_animal('perro', pg_temp.foto_nueva(f), lat, lng, now() - interval '2 days', null, null, false, null, 'perdido', 'Beagle'));
   perform set_config('request.jwt.claims', json_build_object('sub', h, 'role', 'authenticated')::text, true);
   insert into casos (nombre, animal) values
-    ('Qdistinto', public.publicar_animal('perro', foto_h, lat + 0.001, lng, now() - interval '1 hour')),
-    ('Qmismo', public.publicar_animal('perro', foto_h, lat + 0.002, lng, now() - interval '1 hour')),
-    ('Qmismo69', public.publicar_animal('perro', foto_h, lat + 0.003, lng, now() - interval '1 hour')),
-    ('Qposible', public.publicar_animal('perro', foto_h, lat + 0.004, lng, now() - interval '1 hour')),
-    ('Qposible69', public.publicar_animal('perro', foto_h, lat + 0.005, lng, now() - interval '1 hour')),
-    ('Qvieja', public.publicar_animal('perro', foto_h, lat + 0.006, lng, now() - interval '1 hour'));
+    ('Qdistinto', public.publicar_animal('perro', pg_temp.foto_nueva(h), lat + 0.001, lng, now() - interval '1 hour')),
+    ('Qmismo', public.publicar_animal('perro', pg_temp.foto_nueva(h), lat + 0.002, lng, now() - interval '1 hour')),
+    ('Qmismo69', public.publicar_animal('perro', pg_temp.foto_nueva(h), lat + 0.003, lng, now() - interval '1 hour')),
+    ('Qposible', public.publicar_animal('perro', pg_temp.foto_nueva(h), lat + 0.004, lng, now() - interval '1 hour')),
+    ('Qposible69', public.publicar_animal('perro', pg_temp.foto_nueva(h), lat + 0.005, lng, now() - interval '1 hour')),
+    ('Qvieja', public.publicar_animal('perro', pg_temp.foto_nueva(h), lat + 0.006, lng, now() - interval '1 hour'));
   perform set_config('request.jwt.claims', '', true);
   update casos set avistamiento = (
     select av.id from public.avistamientos av where av.animal_id = casos.animal order by av.created_at limit 1

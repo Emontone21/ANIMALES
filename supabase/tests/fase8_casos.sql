@@ -23,13 +23,14 @@ set terminos_version = public.version_terminos(), terminos_aceptados_en = now()
 where id::text like '00000000-0000-4000-8000-0000000008%';
 
 -- Fotos "subidas" a la carpeta de cada uno, cada una con su miniatura al lado
--- (la convención de src/lib/imagenes.ts: <foto>.miniatura.jpg).
+-- (la convención de src/lib/imagenes.ts: <foto>.miniatura.jpg), con el nombre
+-- que sube la app (<uid>/<uuid>.jpg, 0023): la foto n es …-8008-00000000000n.jpg.
 insert into storage.objects (bucket_id, name)
-select 'fotos', u || '/t8-' || n || variante
+select 'fotos', u || '/00000000-0000-4000-8008-' || lpad(n::text, 12, '0') || variante
 from unnest(array[
   '00000000-0000-4000-8000-000000000801', '00000000-0000-4000-8000-000000000802',
   '00000000-0000-4000-8000-000000000803', '00000000-0000-4000-8000-000000000804'
-]) as u, generate_series(1, 7) as n, unnest(array['.jpg', '.miniatura.jpg']) as variante;
+]) as u, generate_series(1, 8) as n, unnest(array['.jpg', '.miniatura.jpg']) as variante;
 
 -- -----------------------------------------------------------------------------
 -- Parte A, como el sistema: casos de prueba (las RPC toman el usuario del JWT).
@@ -45,25 +46,25 @@ declare
 begin
   -- P: un perdido con contacto, un encontrado abierto y uno que va a cerrar.
   perform set_config('request.jwt.claims', json_build_object('sub', p, 'role', 'authenticated')::text, true);
-  p1 := public.publicar_animal('perro', p || '/t8-1.jpg', -34.91, -56.16, now() - interval '1 day',
+  p1 := public.publicar_animal('perro', p || '/00000000-0000-4000-8008-000000000001.jpg', -34.91, -56.16, now() - interval '1 day',
     'mediano', 'marrón', true, 'Tiene una mancha blanca', 'perdido', 'Toby', 'Escribinos por la app');
-  e1 := public.publicar_animal('perro', p || '/t8-2.jpg', -34.90, -56.15, now() - interval '3 hours');
-  e2 := public.publicar_animal('gato', p || '/t8-3.jpg', -34.90, -56.15, now() - interval '3 hours');
+  e1 := public.publicar_animal('perro', p || '/00000000-0000-4000-8008-000000000002.jpg', -34.90, -56.15, now() - interval '3 hours');
+  e2 := public.publicar_animal('gato', p || '/00000000-0000-4000-8008-000000000003.jpg', -34.90, -56.15, now() - interval '3 hours');
   perform public.cambiar_estado_animal(e2, 'reunido');
-  update public.perfiles set avatar_path = p || '/t8-5.jpg' where id = p;
+  update public.perfiles set avatar_path = p || '/00000000-0000-4000-8008-000000000005.jpg' where id = p;
 
   -- Q: un encontrado que se va a unir al perdido de P y otro caso abierto.
   perform set_config('request.jwt.claims', json_build_object('sub', q, 'role', 'authenticated')::text, true);
-  q1 := public.publicar_animal('perro', q || '/t8-1.jpg', -34.90, -56.15, now() - interval '2 hours');
-  q2 := public.publicar_animal('perro', q || '/t8-2.jpg', -34.90, -56.15, now() - interval '2 hours');
+  q1 := public.publicar_animal('perro', q || '/00000000-0000-4000-8008-000000000001.jpg', -34.90, -56.15, now() - interval '2 hours');
+  q2 := public.publicar_animal('perro', q || '/00000000-0000-4000-8008-000000000002.jpg', -34.90, -56.15, now() - interval '2 hours');
 
   -- O lo ve (y así lo sigue), lo resguarda con foto y contacto, le escribe a la
   -- familia y lo denuncia.
   perform set_config('request.jwt.claims', json_build_object('sub', o, 'role', 'authenticated')::text, true);
-  perform public.registrar_avistamiento(p1, o || '/t8-1.jpg', -34.90, -56.15);
+  perform public.registrar_avistamiento(p1, o || '/00000000-0000-4000-8008-000000000001.jpg', -34.90, -56.15);
   -- También vio a Q1 antes de que se uniera: Q recibe un aviso que lleva a Q1.
-  perform public.registrar_avistamiento(q1, o || '/t8-3.jpg', -34.90, -56.15);
-  perform public.cambiar_estado_animal(p1, 'resguardado', 'Contacto de O', null, null, null, o || '/t8-2.jpg');
+  perform public.registrar_avistamiento(q1, o || '/00000000-0000-4000-8008-000000000003.jpg', -34.90, -56.15);
+  perform public.cambiar_estado_animal(p1, 'resguardado', 'Contacto de O', null, null, null, o || '/00000000-0000-4000-8008-000000000002.jpg');
   conv := public.abrir_conversacion(p1, p);
   insert into public.mensajes (conversacion_id, emisor_id, cuerpo) values (conv, o, 'Lo tengo yo');
   insert into public.denuncias (animal_id, usuario_id, motivo) values (p1, o, 'spam');
@@ -77,12 +78,12 @@ begin
     raise exception 'FALLA A1: el reporte de Q no se unió al perdido de P';
   end if;
 
-  -- P lo vuelve a ver (avisa a O, que lo sigue) y aporta a Q2. La foto t8-7 la
-  -- usa en los dos casos: no se puede borrar con P1.
-  perform public.registrar_avistamiento(p1, p || '/t8-6.jpg', -34.90, -56.15);
-  perform public.registrar_avistamiento(p1, p || '/t8-7.jpg', -34.90, -56.15);
-  perform public.registrar_avistamiento(q2, p || '/t8-4.jpg', -34.90, -56.15);
-  perform public.registrar_avistamiento(q2, p || '/t8-7.jpg', -34.90, -56.15);
+  -- P lo vuelve a ver (avisa a O, que lo sigue) y aporta a Q2.
+  perform public.registrar_avistamiento(p1, p || '/00000000-0000-4000-8008-000000000006.jpg', -34.90, -56.15);
+  perform public.registrar_avistamiento(p1, p || '/00000000-0000-4000-8008-000000000007.jpg', -34.90, -56.15);
+  perform public.registrar_avistamiento(q2, p || '/00000000-0000-4000-8008-000000000004.jpg', -34.90, -56.15);
+  -- Otra foto: desde la 0023 una foto no se usa dos veces (auditoria_2.sql).
+  perform public.registrar_avistamiento(q2, p || '/00000000-0000-4000-8008-000000000008.jpg', -34.90, -56.15);
 
   -- Coincidencias pendientes: P1 con Q2 y E1 con Q2. W sigue solo Q2: su aviso
   -- de la primera lleva a Q2, que no se borra, pero habla de una coincidencia que sí.
@@ -96,7 +97,7 @@ begin
 
   -- W: un encontrado, publicado antes de que cambiaran los términos.
   perform set_config('request.jwt.claims', json_build_object('sub', w, 'role', 'authenticated')::text, true);
-  w1 := public.publicar_animal('perro', w || '/t8-1.jpg', -34.90, -56.15);
+  w1 := public.publicar_animal('perro', w || '/00000000-0000-4000-8008-000000000001.jpg', -34.90, -56.15);
 
   -- Lo que se tiene que borrar con P1 existe de verdad.
   if not exists (select 1 from public.notificaciones where usuario_id = o and datos ->> 'animal_id' = p1::text)
@@ -319,11 +320,12 @@ declare
 begin
   -- 9. Las fotos que la app tiene que borrar con P1: las de P en el caso, con
   -- sus miniaturas. No las de O ni las de Q (que vinieron con su reporte), ni
-  -- la foto de perfil de P, ni lo que P aportó a Q2, ni t8-7, que también está en Q2.
+  -- la foto de perfil de P, ni lo que P aportó a Q2.
   perform set_config('request.jwt.claims', json_build_object('sub', p, 'role', 'authenticated')::text, true);
   select array_agg(x order by x) into v_fotos from public.fotos_del_reporte(p1) as x;
   if v_fotos is distinct from array[
-    p || '/t8-1.jpg', p || '/t8-1.miniatura.jpg', p || '/t8-6.jpg', p || '/t8-6.miniatura.jpg'
+    p || '/00000000-0000-4000-8008-000000000001.jpg', p || '/00000000-0000-4000-8008-000000000001.miniatura.jpg', p || '/00000000-0000-4000-8008-000000000006.jpg', p || '/00000000-0000-4000-8008-000000000006.miniatura.jpg',
+    p || '/00000000-0000-4000-8008-000000000007.jpg', p || '/00000000-0000-4000-8008-000000000007.miniatura.jpg'
   ] then
     raise exception 'FALLA 9: fotos_del_reporte devolvió %', v_fotos;
   end if;
@@ -422,7 +424,7 @@ begin
     raise exception 'FALLA 12e: borrar un caso tocó otros casos o cuentas';
   end if;
   -- 12f. Storage no se tocó por SQL: las fotos las borra la app.
-  if (select count(*) from storage.objects where name like '00000000-0000-4000-8000-0000000008%/t8-%') <> 56 then
+  if (select count(*) from storage.objects where name like '00000000-0000-4000-8000-0000000008%/00000000-0000-4000-8008-%') <> 64 then
     raise exception 'FALLA 12f: cambió storage.objects';
   end if;
 end $$;
@@ -437,19 +439,20 @@ declare
   p constant uuid := '00000000-0000-4000-8000-000000000801';
   v_fotos text[];
 begin
-  -- 15. Si P deja lo abierto, lo que queda publicado (E1 y lo que aportó a Q2,
-  -- t8-7 incluida) conserva su miniatura; el resto se va con su miniatura:
+  -- 15. Si P deja lo abierto, lo que queda publicado (E1 y lo que aportó a Q2)
+  -- conserva su miniatura; el resto se va con su miniatura:
   -- lo de los casos borrados y la foto de perfil.
   perform set_config('request.jwt.claims', json_build_object('sub', p, 'role', 'authenticated')::text, true);
   select array_agg(x order by x) into v_fotos from public.fotos_para_borrar(true) as x;
   if v_fotos is distinct from array[
-    p || '/t8-1.jpg', p || '/t8-1.miniatura.jpg', p || '/t8-3.jpg', p || '/t8-3.miniatura.jpg',
-    p || '/t8-5.jpg', p || '/t8-5.miniatura.jpg', p || '/t8-6.jpg', p || '/t8-6.miniatura.jpg'
+    p || '/00000000-0000-4000-8008-000000000001.jpg', p || '/00000000-0000-4000-8008-000000000001.miniatura.jpg', p || '/00000000-0000-4000-8008-000000000003.jpg', p || '/00000000-0000-4000-8008-000000000003.miniatura.jpg',
+    p || '/00000000-0000-4000-8008-000000000005.jpg', p || '/00000000-0000-4000-8008-000000000005.miniatura.jpg', p || '/00000000-0000-4000-8008-000000000006.jpg', p || '/00000000-0000-4000-8008-000000000006.miniatura.jpg',
+    p || '/00000000-0000-4000-8008-000000000007.jpg', p || '/00000000-0000-4000-8008-000000000007.miniatura.jpg'
   ] then
     raise exception 'FALLA 15: fotos_para_borrar(true) devolvió %', v_fotos;
   end if;
-  if (select count(*) from public.fotos_para_borrar(false)) <> 14 then
-    raise exception 'FALLA 15b: fotos_para_borrar(false) no devolvió las 14 fotos de P';
+  if (select count(*) from public.fotos_para_borrar(false)) <> 16 then
+    raise exception 'FALLA 15b: fotos_para_borrar(false) no devolvió las 16 fotos de P';
   end if;
 end $$;
 

@@ -18,7 +18,8 @@ const AuthContext = createContext<ValorAuth | null>(null);
 
 /**
  * Mantiene la sesión de Supabase en memoria y la restaura al abrir la app.
- * También procesa los deep links con tokens (confirmación de email, OAuth).
+ * En nativo, también canjea el código de los deep links (confirmación de
+ * email, recuperación, OAuth).
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [sesion, setSesion] = useState<Session | null>(null);
@@ -47,10 +48,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // En web, el cliente de Supabase ya procesa los tokens de la URL.
+    // En web, el cliente de Supabase ya canjea el código de la URL.
     if (!urlEntrante || Platform.OS === 'web') return;
     crearSesionDesdeUrl(urlEntrante).catch(() => {
-      // Un link sin tokens (por ejemplo, abrir la app desde el ícono) no es un error.
+      // Un link sin código (por ejemplo, abrir la app desde el ícono) no es un error.
     });
   }, [urlEntrante]);
 

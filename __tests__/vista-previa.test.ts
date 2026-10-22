@@ -182,6 +182,24 @@ describe('vista previa del link de un caso', () => {
     expect(html).toContain('&quot;Toby&quot;&lt;script&gt;');
   });
 
+  test('"$`" o "$&" en un nombre se insertan tal cual, sin pedazos del <head> (S-B1)', async () => {
+    simularRed({ caso: { ...toby, nombre: 'Toby $` $& $\'' } });
+    const { html } = await pedir(`/api/vista-previa?id=${ID}`);
+    expect(html).toContain('<title>Se perdió Toby $` $&amp; $&#39; · Spot</title>');
+    expect(html.match(/<head>/g)).toHaveLength(1);
+    expect(html.match(/<\/head>/g)).toHaveLength(1);
+    expect(html.match(/<!doctype html>/gi)).toHaveLength(1);
+  });
+
+  test('con más de un id, las etiquetas genéricas y sin consultar la base (S-B7)', async () => {
+    const otro = 'b0000000-0000-4000-8000-000000000005';
+    const pedidos = simularRed();
+    const { html } = await pedir(`/api/vista-previa?id=${ID}&id=${otro}`);
+    expect(pedidos.some((p) => p.url.includes('/rest/v1/'))).toBe(false);
+    expect(html).not.toContain('Toby');
+    expect(html).toContain('<meta property="og:url" content="https://spot.test" />');
+  });
+
   test('HEAD: mismas cabeceras, sin cuerpo', async () => {
     simularRed();
     const { respuesta, html } = await pedir(`/api/vista-previa?id=${ID}`, 'HEAD');

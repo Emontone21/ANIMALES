@@ -9,6 +9,12 @@
  * se pasan, se recortan y la respuesta vale, con un aviso de cuánto se pasó
  * (queda en llamadas_ia.detalle). El modelo escribe pegado al tope y el
  * esquema estricto no puede limitar largos.
+ *
+ * Teléfonos, links y emails en los textos libres (el motivo, los rasgos, la
+ * raza y el color del collar) se tapan con DATO_OCULTO en vez de rechazar la
+ * respuesta: vienen de texto escrito en la foto, y rechazar haría reintentar
+ * la misma foto en bucle (auditoría 2, S-M3). La base tiene un check como
+ * última barrera (migración 0023).
  */
 
 export const ESPECIES = ['perro', 'gato', 'otro', 'ninguno'] as const;
@@ -34,6 +40,37 @@ export const OBJETIVOS = {
   motivo: 110,
   rasgo: 60,
 } as const;
+
+/** Lo que reemplaza un teléfono, un link o un email en un texto de la IA. */
+export const DATO_OCULTO = '[dato oculto]';
+
+const EMAIL = /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)+/gu;
+const ENLACE = /(?:https?:\/\/|www\.|wa\.me)\S*/giu;
+const DOMINIO =
+  /[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)*\.(?:com|net|org|uy|ar|br|me|io|app|ly|link|info|site)\b(?:\/\S*)?/giu;
+/** Seis dígitos o más, con espacios, puntos, guiones o paréntesis entre ellos: "099 123 456", "+598 (2) 900-1234". */
+const TELEFONO = /[+(]*\d(?:[\s.()\-]*\d){5,}\)?/gu;
+
+/**
+ * Lo que rechaza la base en esos textos (tiene_datos_de_contacto, migración
+ * 0023): una parte de lo que tapa ocultarDatos, así lo que sale de acá nunca
+ * choca con el check. `enlace` se compara sin distinguir mayúsculas.
+ * __tests__/datosOcultos.test.ts los compara con la migración.
+ */
+export const PATRONES_DE_LA_BASE = {
+  telefono: '[0-9]([ .()-]*[0-9]){5,}',
+  enlace: '(https?://|www\\.|wa\\.me)',
+  email: '[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\\.[A-Za-z0-9]',
+} as const;
+
+/** Tapa teléfonos, links y emails. Primero los emails y los links, que pueden tener números. */
+export function ocultarDatos(texto: string): string {
+  return texto
+    .replace(EMAIL, DATO_OCULTO)
+    .replace(ENLACE, DATO_OCULTO)
+    .replace(DOMINIO, DATO_OCULTO)
+    .replace(TELEFONO, DATO_OCULTO);
+}
 
 export type Especie = (typeof ESPECIES)[number];
 export type Veredicto = (typeof VEREDICTOS)[number];
@@ -149,12 +186,31 @@ function listaDeTextos(x: unknown, campo: string): { valores: string[]; avisos: 
     valores.push(valor);
   }
   if (valores.length > LIMITES.rasgos) avisos.push(`${campo}: ${valores.length} > ${LIMITES.rasgos}`);
-  const primeros = valores.slice(0, LIMITES.rasgos).map((valor, i) => {
+  const primeros = valores.slice(0, LIMITES.rasgos).map((original, i) => {
+    const valor = ocultarDatos(original);
+    if (valor !== original) avisos.push(`${campo}[${i + 1}]: dato oculto`);
     if (largo(valor) <= LIMITES.rasgo) return valor;
     avisos.push(`${campo}[${i + 1}]: ${largo(valor)} > ${LIMITES.rasgo}`);
     return recortar(valor, LIMITES.rasgo);
   });
   return { valores: primeros, avisos };
+}
+
+/**
+ * Un texto opcional ya validado, con los datos tapados. Si al taparlos quedó
+ * más largo que el tope (un link corto pasa a DATO_OCULTO), se recorta.
+ */
+function textoSinDatos(
+  valor: string | null,
+  maximo: number,
+  campo: string,
+  avisos: string[],
+): string | null {
+  if (valor === null) return null;
+  const limpio = ocultarDatos(valor);
+  if (limpio === valor) return valor;
+  avisos.push(`${campo}: dato oculto`);
+  return largo(limpio) <= maximo ? limpio : recortar(limpio, maximo);
 }
 
 /** "collar_color" o, si se pasó de largo, "collar_color: 45 > 40". */
@@ -183,6 +239,7 @@ export function validarDescripcion(x: unknown): Validacion<Descripcion> {
   if (!rasgos) return { ok: false, motivo: 'rasgos' };
   if (!enLista(x.calidad, CALIDADES)) return { ok: false, motivo: 'calidad' };
 
+  const avisos: string[] = [];
   return {
     ok: true,
     valor: {
@@ -193,12 +250,12 @@ export function validarDescripcion(x: unknown): Validacion<Descripcion> {
       patron: x.patron,
       tamanio: x.tamanio,
       collar: x.collar,
-      collar_color: collarColor.valor,
-      raza_aproximada: raza.valor,
+      collar_color: textoSinDatos(collarColor.valor, LIMITES.collarColor, 'collar_color', avisos),
+      raza_aproximada: textoSinDatos(raza.valor, LIMITES.raza, 'raza_aproximada', avisos),
       rasgos: rasgos.valores,
       calidad: x.calidad,
     },
-    avisos: rasgos.avisos,
+    avisos: [...avisos, ...rasgos.avisos],
   };
 }
 
@@ -239,7 +296,8 @@ export function validarComparacion(
       return { ok: false, motivo: `${r.candidato} ${r.veredicto} con probabilidad_mismo ${probabilidad}` };
     }
     if (typeof r.motivo !== 'string' || r.motivo.trim().length === 0) return { ok: false, motivo: 'motivo' };
-    let motivo = r.motivo.trim();
+    let motivo = ocultarDatos(r.motivo.trim());
+    if (motivo !== r.motivo.trim()) avisos.push(`${r.candidato} motivo: dato oculto`);
     if (largo(motivo) > LIMITES.motivo) {
       avisos.push(`${r.candidato} motivo: ${largo(motivo)} > ${LIMITES.motivo}`);
       motivo = recortar(motivo, LIMITES.motivo);

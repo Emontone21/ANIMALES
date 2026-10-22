@@ -143,6 +143,24 @@ describe('Atrás cierra la hoja abierta en web (historialHojas)', () => {
     expect(cerrar).not.toHaveBeenCalled();
   });
 
+  test('cuandoTermine espera a que se quite la entrada de la hoja; sin retroceso corre ya', () => {
+    const n = crearNavegador();
+    const navegar = jest.fn(() => n.navegar('/animal/1/editar', 'r:1'));
+    const token = n.historial.abrir(jest.fn());
+    n.historial.cerrar(token);
+    // cerrarYNavegar: la navegación empieza recién con la entrada quitada.
+    n.historial.cuandoTermine(navegar);
+    expect(navegar).not.toHaveBeenCalled();
+    n.avanzar();
+    expect(navegar).toHaveBeenCalledTimes(1);
+    expect(n.entradas()).toEqual(['/animal/1', '/animal/1/editar']);
+    expect(n.router).toEqual([]);
+
+    const otra = jest.fn();
+    n.historial.cuandoTermine(otra);
+    expect(otra).toHaveBeenCalledTimes(1);
+  });
+
   test('con hojas anidadas, Atrás cierra primero la de arriba', () => {
     const n = crearNavegador();
     const cerrarAbajo = jest.fn();

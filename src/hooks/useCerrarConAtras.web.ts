@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
 
 import { crearHistorialDeHojas, type HistorialDeHojas } from '@/lib/historialHojas';
 
@@ -34,4 +35,16 @@ export function useCerrarConAtras(visible: boolean, onCerrar: () => void) {
     const token = hojas.abrir(() => cerrar.current());
     return () => hojas.cerrar(token);
   }, [visible]);
+}
+
+/**
+ * Cierra una hoja y después navega. Si se navega mientras la hoja quita su
+ * entrada del historial, Expo Router 58 cambia la URL pero se queda en la
+ * pantalla de antes. flushSync cierra la hoja ya (su efecto empieza a quitar
+ * la entrada) y la navegación espera a que termine.
+ */
+export function cerrarYNavegar(cerrar: () => void, navegar: () => void) {
+  flushSync(cerrar);
+  if (historial) historial.cuandoTermine(navegar);
+  else navegar();
 }

@@ -190,3 +190,62 @@ describe('public/sw.js', () => {
     expect(sw).not.toContain('supabase');
   });
 });
+
+/** vercel.json: los encabezados de seguridad de todo el sitio (auditoría 2, S-M2). */
+describe('encabezados de seguridad', () => {
+  /* eslint-disable @typescript-eslint/no-require-imports */
+  const { createHash } = require('crypto') as {
+    createHash: (algoritmo: 'sha256') => {
+      update: (texto: string) => { digest: (codificacion: 'base64') => string };
+    };
+  };
+  /* eslint-enable @typescript-eslint/no-require-imports */
+  const vercel = JSON.parse(fs.readFileSync(`${raiz}/vercel.json`, 'utf8')) as {
+    headers: { source: string; headers: { key: string; value: string }[] }[];
+  };
+  const todos = vercel.headers.find((h) => h.source === '/(.*)')?.headers ?? [];
+  const valor = (clave: string) => todos.find((h) => h.key === clave)?.value;
+  const csp = valor('Content-Security-Policy-Report-Only') ?? '';
+  const directiva = (nombre: string) =>
+    csp
+      .split(';')
+      .map((d) => d.trim())
+      .find((d) => d.startsWith(`${nombre} `)) ?? '';
+
+  test('la CSP, por ahora solo de reporte, permite los scripts en línea de index.html por su hash', () => {
+    expect(valor('Content-Security-Policy')).toBeUndefined();
+    const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1] ?? '');
+    expect(scripts.length).toBe(2);
+    for (const script of scripts) {
+      const hash = createHash('sha256').update(script).digest('base64');
+      expect(directiva('script-src')).toContain(`'sha256-${hash}'`);
+    }
+    expect(csp).not.toContain("'unsafe-eval'");
+    expect(directiva('script-src')).not.toContain("'unsafe-inline'");
+    expect(directiva('frame-ancestors')).toBe("frame-ancestors 'none'");
+    expect(directiva('object-src')).toBe("object-src 'none'");
+  });
+
+  test('la CSP deja usar el mismo Supabase de los preconnect, las teselas y Turnstile', () => {
+    const supabase = [
+      ...html.matchAll(/<link rel="preconnect" href="(https:\/\/[a-z0-9]+\.supabase\.co)"/g),
+    ].map((m) => m[1]);
+    expect(supabase.length).toBeGreaterThan(0);
+    for (const origen of supabase) {
+      expect(directiva('connect-src')).toContain(origen);
+      expect(directiva('img-src')).toContain(origen);
+    }
+    expect(directiva('connect-src')).toContain('https://tiles.openfreemap.org');
+    expect(directiva('script-src')).toContain('https://challenges.cloudflare.com');
+    expect(directiva('frame-src')).toContain('https://challenges.cloudflare.com');
+  });
+
+  test('los que ya se aplican', () => {
+    expect(valor('X-Frame-Options')).toBe('DENY');
+    expect(valor('X-Content-Type-Options')).toBe('nosniff');
+    expect(valor('Referrer-Policy')).toBe('strict-origin-when-cross-origin');
+    expect(valor('Permissions-Policy')).toContain('geolocation=(self)');
+    expect(valor('Permissions-Policy')).toContain('camera=(self)');
+    expect(valor('Permissions-Policy')).toContain('microphone=()');
+  });
+});

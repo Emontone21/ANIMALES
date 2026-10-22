@@ -88,7 +88,12 @@ export function MapaBase({
           {children}
         </Map>
       ) : null}
-      <AtribucionMapa abajo={atribucionAbajo} izquierda={atribucionIzquierda} />
+      {/* Un mapa que no se mueve es el chico del detalle, adentro de un botón: sin link. */}
+      <AtribucionMapa
+        abajo={atribucionAbajo}
+        izquierda={atribucionIzquierda}
+        enlace={interactivo}
+      />
     </View>
   );
 }

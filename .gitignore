@@ -53,3 +53,19 @@ services/vision/*.npz
 public/maplibre-gl-worker.mjs
 public/maplibre-gl.css
 public/fuentes/
+
+# Credenciales locales (nunca subir claves): la CLI de Vercel, npm y cuentas de servicio.
+.vercel/
+.npmrc
+*service-account*.json
+
+# Salidas de las evaluaciones del reconocimiento (scripts/evaluar-ia.ts --salida,
+# services/vision/evaluar.py): rutas de fotos y respuestas de la IA.
+evaluacion*.json
+evaluar-fotos/
+
+# Pruebas de punta a punta (npm run e2e): resultados y capturas.
+test-results/
+playwright-report/
+e2e/.auth/
+e2e/.dist/

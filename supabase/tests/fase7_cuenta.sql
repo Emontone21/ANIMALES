@@ -44,9 +44,10 @@ update public.perfiles set created_at = now() - interval '8 days'
 where id in ('00000000-0000-4000-8000-000000000714', '00000000-0000-4000-8000-000000000715',
              '00000000-0000-4000-8000-000000000716');
 
--- Fotos "subidas" por cada uno a su carpeta del bucket fotos.
+-- Fotos "subidas" por cada uno a su carpeta del bucket fotos, con el nombre que
+-- sube la app (<uid>/<uuid>.jpg, 0023): la foto n es …-8007-00000000000n.jpg.
 insert into storage.objects (bucket_id, name)
-select 'fotos', u || '/t7-' || n || '.jpg'
+select 'fotos', u || '/00000000-0000-4000-8007-' || lpad(n::text, 12, '0') || '.jpg'
 from unnest(array[
   '00000000-0000-4000-8000-000000000701', '00000000-0000-4000-8000-000000000702',
   '00000000-0000-4000-8000-000000000703', '00000000-0000-4000-8000-000000000704',
@@ -73,50 +74,50 @@ declare
 begin
   -- F: dos perros perdidos.
   perform set_config('request.jwt.claims', json_build_object('sub', f, 'role', 'authenticated')::text, true);
-  p1 := public.publicar_animal('perro', f || '/t7-1.jpg', -34.91, -56.16, now() - interval '1 day',
+  p1 := public.publicar_animal('perro', f || '/00000000-0000-4000-8007-000000000001.jpg', -34.91, -56.16, now() - interval '1 day',
     null, null, false, null, 'perdido', 'Toby', 'Escribinos por la app');
-  p2 := public.publicar_animal('perro', f || '/t7-2.jpg', -34.91, -56.16, now() - interval '1 day',
+  p2 := public.publicar_animal('perro', f || '/00000000-0000-4000-8007-000000000002.jpg', -34.91, -56.16, now() - interval '1 day',
     null, null, false, null, 'perdido', 'Luna');
 
   -- H: encontrados para las demás pruebas.
   perform set_config('request.jwt.claims', json_build_object('sub', h, 'role', 'authenticated')::text, true);
-  ho := public.publicar_animal('perro', h || '/t7-1.jpg', -34.90, -56.15, now() - interval '5 hours');
-  hc := public.publicar_animal('perro', h || '/t7-2.jpg', -34.90, -56.15, now() - interval '5 hours');
-  he := public.publicar_animal('perro', h || '/t7-3.jpg', -34.90, -56.15, now() - interval '5 hours');
-  hr := public.publicar_animal('perro', h || '/t7-4.jpg', -34.90, -56.15, now() - interval '5 hours');
-  hx := public.publicar_animal('perro', h || '/t7-5.jpg', -34.90, -56.15, now() - interval '5 hours');
-  e7 := public.publicar_animal('gato', h || '/t7-6.jpg', -34.90, -56.15, now() - interval '5 hours');
-  e8 := public.publicar_animal('perro', h || '/t7-7.jpg', -34.90, -56.15, now() - interval '5 hours');
-  hd := public.publicar_animal('gato', h || '/t7-8.jpg', -34.90, -56.15, now() - interval '5 hours');
+  ho := public.publicar_animal('perro', h || '/00000000-0000-4000-8007-000000000001.jpg', -34.90, -56.15, now() - interval '5 hours');
+  hc := public.publicar_animal('perro', h || '/00000000-0000-4000-8007-000000000002.jpg', -34.90, -56.15, now() - interval '5 hours');
+  he := public.publicar_animal('perro', h || '/00000000-0000-4000-8007-000000000003.jpg', -34.90, -56.15, now() - interval '5 hours');
+  hr := public.publicar_animal('perro', h || '/00000000-0000-4000-8007-000000000004.jpg', -34.90, -56.15, now() - interval '5 hours');
+  hx := public.publicar_animal('perro', h || '/00000000-0000-4000-8007-000000000005.jpg', -34.90, -56.15, now() - interval '5 hours');
+  e7 := public.publicar_animal('gato', h || '/00000000-0000-4000-8007-000000000006.jpg', -34.90, -56.15, now() - interval '5 hours');
+  e8 := public.publicar_animal('perro', h || '/00000000-0000-4000-8007-000000000007.jpg', -34.90, -56.15, now() - interval '5 hours');
+  hd := public.publicar_animal('gato', h || '/00000000-0000-4000-8007-000000000008.jpg', -34.90, -56.15, now() - interval '5 hours');
   -- HE es más viejo que el reporte de B que se le va a unir.
   update public.animales set created_at = now() - interval '2 days' where id = he;
 
   -- B: abierto encontrado, abierto perdido con contacto, uno que se cierra y uno que se une a HE.
   perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
-  b1 := public.publicar_animal('perro', b || '/t7-1.jpg', -34.90, -56.15, now() - interval '3 hours');
-  b2 := public.publicar_animal('gato', b || '/t7-2.jpg', -34.90, -56.15, now() - interval '3 hours',
+  b1 := public.publicar_animal('perro', b || '/00000000-0000-4000-8007-000000000001.jpg', -34.90, -56.15, now() - interval '3 hours');
+  b2 := public.publicar_animal('gato', b || '/00000000-0000-4000-8007-000000000002.jpg', -34.90, -56.15, now() - interval '3 hours',
     null, null, false, null, 'perdido', 'Michi', 'Contacto de B');
-  b3 := public.publicar_animal('perro', b || '/t7-3.jpg', -34.90, -56.15, now() - interval '3 hours');
-  b4 := public.publicar_animal('perro', b || '/t7-4.jpg', -34.90, -56.15, now() - interval '3 hours');
+  b3 := public.publicar_animal('perro', b || '/00000000-0000-4000-8007-000000000003.jpg', -34.90, -56.15, now() - interval '3 hours');
+  b4 := public.publicar_animal('perro', b || '/00000000-0000-4000-8007-000000000004.jpg', -34.90, -56.15, now() - interval '3 hours');
   -- B aporta a casos de H: un avistamiento en uno abierto, otro en uno que se va a
   -- cerrar, y resguarda HR dejando su contacto.
-  perform public.registrar_avistamiento(ho, b || '/t7-5.jpg', -34.90, -56.15);
-  perform public.registrar_avistamiento(hc, b || '/t7-6.jpg', -34.90, -56.15);
+  perform public.registrar_avistamiento(ho, b || '/00000000-0000-4000-8007-000000000005.jpg', -34.90, -56.15);
+  perform public.registrar_avistamiento(hc, b || '/00000000-0000-4000-8007-000000000006.jpg', -34.90, -56.15);
   perform public.cambiar_estado_animal(hr, 'resguardado', 'Contacto de B');
-  update public.perfiles set avatar_path = b || '/t7-7.jpg' where id = b;
-  -- t7-8.jpg de B queda subida sin usar (una publicación que falló).
+  update public.perfiles set avatar_path = b || '/00000000-0000-4000-8007-000000000007.jpg' where id = b;
+  -- La foto 8 de B queda subida sin usar (una publicación que falló).
 
   -- V aporta fotos a casos de B.
   perform set_config('request.jwt.claims', json_build_object('sub', v, 'role', 'authenticated')::text, true);
-  perform public.registrar_avistamiento(b1, v || '/t7-1.jpg', -34.90, -56.15);
-  perform public.registrar_avistamiento(b3, v || '/t7-2.jpg', -34.90, -56.15);
+  perform public.registrar_avistamiento(b1, v || '/00000000-0000-4000-8007-000000000001.jpg', -34.90, -56.15);
+  perform public.registrar_avistamiento(b3, v || '/00000000-0000-4000-8007-000000000002.jpg', -34.90, -56.15);
   -- V le escribe a H por HO (antes de cualquier bloqueo).
   conv := public.abrir_conversacion(ho, h);
   insert into public.mensajes (conversacion_id, emisor_id, cuerpo) values (conv, v, 'Lo vi en la plaza');
 
   -- R resguarda el perdido de B, con foto y contacto, y el encontrado de B, con contacto.
   perform set_config('request.jwt.claims', json_build_object('sub', r, 'role', 'authenticated')::text, true);
-  perform public.cambiar_estado_animal(b2, 'resguardado', 'Contacto de R', null, null, null, r || '/t7-1.jpg');
+  perform public.cambiar_estado_animal(b2, 'resguardado', 'Contacto de R', null, null, null, r || '/00000000-0000-4000-8007-000000000001.jpg');
   perform public.cambiar_estado_animal(b1, 'resguardado', 'Contacto de R en B1');
 
   -- B cierra B3 y le escribe a H; H cierra HC.
@@ -143,18 +144,18 @@ begin
 
   -- K: un caso abierto con una foto de V, un avistamiento en HO y resguarda HE.
   perform set_config('request.jwt.claims', json_build_object('sub', k, 'role', 'authenticated')::text, true);
-  k1 := public.publicar_animal('perro', k || '/t7-1.jpg', -34.90, -56.15, now() - interval '2 hours');
-  perform public.registrar_avistamiento(ho, k || '/t7-2.jpg', -34.90, -56.15, now() - interval '1 minute');
+  k1 := public.publicar_animal('perro', k || '/00000000-0000-4000-8007-000000000001.jpg', -34.90, -56.15, now() - interval '2 hours');
+  perform public.registrar_avistamiento(ho, k || '/00000000-0000-4000-8007-000000000002.jpg', -34.90, -56.15, now() - interval '1 minute');
   perform public.cambiar_estado_animal(he, 'resguardado', 'Contacto de K');
   perform set_config('request.jwt.claims', json_build_object('sub', v, 'role', 'authenticated')::text, true);
-  perform public.registrar_avistamiento(k1, v || '/t7-3.jpg', -34.90, -56.15);
+  perform public.registrar_avistamiento(k1, v || '/00000000-0000-4000-8007-000000000003.jpg', -34.90, -56.15);
 
   -- D: un encontrado abierto, uno cerrado y un perdido abierto.
   perform set_config('request.jwt.claims', json_build_object('sub', d, 'role', 'authenticated')::text, true);
-  d1 := public.publicar_animal('perro', d || '/t7-1.jpg', -34.90, -56.15);
-  d2 := public.publicar_animal('perro', d || '/t7-2.jpg', -34.90, -56.15);
+  d1 := public.publicar_animal('perro', d || '/00000000-0000-4000-8007-000000000001.jpg', -34.90, -56.15);
+  d2 := public.publicar_animal('perro', d || '/00000000-0000-4000-8007-000000000002.jpg', -34.90, -56.15);
   perform public.cambiar_estado_animal(d2, 'reunido');
-  d3 := public.publicar_animal('perro', d || '/t7-3.jpg', -34.90, -56.15, now() - interval '1 day',
+  d3 := public.publicar_animal('perro', d || '/00000000-0000-4000-8007-000000000003.jpg', -34.90, -56.15, now() - interval '1 day',
     null, null, false, null, 'perdido', 'Bobby');
 
   -- H recibió el aviso del mensaje de B (se tiene que borrar con su cuenta).
@@ -224,13 +225,13 @@ begin
   -- 2. Sin aceptar los términos no se publica, no se escribe y no se denuncia.
   perform set_config('request.jwt.claims', json_build_object('sub', n, 'role', 'authenticated')::text, true);
   begin
-    perform public.publicar_animal('perro', n || '/t7-1.jpg', -34.9, -56.16);
+    perform public.publicar_animal('perro', n || '/00000000-0000-4000-8007-000000000001.jpg', -34.9, -56.16);
     raise exception 'FALLA 2a: se publicó sin aceptar los términos';
   exception when insufficient_privilege then
     if sqlerrm not like '%términos%' then raise; end if;
   end;
   begin
-    perform public.registrar_avistamiento(ho, n || '/t7-2.jpg', -34.9, -56.16);
+    perform public.registrar_avistamiento(ho, n || '/00000000-0000-4000-8007-000000000002.jpg', -34.9, -56.16);
     raise exception 'FALLA 2b: se avisó que lo vio sin aceptar los términos';
   exception when insufficient_privilege then null;
   end;
@@ -255,7 +256,7 @@ begin
   if (select version from public.mis_terminos()) is distinct from v_version then
     raise exception 'FALLA 3b: aceptar_terminos no guardó la versión';
   end if;
-  perform public.publicar_animal('perro', n || '/t7-1.jpg', -34.9, -56.16);
+  perform public.publicar_animal('perro', n || '/00000000-0000-4000-8007-000000000001.jpg', -34.9, -56.16);
 
   -- 4. Nadie lee los datos de términos de otros por la API, ni se los cambia a mano.
   perform set_config('request.jwt.claims', json_build_object('sub', v, 'role', 'authenticated')::text, true);
@@ -292,11 +293,11 @@ begin
   exception when invalid_parameter_value then null;
   end;
   begin
-    update public.perfiles set avatar_path = h || '/t7-1.jpg' where id = v;
+    update public.perfiles set avatar_path = h || '/00000000-0000-4000-8007-000000000001.jpg' where id = v;
     raise exception 'FALLA 6b: se guardó la foto de otra persona como foto de perfil';
   exception when invalid_parameter_value then null;
   end;
-  update public.perfiles set avatar_path = v || '/t7-4.jpg' where id = v;
+  update public.perfiles set avatar_path = v || '/00000000-0000-4000-8007-000000000004.jpg' where id = v;
   update public.perfiles set avatar_path = null where id = v;
 
   -- 7. Bloquear: H bloquea a V. V no ve el bloqueo de H ni lo puede borrar, y no
@@ -352,7 +353,7 @@ begin
 
   -- 9. Quien bloquea no recibe avisos de esa persona; los demás, sí.
   perform set_config('request.jwt.claims', json_build_object('sub', v, 'role', 'authenticated')::text, true);
-  perform public.registrar_avistamiento(ho, v || '/t7-5.jpg', -34.9, -56.16);
+  perform public.registrar_avistamiento(ho, v || '/00000000-0000-4000-8007-000000000005.jpg', -34.9, -56.16);
   perform set_config('request.jwt.claims', json_build_object('sub', h, 'role', 'authenticated')::text, true);
   if exists (
     select 1 from public.notificaciones where usuario_id = h and actor_id = v and tipo = 'avistamiento'
@@ -378,14 +379,14 @@ begin
   exception when invalid_parameter_value then null;
   end;
   begin
-    perform public.cambiar_estado_animal(p1, 'resguardado', 'Contacto de R', null, null, null, v || '/t7-6.jpg');
+    perform public.cambiar_estado_animal(p1, 'resguardado', 'Contacto de R', null, null, null, v || '/00000000-0000-4000-8007-000000000006.jpg');
     raise exception 'FALLA 11b: se resguardó un perdido con la foto de otra persona';
   exception when invalid_parameter_value then null;
   end;
-  perform public.cambiar_estado_animal(p1, 'resguardado', 'Contacto de R', 'Está bien', null, null, r || '/t7-2.jpg');
+  perform public.cambiar_estado_animal(p1, 'resguardado', 'Contacto de R', 'Está bien', null, null, r || '/00000000-0000-4000-8007-000000000002.jpg');
   if not exists (
     select 1 from public.avistamientos_detalle
-    where animal_id = p1 and tipo = 'resguardado' and foto_path = r || '/t7-2.jpg'
+    where animal_id = p1 and tipo = 'resguardado' and foto_path = r || '/00000000-0000-4000-8007-000000000002.jpg'
   ) then
     raise exception 'FALLA 11c: la foto del resguardo no quedó como avistamiento';
   end if;
@@ -567,7 +568,7 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
   select array_agg(x order by x) into v_fotos from public.fotos_para_borrar(true) as x;
   if v_fotos is distinct from array[
-    b || '/t7-2.jpg', b || '/t7-3.jpg', b || '/t7-6.jpg', b || '/t7-7.jpg', b || '/t7-8.jpg'
+    b || '/00000000-0000-4000-8007-000000000002.jpg', b || '/00000000-0000-4000-8007-000000000003.jpg', b || '/00000000-0000-4000-8007-000000000006.jpg', b || '/00000000-0000-4000-8007-000000000007.jpg', b || '/00000000-0000-4000-8007-000000000008.jpg'
   ] then
     raise exception 'FALLA 20a: fotos_para_borrar(true) devolvió %', v_fotos;
   end if;
@@ -664,7 +665,7 @@ begin
   -- Su avistamiento en un caso abierto de otro sigue, sin autor.
   if not exists (
     select 1 from public.avistamientos
-    where animal_id = ho and foto_path = b || '/t7-5.jpg' and usuario_id is null
+    where animal_id = ho and foto_path = b || '/00000000-0000-4000-8007-000000000005.jpg' and usuario_id is null
   ) then
     raise exception 'FALLA 24f: el avistamiento de B en un caso abierto no quedó sin autor';
   end if;
@@ -681,7 +682,7 @@ begin
   if exists (select 1 from public.animales where id in (b3, hx)) then
     raise exception 'FALLA 25a: el caso cerrado de B o el reporte unido a él siguen';
   end if;
-  if exists (select 1 from public.avistamientos where foto_path = b || '/t7-6.jpg') then
+  if exists (select 1 from public.avistamientos where foto_path = b || '/00000000-0000-4000-8007-000000000006.jpg') then
     raise exception 'FALLA 25b: el avistamiento de B en un caso cerrado sigue';
   end if;
   if (select ultimo_avistamiento_en from public.animales where id = hc)
@@ -744,7 +745,7 @@ begin
 
   perform set_config('request.jwt.claims', json_build_object('sub', v, 'role', 'authenticated')::text, true);
   -- 29. Se puede avisar que lo vieron (sin autor no hay a quién avisar, y no falla).
-  perform public.registrar_avistamiento(b1, v || '/t7-7.jpg', -34.9, -56.16);
+  perform public.registrar_avistamiento(b1, v || '/00000000-0000-4000-8007-000000000007.jpg', -34.9, -56.16);
   -- 30. Un tercero no cierra un caso anónimo.
   begin
     perform public.cambiar_estado_animal(b1, 'reunido');

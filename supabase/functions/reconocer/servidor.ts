@@ -10,6 +10,13 @@ import { type Dependencias, procesarFoto, vaciarCola } from './procesar.ts';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * El secreto son 32 bytes en hexadecimal (README, "Servicio de
+ * reconocimiento"). Un header con otra forma se rechaza sin consultar la base:
+ * un pedido anónimo no gasta conexiones (auditoría 2, S-B2).
+ */
+const FORMA_SECRETO = /^[0-9a-f]{64}$/i;
+
 function json(cuerpo: unknown, estado = 200): Response {
   return new Response(JSON.stringify(cuerpo), {
     status: estado,
@@ -29,6 +36,8 @@ export function mismoSecreto(recibido: string, esperado: string): boolean {
 export function crearManejador(d: Dependencias): (pedido: Request) => Promise<Response> {
   return async (pedido) => {
     if (pedido.method !== 'POST') return json({ error: 'metodo' }, 405);
+    const recibido = pedido.headers.get('x-vision-secret') ?? '';
+    if (!FORMA_SECRETO.test(recibido)) return json({ error: 'no_autorizado' }, 401);
 
     let config;
     try {
@@ -37,7 +46,7 @@ export function crearManejador(d: Dependencias): (pedido: Request) => Promise<Re
       return json({ error: 'base' }, 503);
     }
     // Sin secreto cargado no atiende a nadie.
-    if (!config.secreto || !mismoSecreto(pedido.headers.get('x-vision-secret') ?? '', config.secreto)) {
+    if (!config.secreto || !mismoSecreto(recibido, config.secreto)) {
       return json({ error: 'no_autorizado' }, 401);
     }
     if (!d.claude) return json({ error: 'falta ANTHROPIC_API_KEY' }, 503);

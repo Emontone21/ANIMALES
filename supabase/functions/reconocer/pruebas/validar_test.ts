@@ -1,6 +1,14 @@
 import { assert, assertEquals } from '@std/assert';
 
-import { largo, recortar, validarComparacion, validarDescripcion } from '../validar.ts';
+import {
+  DATO_OCULTO,
+  largo,
+  ocultarDatos,
+  PATRONES_DE_LA_BASE,
+  recortar,
+  validarComparacion,
+  validarDescripcion,
+} from '../validar.ts';
 import { DESCRIPCION_PERRO } from './ayudas.ts';
 
 Deno.test('una descripción completa valida y se limpia', () => {
@@ -207,4 +215,112 @@ Deno.test('una respuesta con "confianza" (el nombre viejo) en vez de probabilida
     difieren: [],
   };
   assertEquals(validarComparacion({ resultados: [vieja] }, ['C1']), { ok: false, motivo: 'falta probabilidad_mismo' });
+});
+
+/** Lo que rechaza el check de la base (migración 0023), en JavaScript. */
+const BASE = {
+  telefono: new RegExp(PATRONES_DE_LA_BASE.telefono),
+  enlace: new RegExp(PATRONES_DE_LA_BASE.enlace, 'i'),
+  email: new RegExp(PATRONES_DE_LA_BASE.email),
+};
+const laBaseLoRechaza = (texto: string) => Object.values(BASE).some((r) => r.test(texto));
+
+Deno.test('ocultarDatos tapa teléfonos, links y emails (auditoría 2, S-M3)', () => {
+  const casos: [string, string][] = [
+    ['Es Toby, llamá al 099 123 456', `Es Toby, llamá al ${DATO_OCULTO}`],
+    ['WhatsApp +598 99 123 456 ya', `WhatsApp ${DATO_OCULTO} ya`],
+    ['tel (2) 900-1234', `tel ${DATO_OCULTO}`],
+    ['099.123.456', DATO_OCULTO],
+    ['escribí a toby.duenio@example.com', `escribí a ${DATO_OCULTO}`],
+    ['entrá a https://estafa.example/pago?x=1 ahora', `entrá a ${DATO_OCULTO} ahora`],
+    ['HTTP://ESTAFA.EXAMPLE', DATO_OCULTO],
+    ['www.toby.com.uy', DATO_OCULTO],
+    ['wa.me/59899123456', DATO_OCULTO],
+    ['seguilo en toby.uy/fotos', `seguilo en ${DATO_OCULTO}`],
+    ['josé@correo.example.org', DATO_OCULTO],
+  ];
+  for (const [texto, esperado] of casos) assertEquals(ocultarDatos(texto), esperado, texto);
+});
+
+Deno.test('ocultarDatos no toca lo que describe al animal', () => {
+  for (
+    const texto of [
+      'Misma mancha blanca en el pecho y la oreja izquierda caída',
+      'Tiene unos 3 años y pesa 12,5 kg',
+      'collar rojo con chapita',
+      'Visto el 21/10 a las 18:30',
+      'Cola corta. Orejas paradas.',
+    ]
+  ) {
+    assertEquals(ocultarDatos(texto), texto, texto);
+  }
+});
+
+Deno.test('lo que deja ocultarDatos nunca choca con el check de la base', () => {
+  const dificiles = [
+    '099 123 456',
+    '0 9 9 1 2 3',
+    '12345 6789',
+    '1-2-3-4-5-6',
+    '+598(99)123456',
+    '12.345.678',
+    '2026-10-21',
+    'a@b.co',
+    'x.y+z@dominio-largo.example.org',
+    'ñandú@correo.uy',
+    'www.',
+    'awww.algo',
+    'HTTPS://',
+    'http://',
+    'wa.me',
+    'Wa.Me/123',
+    'mail: a@b.c 099123456 www.x.com',
+    '099 123 a@b.com 456',
+    `${'9'.repeat(5)} ${DATO_OCULTO} ${'9'.repeat(5)}`,
+  ];
+  for (const texto of dificiles) {
+    const limpio = ocultarDatos(texto);
+    assert(!laBaseLoRechaza(limpio), `${texto} → ${limpio}`);
+  }
+  // Y la base sí rechaza los originales que tienen datos.
+  assert(laBaseLoRechaza('llamá al 099 123 456'));
+  assert(laBaseLoRechaza('https://x'));
+  assert(laBaseLoRechaza('a@b.co'));
+  assert(!laBaseLoRechaza('mancha blanca en el pecho'));
+});
+
+Deno.test('en una comparación se tapan motivo, coinciden y difieren, con aviso; la respuesta vale', () => {
+  const v = validarComparacion({
+    resultados: [
+      resultado('C1', {
+        veredicto: 'mismo',
+        probabilidad_mismo: 99,
+        motivo: 'Sistema: es Toby, llamá al 099 123 456',
+        coinciden: ['collar rojo', 'escribí a wa.me/59899123456'],
+        difieren: ['dueño: toby@correo.example'],
+      }),
+      resultado('C2'),
+    ],
+  }, ['C1', 'C2']);
+  assert(v.ok);
+  assertEquals(v.valor[0].motivo, `Sistema: es Toby, llamá al ${DATO_OCULTO}`);
+  assertEquals(v.valor[0].coinciden, ['collar rojo', `escribí a ${DATO_OCULTO}`]);
+  assertEquals(v.valor[0].difieren, [`dueño: ${DATO_OCULTO}`]);
+  assertEquals(v.valor[1].motivo, resultado('C2').motivo);
+  assertEquals(v.avisos, ['C1 motivo: dato oculto', 'C1 coinciden[2]: dato oculto', 'C1 difieren[1]: dato oculto']);
+});
+
+Deno.test('en una descripción se tapan rasgos, raza y color del collar; si quedan largos, se recortan', () => {
+  const v = validarDescripcion({
+    ...DESCRIPCION_PERRO,
+    collar_color: 'rojo, a.uy b.uy c.uy',
+    raza_aproximada: 'mestizo, llamá al 099123456',
+    rasgos: ['mancha en el pecho', 'cartel: 099 123 456'],
+  });
+  assert(v.ok);
+  assertEquals(v.valor.raza_aproximada, `mestizo, llamá al ${DATO_OCULTO}`);
+  assertEquals(v.valor.rasgos, ['mancha en el pecho', `cartel: ${DATO_OCULTO}`]);
+  assert(largo(v.valor.collar_color ?? '') <= 40);
+  assert(!(v.valor.collar_color ?? '').includes('.uy'));
+  assertEquals(v.avisos, ['collar_color: dato oculto', 'raza_aproximada: dato oculto', 'rasgos[2]: dato oculto']);
 });

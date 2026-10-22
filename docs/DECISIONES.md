@@ -572,7 +572,7 @@ Hasta tener uno definitivo, el ícono es un pin de mapa blanco con una huella ca
 Las plantillas de Supabase Auth (confirmar la cuenta, recuperar la contraseña, cambiar el email y enlace mágico) están en `supabase/templates/`, con el asunto en su `<title>` y en `config.toml`. Se cargan en el proyecto con la API de gestión (`scripts/plantillas-mail.js` arma el JSON).
 - **HTML para Gmail y el celular:** tablas, estilos en línea, sin imágenes ni fuentes externas (los clientes de correo las bloquean o las piden a terceros), colores de la paleta clara. Una prueba comprueba los colores, los asuntos y que no haya nada externo.
 - **Sin el nombre público:** cualquiera puede registrarse con el email de otra persona y un "nombre" con un link; si el mail lo repitiera, Spot le mandaría ese texto. Por eso los mails dicen "Hola." y nada que escriba la persona.
-- **Enlace mágico:** la app no lo usa, pero el botón "Send magic link" del panel de Supabase sí. Está en español por si alguien lo toca.
+- **Enlace mágico:** la app no lo usa. Desde el 22 de octubre su plantilla no tiene link (ver "Los links de los mails, en cualquier navegador").
 - **Links de un solo uso:** algunos correos (Outlook con Safe Links) abren los links antes que la persona y los gastan. La app ya lo muestra ("Este link ya no sirve…") y deja pedir otro; si pasa seguido, la alternativa es un código (`{{ .Token }}`).
 
 ## 2026-10-21 · Clave publishable de Supabase, con la anon de respaldo
@@ -620,7 +620,68 @@ El nombre visible es Spot. El logo es una chapita de collar con una S, colgada d
   - los `id` de `index.html`: `encontrados-fuentes`, `encontrados-carga` y `encontrados-web`;
   - las migraciones ya aplicadas;
   - los agentes HTTP de la función `reconocer` (`encontrados-reconocer`) y del servicio de visión (`encontrados-vision`);
-  - el texto que la función `reconocer` le manda a la API (cambiarlo pide desplegarla de nuevo);
+  - el texto que la función `reconocer` le manda a la API: desde la auditoría 2 ya no nombra la app ("una app que ayuda a reunir…"), y el cambio llega al desplegarla de nuevo;
   - el servicio sin desplegar (`services/vision`);
   - los datos de prueba: los emails `@encontrados.test` de `supabase/tests/` y la cuenta demo de `seed.sql`.
 - **Los nativos ya se habían cambiado:** `slug` `spot-mvd`, esquema `spotmvd`, `uy.spotmvd.app` y el `name` de `package.json` (`spot-mvd`), en "La app pasa a llamarse Spot", porque todavía no hay nada publicado. Ya están en producción (las Redirect URLs de Supabase usan `spotmvd://**`): no se vuelven atrás.
+
+## 2026-10-21 · La sesión con PKCE: solo abre sesión un link que pidió este navegador
+
+Con el flujo implícito, cualquier link con tokens en el fragmento (`/animal/<id>#access_token=…`) abría esa sesión y pisaba la que hubiera (auditoría 2, S-M1). Alguien podía mandar por WhatsApp un link con los tokens de su propia cuenta: la víctima quedaba adentro de esa cuenta sin darse cuenta, y si publicaba su perdido, los mensajes y el contacto de quien lo encontrara le llegaban al atacante. Se comprobó con el build de antes.
+
+Ahora el cliente usa `flowType: 'pkce'` (`src/lib/supabase.ts`). Google vuelve con `?code=`, que solo se canjea con el verificador que guardó este navegador al pedirlo; los tokens en el fragmento se ignoran. Los links de los mails van a `/auth/confirmar` (entrada siguiente). En nativo, `crearSesionDesdeUrl` canjea el código y ya no llama a `setSession` con lo que traiga un deep link (S-B5).
+- **Recuperar la contraseña:** la recuperación empieza solo con el evento `PASSWORD_RECOVERY` (el link viejo, con `?code=`) o con el link nuevo de `/auth/confirmar`. Ya no se lee `#type=recovery` de la URL.
+- **Primero se pensó dejar las plantillas con `{{ .ConfirmationURL }}`,** que vuelve con `?code=`: un link abierto en otro navegador no servía. En el celular es lo más común (alguien se registra desde el navegador de WhatsApp o Instagram y el mail lo abre Gmail en Chrome), y la recuperación no se podía terminar. La revisión del PR 17 lo cambió.
+
+## 2026-10-22 · Los links de los mails, en cualquier navegador y sin abrir sesiones ajenas
+
+Las plantillas de confirmar la cuenta, recuperar la contraseña y cambiar el email llevan a `{{ .SiteURL }}/auth/confirmar?token_hash={{ .TokenHash }}&type=…`, y la app canjea el link con `verifyOtp` (`src/features/auth/linkDeMail.ts`). Así sirven en cualquier navegador. El riesgo es el de la auditoría (S-M1): un link armado con la cuenta de otra persona abre su sesión. Por eso:
+- **Se canjea en un cliente de un uso** (`crearClienteDeUnUso`): guarda la sesión solo en memoria y no lee la URL. La sesión de la app no cambia hasta que la persona lo decide, y si recarga o cierra la pestaña, se pierde.
+- **Confirmar la cuenta y cambiar el email no dejan ninguna sesión:** la que abre Supabase al verificar se cierra enseguida (`signOut({ scope: 'local' })`, que revoca solo esa). La pantalla dice "Tu cuenta está confirmada" y ofrece Ingresar, con el email y la contraseña. Con dos confirmaciones (Secure email change), la primera no abre sesión y la pantalla pide abrir el otro link.
+- **Recuperar muestra de qué cuenta es antes de elegir** (`e***@gmail.com`, `enmascararEmail`) y ofrece "No es mi cuenta", que cierra esa sesión sin cambiar nada. Recién al guardar la contraseña nueva la sesión pasa a la app (`setSession` con la del cliente de un uso, no con tokens de una URL). Si no se puede pasar, la contraseña cambió igual y la pantalla pide ingresar con la nueva.
+- **El enlace mágico se sacó:** la app no lo usa. Su plantilla ya no tiene link: dice que Spot no manda links para entrar y que se ingresa con la contraseña o con Google. `/auth/confirmar` no acepta `type=magiclink`.
+- **Google sigue con PKCE:** siempre vuelve al mismo navegador.
+- **El link viejo sigue andando** en el navegador que lo pidió (`?code=`), para los mails que salieron antes de cargar las plantillas nuevas. También muestra la cuenta y "No es mi cuenta".
+- **Orden del cierre:** primero el deploy de la app que entiende `/auth/confirmar`, después las plantillas. Al revés, los links nuevos llevarían a una ruta que no existe.
+- **`{{ .SiteURL }}`** es la URL de configuración de Auth en Supabase, sin barra al final. En producción, `https://animales-blue.vercel.app`; en el proyecto de pruebas, la URL donde se pruebe la app.
+
+## 2026-10-21 · Encabezados de seguridad, con la CSP primero en modo reporte
+
+`vercel.json` no mandaba ningún encabezado de seguridad, y la sesión vive en `localStorage` (auditoría 2, S-M2). Ahora todo el sitio manda `X-Frame-Options: DENY` (no se puede enmarcar: clickjacking), `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin` y `Permissions-Policy` (ubicación y cámara solo para el sitio; micrófono, pagos y USB para nadie).
+- **La CSP va como `Content-Security-Policy-Report-Only`:** el navegador avisa en la consola lo que bloquearía, sin bloquearlo. Se pasa a `Content-Security-Policy` después de recorrer `docs/PRUEBAS-MANUALES.md` en producción sin avisos.
+- **Qué permite:** los scripts del sitio, los dos en línea de `index.html` por su hash (una prueba lo compara: si cambian, cambia la CSP) y Turnstile; estilos en línea (react-native-web los arma así); fotos y datos del Supabase de los `preconnect`, las teselas de OpenFreeMap y las fotos de demo; ningún `eval`.
+- **Sin COEP ni COOP por ahora:** COEP rompe las fotos de Supabase y Turnstile; COOP queda para después de pasar la CSP a obligatoria. Vercel ya manda HSTS.
+- **Si cambia el proyecto de Supabase, el estilo del mapa o se suma un script,** hay que cambiar la CSP de `vercel.json`.
+
+## 2026-10-21 · Los textos de la IA no guardan teléfonos, links ni emails
+
+La IA describe y compara fotos, y el motivo de una coincidencia es público. Un "encontrado" con una foto que dijera "es el mismo, llamá al 099…" podía dejar un teléfono en una tabla pública y empujar una estafa (auditoría 2, S-M3).
+- **La función tapa, no rechaza:** en el motivo, los rasgos, lo que coincide y lo que difiere, la raza y el color del collar, los teléfonos (6 dígitos o más), links y emails se reemplazan por "[dato oculto]" (`ocultarDatos`, `validar.ts`), con un aviso en `llamadas_ia.detalle`. Rechazar la respuesta haría reintentar la misma foto en bucle.
+- **El pedido lo prohíbe:** las dos instrucciones de sistema dicen que nunca transcriba texto de una foto.
+- **La base es la última barrera:** `tiene_datos_de_contacto` rechaza esos textos en `coincidencias`, `comparaciones_ia` y `descripciones_ia` (0023). Sus patrones son una parte de los que tapa la función, para que lo tapado nunca choque con el check; `__tests__/datosOcultos.test.ts` los compara.
+- **Falsos positivos posibles:** un dominio pegado a una palabra ("rojo.Me parece") se tapa. Es raro en lo que escribe la IA y no esconde nada del animal.
+
+## 2026-10-21 · Topes por cuenta y una foto por avistamiento
+
+Una cuenta con una sola foto podía mandar cientos de "lo vi" o publicaciones: cada una manda avisos y pasa por la IA, y unas 150 agotaban el tope diario de todos (auditoría 2, S-M4).
+- **Topes por hora y por cuenta,** en `config_app`: `publicaciones_por_hora_cuenta` (10) y `avisos_por_hora_cuenta` (30, solo los "lo vi"). Son generosos para un rescatista activo y se cambian sin código. Con un candado por cuenta, como `reportar_error`. Resguardar no cuenta: ya lo limitan las reglas de quién cambia el estado.
+- **Una foto, un avistamiento:** la foto de un caso es la de su primer avistamiento, así que alcanza con que `avistamientos.foto_path` no se repita. Lo revisa un trigger con su mensaje ("Esa foto ya está publicada") y lo garantiza un índice único, aunque lleguen dos pedidos a la vez. Las URL de los datos de demo no cuentan. Vale también para el resguardo.
+- **El nombre de la foto:** `es_foto_propia` exige `<uid>/<uuid>.jpg`, el que sube la app. Antes aceptaba cualquier nombre dentro de la carpeta, también con `..`, `?` o espacios, que el navegador normaliza hacia otras rutas (S-B6).
+- **Se puede esquivar** publicando y borrando, porque lo borrado no cuenta. Alcanza para frenar el abuso fácil; si hace falta, se cuenta en una tabla aparte.
+
+## 2026-10-21 · Navegar desde una hoja: primero se cierra
+
+Con Expo Router 58, tocar **Editar el reporte** en Más opciones cambiaba la URL pero dejaba el caso a la vista; lo mismo pasaba con **Ingresar** desde "Necesitás una cuenta" y al borrar un reporte, que se quedaba en el caso borrado (auditoría 2, E-1; ya pasaba en main). Expo Router navega dentro de una transición de React, y la hoja quitaba su entrada del historial (`history.go(-1)`) en el mismo momento.
+- **`cerrarYNavegar(cerrar, navegar)`** (`src/hooks/useCerrarConAtras`): cierra la hoja con `flushSync`, así su efecto empieza a quitar la entrada, y navega cuando el navegador terminó (`cuandoTermine` en `historialHojas.ts`). En nativo cierra y navega, como antes.
+- **Se usa en todo botón de una hoja que lleva a otra pantalla:** Editar el reporte, Ingresar o Crear cuenta, escribirle a alguien y borrar el reporte (`AccionesCaso.tsx`).
+- **Por qué no alcanza con `historialHojas.ts`:** el módulo ya demoraba lo que Expo Router escribía en el historial, y aun así la pantalla no cambiaba. Hay que demorar la navegación misma. Si una versión nueva de Expo Router lo arregla, `cerrarYNavegar` sigue sirviendo igual.
+
+## 2026-10-21 · Licencias permitidas
+
+`AGENTS.md` pedía Apache 2.0, MIT o BSD, y la revisión de la auditoría 2 encontró otras licencias en las dependencias. Queda esta lista:
+- **Permisivas, en cualquier lado (también en lo que se publica):** MIT, MIT-0, Apache 2.0, BSD (2 y 3 cláusulas), 0BSD, ISC, BlueOak 1.0, Unlicense, CC0, Python 2.0 y Zlib.
+- **Fuentes tipográficas:** SIL OFL 1.1, la excepción que ya había aprobado el dueño (Fredoka, Figtree).
+- **Solo en herramientas que no se distribuyen** (build, pruebas, medición): MPL 2.0 (por ejemplo `lightningcss`, que trae Expo, y axe-core, que se usó para medir y no está en el repo) y CC BY 4.0 (`caniuse-lite`, datos de browserslist).
+- **Nunca:** GPL, AGPL, LGPL, SSPL ni licencias que prohíban el uso comercial. Una dual (como node-forge, BSD o GPL) se usa por su lado permisivo.
+- **Cómo se revisa:** `npx license-checker-rseidelsohn --production --summary` y, para lo que llega a la web, los source maps del build (`npx expo export -p web --source-maps`). En la auditoría 2, lo que llega a la web es MIT, BSD y 0BSD, más las fuentes OFL.
+

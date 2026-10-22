@@ -75,7 +75,8 @@ export function MapaRecorridoGL({ avistamientos, estado, tipo }: MapaRecorridoPr
     <View style={estilos.contenedor}>
       {/* En react-native-web la ref de un View es el elemento del DOM. */}
       <View ref={contenedorRef as never} style={estilos.mapa} />
-      <AtribucionMapa />
+      {/* Va adentro del botón "Ver el mapa en grande": sin link (AtribucionMapa). */}
+      <AtribucionMapa enlace={false} />
     </View>
   );
 }
