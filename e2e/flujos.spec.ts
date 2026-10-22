@@ -613,6 +613,57 @@ test.describe.serial('Spot de punta a punta', () => {
     await navegador.cerrar(anonima);
   });
 
+  test('un caso reunido, sin cuenta: solo lo básico y el link a su historia; la vecina y la familia ven todo', async ({
+    navegador,
+  }) => {
+    const anonima = await navegador.nuevaPagina('sin-cuenta');
+    await anonima.goto(urlToby());
+    // La foto, el nombre, "Volvió a casa" y por qué no hay más.
+    await expect(titulo(anonima, textos.toby.nombre)).toBeVisible();
+    await esperarFoto(anonima.getByRole('img', { name: textos.toby.nombre, exact: true }));
+    await expect(texto(anonima, t.animal.reservado.volvio)).toBeVisible();
+    await expect(texto(anonima, t.animal.reservado.aviso)).toBeVisible();
+    // Sin mapa, zona, avisos, historial, coincidencias ni contactos (la base no los manda).
+    await expect(titulo(anonima, t.animal.historial)).toHaveCount(0);
+    await expect(anonima.getByText(t.animal.ultimaVez)).toHaveCount(0);
+    for (const privado of [
+      textos.toby.senas,
+      textos.toby.color,
+      textos.toby.contacto,
+      textos.notaLoVi,
+      textos.contactoResguardo,
+      textos.notaReunido,
+      familia.cuenta.nombre,
+      vecina.cuenta.nombre,
+    ]) {
+      await expect(anonima.getByText(privado)).toHaveCount(0);
+    }
+    // El recorrido en grande tampoco: vuelve a lo básico.
+    await anonima.goto(`${urlToby()}/mapa`);
+    await expect(anonima).toHaveURL(new RegExp(`${urlToby()}$`));
+    await expect(texto(anonima, t.animal.reservado.volvio)).toBeVisible();
+    // El link a su historia en el muro.
+    await boton(anonima, t.reencuentros.enElCaso.leer).click();
+    await expect(anonima).toHaveURL(new RegExp(`/reencuentros/${ids.toby}$`));
+    await expect(texto(anonima, textos.historiaPublicada)).toBeVisible();
+    await navegador.cerrar(anonima);
+
+    // La vecina avisó que lo vio: ve todo, con el historial y su aviso.
+    const v = vecina.pagina;
+    await v.goto(urlToby());
+    await expect(titulo(v, t.animal.historial)).toBeVisible();
+    await expect(texto(v, textos.notaLoVi)).toBeVisible();
+    await expect(texto(v, textos.toby.senas)).toBeVisible();
+    await expect(texto(v, t.animal.reservado.aviso)).toHaveCount(0);
+
+    // La familia, también.
+    const f = familia.pagina;
+    await f.goto(urlToby());
+    await expect(titulo(f, t.animal.historial)).toBeVisible();
+    await expect(texto(f, textos.toby.senas)).toBeVisible();
+    await expect(texto(f, t.animal.reservado.aviso)).toHaveCount(0);
+  });
+
   test('a la vecina le llega el agradecimiento en Actividad y su perfil lo cuenta', async () => {
     const v = vecina.pagina;
     await v.goto('/actividad');

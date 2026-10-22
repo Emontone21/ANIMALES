@@ -6,13 +6,15 @@
  * el index.html estático de siempre.
  *
  * Devuelve el index.html de la app con las etiquetas Open Graph y Twitter del
- * caso. Lee el caso con la clave pública de la app (la publishable o, de
- * respaldo, la anon). Si no existe, está oculto o se unió a otro, usa las
- * genéricas. Nunca pone datos personales: ni el contacto, ni quién publicó,
- * ni dónde está. Por eso tampoco usa la descripción libre del caso, donde
- * alguien pudo haber escrito un teléfono, ni un color con números. De una
- * historia, solo lo que muestra el muro: el nombre (si la familia quiso), la
- * especie, los días y la foto; ni siquiera la frase.
+ * caso. Lee el caso de animales_detalle con la clave pública de la app (la
+ * publishable o, de respaldo, la anon): lo mismo que ve alguien sin cuenta. Si
+ * no existe, está oculto o se unió a otro, usa las genéricas. Nunca pone datos
+ * personales: ni el contacto, ni quién publicó, ni dónde está. Por eso tampoco
+ * usa la descripción libre del caso, donde alguien pudo haber escrito un
+ * teléfono, ni un color con números. De un caso reunido, solo lo básico (el
+ * nombre si la familia lo mostró y la especie): la base no manda más (0027).
+ * De una historia, solo lo que muestra el muro: el nombre (si la familia
+ * quiso), la especie, los días y la foto; ni siquiera la frase.
  *
  * Sin dependencias: fetch y Response del runtime. Importa con rutas relativas
  * los mismos textos, URLs y miniaturas que usa la app.
@@ -23,7 +25,7 @@ import { ENV, esClaveNueva } from '../src/lib/env';
 import { LADO_MINIATURA, urlFoto, urlMiniatura } from '../src/lib/imagenes';
 import type { EstadoAnimal, Especie, Tamanio, TipoReporte } from '../src/types/dominio';
 
-/** Columnas de animales que hacen falta. Ninguna con datos de quien publicó. */
+/** Columnas de animales_detalle que hacen falta. Ninguna con datos de quien publicó. */
 const COLUMNAS =
   'id,tipo_reporte,estado,nombre,especie,color,tamanio,tiene_collar,foto_principal_path,oculto';
 const ID_VALIDO = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -39,7 +41,8 @@ type Caso = {
   especie: Especie;
   color: string | null;
   tamanio: Tamanio | null;
-  tiene_collar: boolean;
+  /** null en lo básico de un caso reunido. */
+  tiene_collar: boolean | null;
   foto_principal_path: string;
   oculto: boolean;
 };
@@ -158,7 +161,7 @@ export function encabezadosDeLectura(clave: string): Record<string, string> {
 async function leerCaso(id: string | null): Promise<Caso | null> {
   if (!id) return null;
   try {
-    const url = `${ENV.supabaseUrl.replace(/\/+$/, '')}/rest/v1/animales?id=eq.${id}&select=${COLUMNAS}`;
+    const url = `${ENV.supabaseUrl.replace(/\/+$/, '')}/rest/v1/animales_detalle?id=eq.${id}&select=${COLUMNAS}`;
     const respuesta = await fetch(url, {
       headers: encabezadosDeLectura(ENV.supabaseKey),
       signal: AbortSignal.timeout(ESPERA_MS),

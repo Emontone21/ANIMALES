@@ -34,6 +34,27 @@ test('datosParaCompartir toma solo datos del animal, nunca el contacto ni la des
   });
 });
 
+test('de un caso reunido, solo lo básico: el nombre y la especie (0027)', () => {
+  const reunido = datosParaCompartir(casoEnMapa({ estado: 'reunido' }));
+  expect(reunido).toEqual({
+    tipo: 'perdido',
+    estado: 'reunido',
+    nombre: 'Toby',
+    especie: 'perro',
+    color: null,
+    tamanio: null,
+    tieneCollar: false,
+  });
+  expect(t.compartir.texto(reunido)).toBe('Toby ya volvió con su familia. Mirá el caso:');
+  expect(t.compartir.vistaPrevia.descripcion(reunido)).toBe(
+    'Perro. Gracias a todos los que ayudaron a buscarlo.',
+  );
+  // Como lo manda animales_detalle a quien no participó: sin el collar.
+  expect(datosParaCompartir({ ...casoEnMapa({ estado: 'reunido' }), tiene_collar: null })).toEqual(
+    reunido,
+  );
+});
+
 describe('el color con números no se comparte (B37: podría ser un teléfono)', () => {
   test.each<[string | null, string | null]>([
     ['Marrón', 'Marrón'],

@@ -5,6 +5,8 @@ import {
   cambiosDisponibles,
   destinatariosDelCaso,
   permisosDelCaso,
+  soloLoBasico,
+  tituloBasico,
 } from '@/features/reportes/permisos';
 import type { CoincidenciaDetalle } from '@/types/dominio';
 
@@ -183,5 +185,22 @@ describe('Escribirle a quien lo vio (abrir_conversacion, 0014)', () => {
 
   test('en un caso oculto no se abren conversaciones nuevas', () => {
     expect(aQuienesLoVieron({ ...perdido, oculto: true }, vistos, FAMILIA)).toEqual([]);
+  });
+});
+
+describe('un caso reunido, para quien no participó: solo lo básico (0027)', () => {
+  test('lo decide la base: con "reservado", la vista básica; si no, la de siempre', () => {
+    expect(soloLoBasico(casoDetalle({ estado: 'reunido', reservado: true }))).toBe(true);
+    // Quien participó (o moderación) recibe el caso reunido entero.
+    expect(soloLoBasico(casoDetalle({ estado: 'reunido', reservado: false }))).toBe(false);
+    expect(soloLoBasico(perdido)).toBe(false);
+  });
+
+  test('el título: el nombre o, si la familia no lo mostró, la especie', () => {
+    expect(tituloBasico(casoDetalle({ reservado: true }))).toBe('Toby');
+    expect(tituloBasico(casoDetalle({ reservado: true, nombre: null }))).toBe('Un perro');
+    expect(tituloBasico(casoDetalle({ reservado: true, nombre: null, especie: 'gato' }))).toBe(
+      'Un gato',
+    );
   });
 });

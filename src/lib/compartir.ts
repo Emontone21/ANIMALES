@@ -23,7 +23,12 @@ export function colorParaCompartir(color: string | null): string | null {
   return limpio && !/\d/.test(limpio) ? limpio : null;
 }
 
-/** Lo que se necesita de un caso, tal como viene de animales_detalle o animales_mapa. */
+/**
+ * Lo que se necesita de un caso, tal como viene de animales_detalle o
+ * animales_mapa. De un caso reunido, solo lo básico (el nombre y la especie):
+ * así lo ve quien no participó (0027), y así sale en el texto y en la vista
+ * previa del link, también cuando lo comparte quien sí participó.
+ */
 export function datosParaCompartir(caso: {
   tipo_reporte: TipoReporte;
   estado: EstadoAnimal;
@@ -31,16 +36,17 @@ export function datosParaCompartir(caso: {
   especie: Especie;
   color: string | null;
   tamanio: Tamanio | null;
-  tiene_collar: boolean;
+  tiene_collar: boolean | null;
 }): DatosCompartir {
+  const reunido = caso.estado === 'reunido';
   return {
     tipo: caso.tipo_reporte,
     estado: caso.estado,
     nombre: caso.nombre,
     especie: caso.especie,
-    color: colorParaCompartir(caso.color),
-    tamanio: caso.tamanio,
-    tieneCollar: caso.tiene_collar,
+    color: reunido ? null : colorParaCompartir(caso.color),
+    tamanio: reunido ? null : caso.tamanio,
+    tieneCollar: reunido ? false : (caso.tiene_collar ?? false),
   };
 }
 

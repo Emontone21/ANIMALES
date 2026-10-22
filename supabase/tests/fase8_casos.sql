@@ -133,6 +133,11 @@ where avistamiento_id in (
 -- -----------------------------------------------------------------------------
 -- Parte B, como usuario común: editar un reporte.
 -- -----------------------------------------------------------------------------
+-- La fila entera del caso, leída como dueña de la tabla: desde la 0027, una
+-- cuenta no lee el nombre ni la descripción directo de animales.
+create function pg_temp.caso(p_id uuid) returns public.animales
+language sql security definer as $$ select * from public.animales where id = p_id $$;
+
 set local role authenticated;
 
 do $$
@@ -149,7 +154,7 @@ declare
   v_despues public.animales;
   v_ubicaciones text;
 begin
-  select * into v_antes from public.animales where id = p1;
+  v_antes := pg_temp.caso(p1);
   select string_agg(extensions.st_astext(ubicacion::extensions.geometry), ',' order by id) into v_ubicaciones
   from public.avistamientos where animal_id = p1;
 
@@ -157,7 +162,7 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', p, 'role', 'authenticated')::text, true);
   perform public.editar_reporte(p1, 'perro', 'grande', '  marrón y negro  ', false,
     'Tiene una mancha blanca en el pecho', '  Toby  ', '  ');
-  select * into v_despues from public.animales where id = p1;
+  v_despues := pg_temp.caso(p1);
   if v_despues.tamanio is distinct from 'grande' or v_despues.color is distinct from 'marrón y negro'
      or v_despues.tiene_collar or v_despues.descripcion is distinct from 'Tiene una mancha blanca en el pecho'
      or v_despues.nombre is distinct from 'Toby' or v_despues.contacto_familia is not null then

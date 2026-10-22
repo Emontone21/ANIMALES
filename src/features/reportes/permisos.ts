@@ -10,6 +10,21 @@ import type { AnimalDetalle, AvistamientoDetalle } from '@/types/dominio';
 
 type Caso = Pick<AnimalDetalle, 'estado' | 'tipo_reporte' | 'creado_por' | 'oculto'>;
 
+/**
+ * Un caso reunido, para quien no participó: solo lo básico (la foto, el nombre
+ * si la familia lo mostró, la especie, "Volvió a casa" y el link a su
+ * historia). Lo decide la base (animales_detalle.reservado, migración 0027),
+ * que tampoco manda el resto.
+ */
+export function soloLoBasico(caso: Pick<AnimalDetalle, 'reservado'>): boolean {
+  return caso.reservado;
+}
+
+/** El título de lo básico: el nombre o, si la familia no lo mostró, "Un perro". */
+export function tituloBasico(caso: Pick<AnimalDetalle, 'nombre' | 'especie'>): string {
+  return t.reencuentros.tituloHistoria(caso.nombre, caso.especie);
+}
+
 export type PermisosCaso = {
   abierto: boolean;
   esCreador: boolean;
