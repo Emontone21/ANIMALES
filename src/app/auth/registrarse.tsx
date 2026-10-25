@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 
-import { CambiarAcceso, MarcaAcceso } from '@/components/auth/Acceso';
+import { CambiarAcceso, MarcaAcceso, SeparadorO } from '@/components/auth/Acceso';
 import { Captcha } from '@/components/auth/Captcha';
 import { EnlacesLegales } from '@/components/legal/EnlacesLegales';
 import { Boton } from '@/components/ui/Boton';
@@ -14,6 +14,9 @@ import { registrarse } from '@/features/auth/acciones';
 import { useCaptcha } from '@/features/auth/useCaptcha';
 import { t } from '@/i18n/es-UY';
 import { mensajeDeError } from '@/lib/errores';
+
+// Google va en un bloque aparte: en web baja su script recién al abrir esta pantalla.
+const IngresoGoogle = lazy(() => import('@/components/auth/IngresoGoogle'));
 
 export default function PantallaRegistrarse() {
   const router = useRouter();
@@ -105,6 +108,12 @@ export default function PantallaRegistrarse() {
         deshabilitado={exito}
         onPress={() => void enviar()}
       />
+
+      {/* Con Google, los términos se aceptan después de entrar (AceptarTerminos). */}
+      <SeparadorO />
+      <Suspense fallback={null}>
+        <IngresoGoogle deshabilitado={cargando} />
+      </Suspense>
 
       <CambiarAcceso
         pregunta={t.auth.conCuenta}

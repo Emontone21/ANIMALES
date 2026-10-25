@@ -49,6 +49,10 @@ export type Database = {
         Relationships: [];
       };
       animales: {
+        /**
+         * La app lee las vistas, nunca esta tabla: desde la 0027, anon y
+         * authenticated no leen `nombre` ni `descripcion` de acá.
+         */
         Row: {
           id: string;
           especie: Database['public']['Enums']['especie'];
@@ -769,12 +773,17 @@ export type Database = {
         Relationships: [];
       };
       animales_detalle: {
+        /**
+         * Con `reservado` (un caso reunido, para quien no participó; 0027), solo
+         * lo básico: la foto, la especie, el nombre si la familia lo mostró y el
+         * estado. Lo demás llega en null (y sin avistamientos).
+         */
         Row: {
           id: string;
           especie: Database['public']['Enums']['especie'];
           tamanio: Database['public']['Enums']['tamanio'] | null;
           color: string | null;
-          tiene_collar: boolean;
+          tiene_collar: boolean | null;
           descripcion: string | null;
           estado: Database['public']['Enums']['estado_animal'];
           vinculado_a: string | null;
@@ -793,6 +802,8 @@ export type Database = {
           contacto_familia: string | null;
           /** Cuándo se perdió (avistamiento de tipo perdido); null en los encontrados. */
           perdido_desde: string | null;
+          /** Caso reunido y quien mira no participó: solo lo básico (ve_detalle_del_caso). */
+          reservado: boolean;
         };
         Relationships: [];
       };
@@ -889,6 +900,14 @@ export type Database = {
           reunido_en: string;
           oculta: boolean;
         }[];
+      };
+      ve_detalle_del_caso: {
+        Args: { p_animal_id: string };
+        Returns: boolean;
+      };
+      vista_del_caso: {
+        Args: { p_animal_id: string };
+        Returns: { completo: boolean; nombre: string | null; descripcion: string | null }[];
       };
       guardar_historia_reencuentro: {
         Args: {

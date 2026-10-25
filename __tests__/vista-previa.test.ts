@@ -176,6 +176,52 @@ describe('vista previa del link de un caso', () => {
     expect(html).not.toContain('og:image');
   });
 
+  test('lee animales_detalle, lo que ve alguien sin cuenta, nunca la tabla', async () => {
+    const pedidos = simularRed();
+    await pedir(`/animal/${ID}`);
+    const consulta = pedidos.find((p) => p.url.includes('/rest/v1/animales'));
+    expect(new URL(consulta!.url).pathname).toBe('/rest/v1/animales_detalle');
+  });
+
+  test('un caso reunido, como lo manda la base sin cuenta: el nombre y la especie (0027)', async () => {
+    simularRed({
+      caso: { ...toby, estado: 'reunido', color: null, tamanio: null, tiene_collar: null },
+    });
+    const { html } = await pedir(`/animal/${ID}`);
+    expect(html).toContain('<meta property="og:title" content="Toby volvió con su familia" />');
+    expect(html).toContain(
+      '<meta property="og:description" content="Perro. Gracias a todos los que ayudaron a buscarlo." />',
+    );
+    expect(html).toContain('abc.miniatura.jpg');
+  });
+
+  test('un caso reunido sin el nombre (la familia no lo mostró): la especie', async () => {
+    simularRed({
+      caso: {
+        ...toby,
+        estado: 'reunido',
+        nombre: null,
+        color: null,
+        tamanio: null,
+        tiene_collar: null,
+      },
+    });
+    const { html } = await pedir(`/animal/${ID}`);
+    expect(html).toContain('<meta property="og:title" content="Perro, de vuelta en casa" />');
+    expect(html).not.toContain('Toby');
+  });
+
+  test('de un caso reunido, ni el color, el tamaño o el collar, aunque la base los mandara', async () => {
+    simularRed({ caso: { ...toby, estado: 'reunido' } });
+    const { html } = await pedir(`/animal/${ID}`);
+    expect(html).toContain(
+      '<meta property="og:description" content="Perro. Gracias a todos los que ayudaron a buscarlo." />',
+    );
+    expect(html.toLowerCase()).not.toContain('marrón');
+    expect(html).not.toContain('mediano');
+    expect(html).not.toContain('collar');
+  });
+
   test('un id que no es un UUID no consulta la base', async () => {
     const pedidos = simularRed();
     const { html } = await pedir('/api/vista-previa?id=no-es-un-id');

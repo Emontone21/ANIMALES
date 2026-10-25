@@ -455,9 +455,17 @@ export function PantallaHistoria({ id }: { id: string }) {
 
 /**
  * "Cómo volvió", en el detalle de un caso reunido: la historia, si hay. A la
- * familia, además, "Contar cómo volvió" o "Editar la historia".
+ * familia, además, "Contar cómo volvió" o "Editar la historia". Con
+ * `soloEnlace` (lo básico de un caso reunido, para quien no participó), solo el
+ * link a la historia, si hay y se ve.
  */
-export function HistoriaEnElCaso({ animal }: { animal: AnimalDetalle }) {
+export function HistoriaEnElCaso({
+  animal,
+  soloEnlace = false,
+}: {
+  animal: AnimalDetalle;
+  soloEnlace?: boolean;
+}) {
   const router = useRouter();
   const estilos = useEstilos(crear);
   const { usuario } = useAuth();
@@ -469,6 +477,17 @@ export function HistoriaEnElCaso({ animal }: { animal: AnimalDetalle }) {
     router.push({ pathname: '/animal/[id]/reencuentro', params: { id: animal.id } });
 
   if (historia.isPending || historia.isError) return null;
+  if (soloEnlace) {
+    if (!historia.data || historia.data.oculta) return null;
+    return (
+      <Boton
+        titulo={t.reencuentros.enElCaso.leer}
+        icono="heart-outline"
+        variante="secundario"
+        onPress={() => router.push({ pathname: '/reencuentros/[id]', params: { id: animal.id } })}
+      />
+    );
+  }
   if (!historia.data) {
     if (!esFamilia || animal.oculto) return null;
     return (

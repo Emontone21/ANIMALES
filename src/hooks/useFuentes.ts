@@ -1,10 +1,19 @@
-import { Figtree_400Regular } from '@expo-google-fonts/figtree/400Regular';
-import { Figtree_600SemiBold } from '@expo-google-fonts/figtree/600SemiBold';
-import { Figtree_700Bold } from '@expo-google-fonts/figtree/700Bold';
-import { Fredoka_600SemiBold } from '@expo-google-fonts/fredoka/600SemiBold';
+import { Urbanist_500Medium } from '@expo-google-fonts/urbanist/500Medium';
+import { Urbanist_600SemiBold } from '@expo-google-fonts/urbanist/600SemiBold';
+import { Urbanist_700Bold } from '@expo-google-fonts/urbanist/700Bold';
 import { useFonts } from 'expo-font';
 
 import { FAMILIAS } from '@/constants/tema';
+
+/**
+ * Los archivos de cada familia de FAMILIAS. `titulo` y `negrita` son el mismo
+ * (Urbanist Bold): una sola entrada.
+ */
+export const ARCHIVOS_DE_FUENTES = {
+  [FAMILIAS.regular]: Urbanist_500Medium,
+  [FAMILIAS.seminegrita]: Urbanist_600SemiBold,
+  [FAMILIAS.negrita]: Urbanist_700Bold,
+};
 
 /**
  * Si la app ya puede mostrarse. En nativo espera a que carguen las fuentes
@@ -12,11 +21,6 @@ import { FAMILIAS } from '@/constants/tema';
  * del sistema. En web no espera: ver useFuentes.web.ts.
  */
 export function useFuentes(): boolean {
-  const [listas, error] = useFonts({
-    [FAMILIAS.titulo]: Fredoka_600SemiBold,
-    [FAMILIAS.regular]: Figtree_400Regular,
-    [FAMILIAS.seminegrita]: Figtree_600SemiBold,
-    [FAMILIAS.negrita]: Figtree_700Bold,
-  });
+  const [listas, error] = useFonts(ARCHIVOS_DE_FUENTES);
   return listas || error != null;
 }

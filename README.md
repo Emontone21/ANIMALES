@@ -32,7 +32,7 @@ Todo corre en la nube: no hace falta Docker ni Android Studio. Solo Node 20+ par
 5. **Authentication → URL Configuration:** Site URL = tu URL de Vercel (cuando la tengas), sin barra al final: los links de los mails van a `<Site URL>/auth/confirmar` (`supabase/templates/README.md`). Redirect URLs: `http://localhost:8081/**`, `https://<tu-sitio>.vercel.app/**`, `spotmvd://**`. Las usan Google y los links de los mails viejos, que volvían a `/auth/nueva-contrasena`. No agregues comodines en el nombre del sitio (como `https://*-<equipo>.vercel.app/**`): cualquiera puede crear un sitio en `vercel.app` que termine igual, y un link de recuperación que vuelva ahí le entrega la sesión. Si necesitás probar en una preview, agregá su URL exacta y sacala después.
 6. **Mails:** configurá un SMTP propio (**Authentication → Emails → SMTP Settings**; el servidor gratuito manda pocos mails por hora) y cargá las plantillas en español de `supabase/templates/` (confirmar la cuenta, recuperar la contraseña, cambiar el email y enlace mágico), con los pasos de su [README](supabase/templates/README.md).
 7. **Captcha (opcional, recomendado al abrir al público):** Cloudflare Turnstile al registrarse, ingresar y recuperar la contraseña. El orden importa: primero la app con la clave del sitio, después el captcha en Supabase (si no, nadie puede ingresar). Pasos en `docs/reportes/2026-10-21-spot-piloto.md`, sección 4.
-8. Google (opcional): cliente OAuth **Web application** en Google Cloud con redirect `https://<ref>.supabase.co/auth/v1/callback`; pegá client ID y secret en **Authentication → Providers → Google**.
+8. Google (opcional): cliente OAuth **Web application** en Google Cloud con redirect `https://<ref>.supabase.co/auth/v1/callback` (el botón de respaldo) y, en **Authorized JavaScript origins**, el sitio sin barra al final (`https://<tu-sitio>.vercel.app`) y `http://localhost:8081` (el botón de Google; cada origen exacto, sin comodines). Pegá client ID y secret en **Authentication → Providers → Google**, con el mismo client ID en **Client IDs** y **Skip nonce checks** apagado. El client ID va también en `EXPO_PUBLIC_GOOGLE_CLIENT_ID` (paso 2).
 9. Moderadores (opcional): `update perfiles set es_moderador = true where id = '<uuid>';`. Reciben en Actividad los reportes de errores y los ven en **Moderación → Errores**. Los límites de esos reportes están en `config_app` (`errores_por_hora_cuenta`, 5, y `errores_por_hora_sin_cuenta`, 30).
 10. Pruebas (opcional, recomendado después de cada migración): corré en el SQL Editor los archivos de `supabase/tests/` (ver su README). Terminan en `Success. No rows returned` y no dejan datos.
 
@@ -64,9 +64,10 @@ cp .env.example .env
 ```
 
 Completá `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (o, de respaldo, `EXPO_PUBLIC_SUPABASE_ANON_KEY`; si están las dos, se usa la publishable). En Vercel van en **Settings → Environment Variables**. Opcionales:
-- `EXPO_PUBLIC_SITE_URL`: la base de los links que se comparten (`<sitio>/animal/<id>`); si falta, `https://animales-blue.vercel.app`.
+- `EXPO_PUBLIC_SITE_URL`: la base de los links que se comparten (`<sitio>/animal/<id>`); si falta, `https://spot-uy.vercel.app`.
 - `EXPO_PUBLIC_TURNSTILE_SITE_KEY`: la clave del sitio de Cloudflare Turnstile; sin ella no hay captcha.
 - `EXPO_PUBLIC_VAPID_PUBLIC_KEY`: la clave VAPID pública de las notificaciones en el celular (paso 6); sin ella la app no las ofrece.
+- `EXPO_PUBLIC_GOOGLE_CLIENT_ID`: el ID de cliente web de Google (público). Con él, Ingresar y Registrarse muestran el botón oficial de Google, que no pasa por la dirección de Supabase; sin él, el botón de siempre (`signInWithOAuth`). Necesita el sitio en los orígenes autorizados de Google (paso 1.8).
 
 ### 3. Correr la web
 
@@ -80,7 +81,7 @@ Abre `http://localhost:8081`. En PowerShell, si `npx` está bloqueado por la pol
 ### 4. Vercel
 
 1. En [vercel.com](https://vercel.com) → **Add New Project** → importá `Emontone21/ANIMALES`. En **Framework Preset** elegí **Other**: Vercel suele detectar **FastAPI** por el servicio de visión en `services/vision/` y el build falla en `uv pip install`. `vercel.json` ya trae build (`npx expo export -p web`, con el commit del deploy y la fecha como versión para los reportes de errores) y salida (`dist`). El commit sale de `VERCEL_GIT_COMMIT_SHA`: dejá activado **Settings → Environment Variables → Automatically expose System Environment Variables** (viene así); si no, la versión dice la fecha del build. Si el proyecto ya existe, se cambia en **Settings → Build and Deployment → Framework Preset**.
-2. Cargá `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (o la anon, `EXPO_PUBLIC_SUPABASE_ANON_KEY`), y opcionalmente `EXPO_PUBLIC_MAP_STYLE_URL`, `EXPO_PUBLIC_SITE_URL`, `EXPO_PUBLIC_TURNSTILE_SITE_KEY` y `EXPO_PUBLIC_VAPID_PUBLIC_KEY`, para Production y Preview. Cambiar una variable pide un deploy nuevo: van dentro del build.
+2. Cargá `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (o la anon, `EXPO_PUBLIC_SUPABASE_ANON_KEY`), y opcionalmente `EXPO_PUBLIC_MAP_STYLE_URL`, `EXPO_PUBLIC_SITE_URL`, `EXPO_PUBLIC_TURNSTILE_SITE_KEY` y `EXPO_PUBLIC_VAPID_PUBLIC_KEY`, para Production y Preview, y `EXPO_PUBLIC_GOOGLE_CLIENT_ID` solo para Production (las previews no son orígenes autorizados de Google: usan el botón de respaldo). Cambiar una variable pide un deploy nuevo: van dentro del build.
 3. Deploy. Cada push a `main` redeploya. Volvé a Supabase y poné la URL de Vercel como Site URL.
 
 Además de la web estática, Vercel publica una función: `api/vista-previa.ts`. `vercel.json` le manda solo a los bots de vista previa (WhatsApp, Facebook, Telegram…) los pedidos de `/animal/<id>`, y la función devuelve el `index.html` con la foto y el título del caso. Usa las mismas variables `EXPO_PUBLIC_*`, no necesita otras. `.vercelignore` deja afuera `services/`, para que Vercel no vuelva a detectar Python.
@@ -206,7 +207,7 @@ Conviene tener dos cuentas: la que publica y otra.
 2. **Editar:** en tu reporte, **Más opciones → Editar el reporte**. Cambiá el color, el tamaño o la descripción (en un perdido, también el nombre y el contacto) y tocá **Guardar cambios**: volvés al detalle con los datos nuevos. La foto, la ubicación y el tipo no se editan. Con la otra cuenta, **Más opciones** no muestra Editar ni Borrar. Si cambiás la especie, las coincidencias pendientes desaparecen y las fotos vuelven a la cola de reconocimiento.
 3. **Borrar:** **Más opciones → Borrar el reporte**. La confirmación dice qué se pierde, con la cantidad de avisos de otras personas. Al confirmar volvés al mapa y el caso ya no está; en Storage desaparecieron tus fotos del caso con sus miniaturas (las de otras personas quedan).
 4. **Compartir:** en el celular, el botón de compartir del detalle abre la hoja del sistema con un texto como "Se perdió Toby, perro marrón. Si lo viste, avisá acá: <link>". En una computadora sin hoja de compartir aparecen **Mandar por WhatsApp** y **Copiar el link**.
-5. **Vista previa del link:** pegá el link de un caso en WhatsApp o Telegram, o en el [depurador de Facebook](https://developers.facebook.com/tools/debug/): aparecen el título ("Se perdió Toby", "Perro encontrado"), una descripción corta y la miniatura. Un caso oculto o inexistente muestra la vista previa genérica. Desde una terminal: `curl -s -A "facebookexternalhit/1.1" https://animales-blue.vercel.app/animal/<id> | grep 'og:'`. Abierto en el navegador, el link muestra la app de siempre.
+5. **Vista previa del link:** pegá el link de un caso en WhatsApp o Telegram, o en el [depurador de Facebook](https://developers.facebook.com/tools/debug/): aparecen el título ("Se perdió Toby", "Perro encontrado"), una descripción corta y la miniatura. Un caso oculto o inexistente muestra la vista previa genérica. Desde una terminal: `curl -s -A "facebookexternalhit/1.1" https://spot-uy.vercel.app/animal/<id> | grep 'og:'`. Abierto en el navegador, el link muestra la app de siempre.
 6. **Ver lista:** en el celular, en la hoja **Cerca tuyo**, **Ver lista** abre todos los casos con los filtros del mapa, del más cercano al más lejano, con miniatura, etiqueta y distancia. Si cambiás un filtro ahí, el mapa también cambia.
 
 Editar y borrar, probados directo en la base: `supabase/tests/fase8_casos.sql`.
@@ -250,6 +251,18 @@ Con las migraciones 0017 a 0020 aplicadas y la función desplegada (paso 5):
 
 Probado en la base: `supabase/tests/reconocimiento_ia.sql` y `vision.sql`. La función: `deno test --allow-env` en `supabase/functions/reconocer` (con la API simulada). A mano: el paso 26 de `docs/PRUEBAS-MANUALES.md`.
 
+**Ingresar con Google con el botón de Google** (sin migración)
+
+Con `EXPO_PUBLIC_GOOGLE_CLIENT_ID` y el sitio en los orígenes autorizados de Google (paso 1.8):
+1. **Ingresar y Registrarse** muestran, debajo de "o", el botón oficial "Continuar con Google". La ventana de Google muestra el sitio, no la dirección de Supabase. Al elegir la cuenta, la sesión queda abierta sin salir de la página; quien entra por primera vez acepta los términos como siempre.
+2. **Respaldo:** si el script de Google no carga, sin la variable o en la app nativa, el botón de siempre, que pasa por Supabase.
+3. **En el navegador de WhatsApp, Instagram o Facebook:** en lugar del botón, cómo abrir el link en Chrome o Safari, con "Copiar el link". Con email y contraseña se sigue igual.
+
+Probado: `__tests__/google.test.ts` (el nonce, qué se muestra, el script que no carga y la llamada a `signInWithIdToken`) y `__tests__/indexHtml.test.ts` (la CSP). A mano: el paso 34 de `docs/PRUEBAS-MANUALES.md`.
+
+**Privacidad de los casos reunidos** (migración 0027)
+Cuando el animal volvió a casa, quien no participó en el caso (con o sin cuenta) ve solo la foto, el nombre si la familia lo mostró, la especie, "Volvió a casa" y el link a su historia. El mapa, la zona, los avisos, el historial, las coincidencias y los contactos los ven solo quienes participaron (publicaron, avisaron que lo vieron, lo resguardaron o le escribieron antes de que volviera) y moderación. Lo aplica la base, también a la vista previa del link; si el caso se reabre, vuelve a verse todo. Probado en la base: `supabase/tests/privacidad_reunidos.sql`. De punta a punta: `npm run e2e`. A mano: el paso 33 de `docs/PRUEBAS-MANUALES.md`.
+
 **Muro de reencuentros** (migraciones 0025 y 0026)
 1. **Contar cómo volvió:** al marcar su perdido como reunido, la familia ve "¡Qué alegría! ¿Querés contar cómo volvió?" (también después, desde "Cómo volvió" en el caso): una frase de hasta 280 caracteres, una foto opcional y si se muestra el nombre. Los teléfonos, links y emails se tapan. La edita o la borra cuando quiera.
 2. **Agradecer:** en el mismo paso, quienes participaron (avisaron que lo vieron, lo resguardaron o le escribieron) con su nombre público; a quien marca le llega "La familia de Toby te agradeció" en Actividad y, con la función `avisar` desplegada de nuevo, al celular. En su Perfil: "Ayudaste a reunir a N familias".
@@ -291,7 +304,7 @@ src/features/       auth, reportes, seguimientos, denuncias, coincidencias, noti
 src/lib/            supabase, imágenes (convención de miniaturas), fotos (comprimir, subir, borrar), compartir, ubicación, fechas, errores, env
 src/i18n/es-UY.ts   todos los textos
 src/types/          database.ts (esquema), dominio.ts
-supabase/           migrations/ (0001–0026), tests/ (pruebas SQL por fase, errores.sql, vision.sql, reconocimiento_ia.sql, contacto_al_cerrar.sql, auditoria_2.sql, avisos_push.sql y reencuentros.sql), functions/reconocer (Edge Function del reconocimiento con la API de Claude y sus pruebas), functions/avisar (Edge Function de las notificaciones del celular, Web Push, y sus pruebas), templates/ (plantillas de mail de Auth), seed.sql, config.toml
+supabase/           migrations/ (0001–0027), tests/ (pruebas SQL por fase, errores.sql, vision.sql, reconocimiento_ia.sql, contacto_al_cerrar.sql, auditoria_2.sql, avisos_push.sql, reencuentros.sql y privacidad_reunidos.sql), functions/reconocer (Edge Function del reconocimiento con la API de Claude y sus pruebas), functions/avisar (Edge Function de las notificaciones del celular, Web Push, y sus pruebas), templates/ (plantillas de mail de Auth), seed.sql, config.toml
 api/                función de Vercel: vista previa del link de un caso (Open Graph)
 __tests__/          pruebas de jest-expo (npm run test)
 e2e/                pruebas de punta a punta con Playwright (npm run e2e), contra el proyecto de pruebas

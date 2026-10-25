@@ -198,6 +198,12 @@ export const t = {
     avistamientos: (n: number) => (n === 1 ? '1 avistamiento' : `${n} avistamientos`),
     vinculadoAviso: 'Este reporte se unió a otro del mismo animal. Te llevamos al caso principal.',
     casoCerrado: 'Este caso está cerrado: el animal volvió con su familia.',
+    /** Un caso reunido, para quien no participó: solo lo básico (lo decide la base, 0027). */
+    reservado: {
+      volvio: 'Volvió a casa',
+      aviso:
+        'Para cuidar a su familia, el mapa, la zona y el historial de un caso que terminó los ven solo quienes ayudaron a buscarlo.',
+    },
     oculto: 'Esta publicación fue ocultada por moderación y no aparece en el mapa.',
     requiereCuentaAcciones: 'Para avisar que lo viste o cambiar el estado necesitás una cuenta.',
     acciones: {
@@ -649,6 +655,8 @@ export const t = {
       contar: 'Contar cómo volvió',
       editar: 'Editar la historia',
       verEnElMuro: 'Ver en el muro',
+      /** En lo básico de un caso reunido: el link a su historia. */
+      leer: 'Leer cómo volvió',
     },
     /** La pregunta al marcar el caso como reunido. */
     alegria: {
@@ -917,6 +925,15 @@ export const t = {
     nombrePlaceholder: 'Cómo te van a ver los demás',
     nombreAyuda: 'No mostramos tu email ni tu teléfono a nadie.',
     conGoogle: 'Continuar con Google',
+    /**
+     * El botón de Google en Ingresar y Registrarse (web). El botón lo dibuja
+     * Google, con su texto ("Continuar con Google", en español).
+     */
+    google: {
+      /** En el navegador de WhatsApp, Instagram o Facebook, Google no deja ingresar. */
+      navegadorInterno: (app: string) =>
+        `Para entrar con Google, abrí este link en Chrome o Safari: Google no deja hacerlo desde el navegador de ${app}. Con email y contraseña podés seguir acá.`,
+    },
     olvidaste: '¿Olvidaste tu contraseña?',
     aceptoTerminos: 'Leí y acepto los términos de uso y la política de privacidad.',
     recuperar: {

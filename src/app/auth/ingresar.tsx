@@ -1,48 +1,42 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { View } from 'react-native';
+import { lazy, Suspense, useState } from 'react';
 
-import { CambiarAcceso, MarcaAcceso } from '@/components/auth/Acceso';
+import { CambiarAcceso, MarcaAcceso, SeparadorO } from '@/components/auth/Acceso';
 import { Captcha } from '@/components/auth/Captcha';
 import { Boton } from '@/components/ui/Boton';
 import { CampoTexto } from '@/components/ui/CampoTexto';
 import { Mensaje } from '@/components/ui/Mensaje';
 import { Pantalla } from '@/components/ui/Pantalla';
-import { Texto } from '@/components/ui/Texto';
-import { AnchoMaximo, Espacio } from '@/constants/tema';
-import { ingresarConEmail, ingresarConGoogle } from '@/features/auth/acciones';
+import { AnchoMaximo } from '@/constants/tema';
+import { ingresarConEmail } from '@/features/auth/acciones';
 import { useCaptcha } from '@/features/auth/useCaptcha';
-import { crearEstilos, useEstilos } from '@/hooks/useTema';
 import { t } from '@/i18n/es-UY';
 import { mensajeDeError } from '@/lib/errores';
 
+// Google va en un bloque aparte: en web baja su script recién al abrir esta pantalla.
+const IngresoGoogle = lazy(() => import('@/components/auth/IngresoGoogle'));
+
 export default function PantallaIngresar() {
   const router = useRouter();
-  const estilos = useEstilos(crear);
   const [email, setEmail] = useState('');
   const [contrasena, setContrasena] = useState('');
-  const [cargando, setCargando] = useState<'email' | 'google' | null>(null);
+  const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const captcha = useCaptcha();
 
-  // Al abrir sesión, Stack.Protected cierra esta pantalla solo.
-  const ejecutar = async (tipo: 'email' | 'google', accion: () => Promise<void>) => {
-    setCargando(tipo);
+  // Al abrir sesión, Stack.Protected cierra esta pantalla solo. Cada intento
+  // usa el token del captcha; Google no lo lleva.
+  const conEmail = async () => {
+    setCargando(true);
     setError(null);
     try {
-      await accion();
+      await ingresarConEmail(email, contrasena, captcha.token).finally(captcha.reiniciar);
     } catch (e) {
       setError(mensajeDeError(e, t.auth.errores.desconocido));
     } finally {
-      setCargando(null);
+      setCargando(false);
     }
   };
-
-  // Con email, cada intento usa el token del captcha; Google no lo lleva.
-  const conEmail = () =>
-    void ejecutar('email', () =>
-      ingresarConEmail(email, contrasena, captcha.token).finally(captcha.reiniciar),
-    );
 
   return (
     <Pantalla scroll bordes={['left', 'right', 'bottom']} ancho={AnchoMaximo.acceso}>
@@ -66,7 +60,7 @@ export default function PantallaIngresar() {
         secureTextEntry
         autoComplete="current-password"
         textContentType="password"
-        onSubmitEditing={conEmail}
+        onSubmitEditing={() => void conEmail()}
       />
 
       <Captcha {...captcha.props} />
@@ -74,9 +68,9 @@ export default function PantallaIngresar() {
 
       <Boton
         titulo={t.auth.ingresar}
-        cargando={cargando === 'email'}
-        deshabilitado={cargando !== null}
-        onPress={conEmail}
+        cargando={cargando}
+        deshabilitado={cargando}
+        onPress={() => void conEmail()}
       />
       <Boton
         titulo={t.auth.olvidaste}
@@ -84,20 +78,10 @@ export default function PantallaIngresar() {
         onPress={() => router.push('/auth/recuperar')}
       />
 
-      <View style={estilos.separador}>
-        <View style={estilos.linea} />
-        <Texto variante="pequeno">{t.auth.o}</Texto>
-        <View style={estilos.linea} />
-      </View>
-
-      <Boton
-        titulo={t.auth.conGoogle}
-        icono="logo-google"
-        variante="secundario"
-        cargando={cargando === 'google'}
-        deshabilitado={cargando !== null}
-        onPress={() => void ejecutar('google', ingresarConGoogle)}
-      />
+      <SeparadorO />
+      <Suspense fallback={null}>
+        <IngresoGoogle deshabilitado={cargando} />
+      </Suspense>
 
       <CambiarAcceso
         pregunta={t.auth.sinCuenta}
@@ -107,8 +91,3 @@ export default function PantallaIngresar() {
     </Pantalla>
   );
 }
-
-const crear = crearEstilos((c) => ({
-  separador: { flexDirection: 'row', alignItems: 'center', gap: Espacio.m },
-  linea: { flex: 1, height: 1, backgroundColor: c.borde },
-}));

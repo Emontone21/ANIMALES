@@ -84,34 +84,29 @@
       }
     </style>
     <!--
-      Fuentes de la app (src/constants/tema.ts, FAMILIAS), copiadas a public/fuentes por
-      scripts/copiar-a-public.js. Arrancan apagadas (media="not all": no se baja nada) y la
+      Fuentes de la app: Urbanist (src/constants/tema.ts, FAMILIAS), copiadas a public/fuentes
+      por scripts/copiar-a-public.js. Bold sirve a los títulos y a la negrita: va una sola
+      vez. Arrancan apagadas (media="not all": no se baja nada) y la
       app las activa después de las fotos que se ven al abrir (src/lib/fuentesWeb.ts). Con
       font-display: swap nada las espera: la app se ve con la fuente del sistema y cambia
       cuando llegan.
     -->
     <style id="encontrados-fuentes" media="not all">
       @font-face {
-        font-family: 'Fredoka_600SemiBold';
-        src: url('/fuentes/Fredoka_600SemiBold.ttf') format('truetype');
+        font-family: 'Urbanist_500Medium';
+        src: url('/fuentes/Urbanist_500Medium.ttf') format('truetype');
+        font-weight: 500;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: 'Urbanist_600SemiBold';
+        src: url('/fuentes/Urbanist_600SemiBold.ttf') format('truetype');
         font-weight: 600;
         font-display: swap;
       }
       @font-face {
-        font-family: 'Figtree_400Regular';
-        src: url('/fuentes/Figtree_400Regular.ttf') format('truetype');
-        font-weight: 400;
-        font-display: swap;
-      }
-      @font-face {
-        font-family: 'Figtree_600SemiBold';
-        src: url('/fuentes/Figtree_600SemiBold.ttf') format('truetype');
-        font-weight: 600;
-        font-display: swap;
-      }
-      @font-face {
-        font-family: 'Figtree_700Bold';
-        src: url('/fuentes/Figtree_700Bold.ttf') format('truetype');
+        font-family: 'Urbanist_700Bold';
+        src: url('/fuentes/Urbanist_700Bold.ttf') format('truetype');
         font-weight: 700;
         font-display: swap;
       }

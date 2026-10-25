@@ -60,7 +60,9 @@ describe('public/index.html', () => {
       // Cada parte del archivo tiene el color que el CSS le da en su esquema.
       const paleta = paletas[esquema];
       expect(svg).toMatch(new RegExp(`<circle [^>]*stroke="${paleta.texto}"`));
-      expect(svg).toMatch(new RegExp(`<g [^>]*><circle [^>]*/><path [^>]*fill="${paleta.primario}"`));
+      expect(svg).toMatch(
+        new RegExp(`<g [^>]*><circle [^>]*/><path [^>]*fill="${paleta.primario}"`),
+      );
       expect(svg).toMatch(new RegExp(`</g><path [^>]*fill="${paleta.texto}"`));
     }
     expect(html).toMatch(/\.carga-logo-chapita \{\s+fill: var\(--carga-primario\);/);
@@ -69,25 +71,29 @@ describe('public/index.html', () => {
   });
 
   test('declara las fuentes de tema.ts con su peso, desde los archivos que copia postinstall', () => {
-    const pesos: Record<string, string> = {
-      [FAMILIAS.titulo]: '600',
-      [FAMILIAS.regular]: '400',
-      [FAMILIAS.seminegrita]: '600',
-      [FAMILIAS.negrita]: '700',
+    // Urbanist: el texto en Medium y los títulos en Bold, el mismo archivo que la negrita.
+    const pesos: Record<keyof typeof FAMILIAS, string> = {
+      titulo: '700',
+      regular: '500',
+      seminegrita: '600',
+      negrita: '700',
     };
     const caras = [
       ...html.matchAll(
         /font-family: '(\w+)';\s+src: url\('\/([^']+)'\) format\('truetype'\);\s+font-weight: (\d+);\s+font-display: swap;/g,
       ),
     ].map(([, familia, archivo, peso]) => ({ familia, archivo, peso }));
-    expect(caras.map((c) => c.familia).sort()).toEqual(Object.values(FAMILIAS).sort());
+    // Cada familia una sola vez (titulo y negrita comparten la suya).
+    expect(caras.map((c) => c.familia).sort()).toEqual(
+      [...new Set(Object.values(FAMILIAS))].sort(),
+    );
     // Arrancan apagadas: las activa la app después de las fotos (src/lib/fuentesWeb.ts).
     expect(html).toContain('<style id="encontrados-fuentes" media="not all">');
     const copiados = copias.map(([, destino]) => destino);
-    for (const cara of caras) {
-      expect(cara.peso).toBe(pesos[cara.familia]);
-      expect(copiados).toContain(cara.archivo);
+    for (const [uso, familia] of Object.entries(FAMILIAS) as [keyof typeof FAMILIAS, string][]) {
+      expect(caras.find((c) => c.familia === familia)?.peso).toBe(pesos[uso]);
     }
+    for (const cara of caras) expect(copiados).toContain(cara.archivo);
   });
 
   test('lo que copia postinstall existe en node_modules', () => {
@@ -126,7 +132,9 @@ function formas(svg: string) {
   return {
     viewBox: svg.match(/viewBox="([^"]+)"/)?.[1],
     transform: svg.match(/transform="([^"]+)"/)?.[1],
-    circulo: svg.match(/<circle [^>]*cx="([^"]+)" cy="([^"]+)" r="([^"]+)"[^>]*stroke-width="([^"]+)"/)?.slice(1),
+    circulo: svg
+      .match(/<circle [^>]*cx="([^"]+)" cy="([^"]+)" r="([^"]+)"[^>]*stroke-width="([^"]+)"/)
+      ?.slice(1),
     trazados: [...svg.matchAll(/<path [^>]*d="([^"]+)"/g)].map(([, d]) => d),
     reglas: [...svg.matchAll(/fill-rule="([^"]+)"/g)].map(([, regla]) => regla),
   };
@@ -238,6 +246,15 @@ describe('encabezados de seguridad', () => {
     expect(directiva('connect-src')).toContain('https://tiles.openfreemap.org');
     expect(directiva('script-src')).toContain('https://challenges.cloudflare.com');
     expect(directiva('frame-src')).toContain('https://challenges.cloudflare.com');
+  });
+
+  test('la CSP deja usar el botón de Google: el script, su estilo, el iframe y las conexiones', () => {
+    expect(directiva('script-src')).toContain('https://accounts.google.com/gsi/client');
+    expect(directiva('style-src')).toContain('https://accounts.google.com/gsi/style');
+    expect(directiva('frame-src')).toContain('https://accounts.google.com/gsi/');
+    expect(directiva('connect-src')).toContain('https://accounts.google.com/gsi/');
+    // Solo lo de Google Identity Services, no todo accounts.google.com.
+    expect(csp).not.toMatch(/https:\/\/accounts\.google\.com(?!\/gsi\/)/);
   });
 
   test('los que ya se aplican', () => {
