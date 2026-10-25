@@ -3,8 +3,9 @@
 //   como workers (la app le indica la URL con setWorkerUrl) y los estilos los pide el
 //   bloque del mapa al cargarse, para que no estén en el <head> de la carga inicial
 //   (src/components/mapa/maplibreWeb.ts).
-// - Las fuentes de la app: en web las declara public/index.html con @font-face y
-//   font-display: swap, así nada espera a que bajen (src/hooks/useFuentes.web.ts).
+// - Las fuentes de la app (Urbanist en tres pesos; Bold sirve a títulos y negrita): en
+//   web las declara public/index.html con @font-face y font-display: swap, así nada
+//   espera a que bajen (src/hooks/useFuentes.web.ts).
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -16,18 +17,14 @@ const copias = [
   ['maplibre-gl/dist/maplibre-gl-worker.mjs', 'maplibre-gl-worker.mjs'],
   ['maplibre-gl/dist/maplibre-gl.css', 'maplibre-gl.css'],
   [
-    '@expo-google-fonts/fredoka/600SemiBold/Fredoka_600SemiBold.ttf',
-    'fuentes/Fredoka_600SemiBold.ttf',
+    '@expo-google-fonts/urbanist/500Medium/Urbanist_500Medium.ttf',
+    'fuentes/Urbanist_500Medium.ttf',
   ],
   [
-    '@expo-google-fonts/figtree/400Regular/Figtree_400Regular.ttf',
-    'fuentes/Figtree_400Regular.ttf',
+    '@expo-google-fonts/urbanist/600SemiBold/Urbanist_600SemiBold.ttf',
+    'fuentes/Urbanist_600SemiBold.ttf',
   ],
-  [
-    '@expo-google-fonts/figtree/600SemiBold/Figtree_600SemiBold.ttf',
-    'fuentes/Figtree_600SemiBold.ttf',
-  ],
-  ['@expo-google-fonts/figtree/700Bold/Figtree_700Bold.ttf', 'fuentes/Figtree_700Bold.ttf'],
+  ['@expo-google-fonts/urbanist/700Bold/Urbanist_700Bold.ttf', 'fuentes/Urbanist_700Bold.ttf'],
 ];
 
 function copiar() {

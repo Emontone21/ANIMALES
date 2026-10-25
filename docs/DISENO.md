@@ -1,6 +1,6 @@
 # Spot · Plan de rediseño visual
 
-Actualizado: 21 de octubre de 2026.
+Actualizado: 25 de octubre de 2026.
 
 Este documento es la fuente de verdad del aspecto de la app. Resume la dirección elegida, "Calma oliva", y todo lo que hace falta para aplicarla en cada pantalla, en celulares de cualquier tamaño y en computadoras, en modo claro y oscuro.
 
@@ -8,7 +8,7 @@ Este documento es la fuente de verdad del aspecto de la app. Resume la direcció
 
 - Guardalo en el repo como `docs/DISENO.md`.
 - Agregá esta regla en `AGENTS.md`: "Las decisiones visuales están en `docs/DISENO.md`. Todo componente nuevo o modificado las respeta. Ningún color se escribe fuera de `src/constants/tema.ts`."
-- Registrá en `docs/DECISIONES.md` cuatro decisiones: la paleta oliva y negro, las fuentes Fredoka y Figtree con su licencia (sección 3), el modo oscuro con preferencia del usuario y los tres tamaños de pantalla (sección 8).
+- Registrá en `docs/DECISIONES.md` cuatro decisiones: la paleta oliva y negro, la fuente con su licencia (sección 3; hoy Urbanist), el modo oscuro con preferencia del usuario y los tres tamaños de pantalla (sección 8).
 - El rediseño **no cambia funcionalidad ni datos**. No hay migraciones ni cambios en los `api.ts`. Toda acción que existe hoy tiene que seguir disponible (la lista está en la sección 13).
 - Se aplica la forma de trabajo de siempre:
   - verificar antes de cambiar;
@@ -130,37 +130,46 @@ Cualquier combinación nueva de colores se verifica antes de usarla.
 
 ## 3. Tipografía
 
-| Familia | Rol | Pesos |
-| --- | --- | --- |
-| Fredoka | Títulos y nombres de animales | 600 |
-| Figtree | Todo el resto | 400, 600 y 700 |
+Una sola familia: **Urbanist**, moderna y amable sin ser empresarial. Reemplazó en octubre de 2026 a Fredoka (títulos), que se veía infantil, y a Figtree (texto).
 
-**Instalación.** Con `npx expo install @expo-google-fonts/fredoka @expo-google-fonts/figtree`.
+| Uso (`FAMILIAS` en `tema.ts`) | Peso | Archivo |
+| --- | --- | --- |
+| `titulo`: títulos y nombres de animales | 700 (Bold) | `Urbanist_700Bold` |
+| `regular`: el texto corrido | 500 (Medium) | `Urbanist_500Medium` |
+| `seminegrita`: etiquetas de campos, chips y pestañas | 600 (SemiBold) | `Urbanist_600SemiBold` |
+| `negrita`: botones, datos destacados y cápsulas | 700 (Bold) | `Urbanist_700Bold` |
+
+- **El texto corrido va en Medium (500), no en Regular (400).** La Regular de Urbanist es finita y en el celular se lee débil; la Medium tiene el mismo peso visual que tenía Urbanist 500. Así lo aprobó el dueño, con capturas de la app real.
+- **`titulo` y `negrita` son el mismo archivo** (Bold): en web se declara una sola vez y en nativo se carga una vez. Lo que los distingue es el tamaño de la escala.
+- **El logo no cambia:** la palabra "Spot" de `assets/marca/` y de los íconos está dibujada en formas, no escrita con una fuente (sección 5.2).
+- **Tamaños e interlineados:** los de la escala de abajo, los mismos que con Fredoka y Figtree. Con la Medium, el texto de 12 y 13 se lee bien en claro y en oscuro (revisado en las capturas de `docs/reportes/2026-10-25-urbanist/`).
+
+**Instalación.** Con `npx expo install @expo-google-fonts/urbanist`.
 
 - **Nativo:** se cargan con `useFonts` (`src/hooks/useFuentes.ts`), manteniendo la pantalla de carga (`expo-splash-screen`) hasta que estén listas. Si fallan, se usa la fuente del sistema.
-- **Web:** nada las espera. `public/index.html` las declara con `@font-face` y `font-display: swap` (los archivos los copia `scripts/copiar-a-public.js` a `public/fuentes/`). Arrancan apagadas y la app las activa después de las fotos que se ven al abrir (`src/lib/fuentesWeb.ts`). Hasta entonces el texto usa la pila del sistema de `Fuentes` (`system-ui`, `-apple-system`, `Segoe UI`, `Roboto`) y después cambia solo. Cada `@font-face` declara su peso (600, 400, 600 y 700), así el navegador no engrosa de más una fuente que ya es seminegrita.
+- **Web:** nada las espera. `public/index.html` las declara con `@font-face` y `font-display: swap` (los archivos los copia `scripts/copiar-a-public.js` a `public/fuentes/`). Arrancan apagadas y la app las activa después de las fotos que se ven al abrir (`src/lib/fuentesWeb.ts`). Hasta entonces el texto usa la pila del sistema de `Fuentes` (`system-ui`, `-apple-system`, `Segoe UI`, `Roboto`) y después cambia solo. Son tres archivos (unos 125 KB): cada `@font-face` declara su peso (500, 600 y 700), así el navegador no engrosa de más una fuente que ya es seminegrita.
 
-**Licencia.** Los paquetes son MIT (código) y SIL OFL 1.1 (fuentes). OFL permite incluir las fuentes en apps, pero no está en la lista de licencias de `AGENTS.md`. El dueño aprobó esta excepción para fuentes tipográficas: anotala en `docs/DECISIONES.md` y en la regla de licencias de `AGENTS.md`.
+**Licencia.** El paquete es MIT (código) y Urbanist es SIL OFL 1.1, la misma licencia que tenían Fredoka y Figtree. OFL permite incluir las fuentes en apps, pero no está en la lista de licencias de `AGENTS.md`: el dueño aprobó esta excepción para fuentes tipográficas (`docs/DECISIONES.md` y la regla de licencias de `AGENTS.md`).
 
-**Detalle técnico importante.** En Android, `fontWeight` no elige el peso de una fuente cargada. Cada peso es una familia aparte (por ejemplo `Figtree_700Bold`). Definí en `tema.ts` un objeto `Fuentes` que mapee cada variante a su `fontFamily`, y no dependas de `fontWeight`.
+**Detalle técnico importante.** En Android, `fontWeight` no elige el peso de una fuente cargada. Cada peso es una familia aparte (por ejemplo `Urbanist_700Bold`). Definí en `tema.ts` un objeto `Fuentes` que mapee cada variante a su `fontFamily`, y no dependas de `fontWeight`.
 
 ### Escala
 
 | Variante | Fuente | Tamaño / interlineado | Uso |
 | --- | --- | --- | --- |
-| `contador` | Fredoka 600 | 56 / 60 | El número del muro de reencuentros (6.19) |
-| `display` | Fredoka 600 | 40 / 42 | Nombre del animal en el detalle |
-| `titulo` | Fredoka 600 | 28 / 32 | Título de pantalla (Publicar, Actividad, Perfil) |
-| `subtitulo` | Fredoka 600 | 22 / 28 | Secciones: Cerca tuyo, Historial |
-| `tituloTarjeta` | Fredoka 600 | 19 / 24 | Nombre en tarjetas y bloque de coincidencias |
-| `cuerpo` | Figtree 400 | 16 / 25 | Párrafos y descripciones |
-| `cuerpoFuerte` | Figtree 700 | 17 / 22 | Dato destacado, como "Hoy a las 9:40" |
-| `etiquetaCampo` | Figtree 600 | 14 / 20 | Etiquetas de formularios y chips |
-| `secundario` | Figtree 400 | 14 / 20 | Distancia y tiempo |
-| `pequeno` | Figtree 400 | 13 / 18 | Fechas de la línea de tiempo |
-| `etiqueta` | Figtree 700 | 13 / 16 | Cápsulas de estado |
-| `boton` | Figtree 700 | 16 / 20 | Botones |
-| `pestania` | Figtree 600 (activa 700) | 12 / 16 | Barra de pestañas |
+| `contador` | Urbanist 700 | 56 / 60 | El número del muro de reencuentros (6.19) |
+| `display` | Urbanist 700 | 40 / 42 | Nombre del animal en el detalle |
+| `titulo` | Urbanist 700 | 28 / 32 | Título de pantalla (Publicar, Actividad, Perfil) |
+| `subtitulo` | Urbanist 700 | 22 / 28 | Secciones: Cerca tuyo, Historial |
+| `tituloTarjeta` | Urbanist 700 | 19 / 24 | Nombre en tarjetas y bloque de coincidencias |
+| `cuerpo` | Urbanist 500 | 16 / 25 | Párrafos y descripciones |
+| `cuerpoFuerte` | Urbanist 700 | 17 / 22 | Dato destacado, como "Hoy a las 9:40" |
+| `etiquetaCampo` | Urbanist 600 | 14 / 20 | Etiquetas de formularios y chips |
+| `secundario` | Urbanist 500 | 14 / 20 | Distancia y tiempo |
+| `pequeno` | Urbanist 500 | 13 / 18 | Fechas de la línea de tiempo |
+| `etiqueta` | Urbanist 700 | 13 / 16 | Cápsulas de estado |
+| `boton` | Urbanist 700 | 16 / 20 | Botones |
+| `pestania` | Urbanist 600 (activa 700) | 12 / 16 | Barra de pestañas |
 
 **Reglas de texto:**
 
@@ -298,7 +307,7 @@ Todas las variantes tienen 54 de alto, radio `redondo` y texto `boton`.
 
 ### 6.2 Chip de filtro
 
-- Alto 44, radio `redondo`, relleno horizontal de 16 a 18, texto Figtree 600 15.
+- Alto 44, radio `redondo`, relleno horizontal de 16 a 18, texto Urbanist 600 15.
 - **Inactivo:** sobre el mapa, `superficie` con sombra; en pantallas normales, `superficieSuave` sin sombra.
 - **Activo:** `inverso` con `textoInverso`.
 - Si el chip representa perdidos o encontrados, lleva un punto de 10 px a la izquierda, en `perdido` o en `primario`.
@@ -309,7 +318,7 @@ Cápsula de 26 a 28 de alto, relleno horizontal de 10 a 12 y texto `etiqueta`. L
 
 ### 6.4 Chip de dato
 
-Fondo `superficieSuave`, 34 de alto, radio `redondo`, Figtree 600 14. Muestra los datos del animal: especie, tamaño, color y collar.
+Fondo `superficieSuave`, 34 de alto, radio `redondo`, Urbanist 600 14. Muestra los datos del animal: especie, tamaño, color y collar.
 
 ### 6.5 Botón redondo flotante
 
@@ -425,7 +434,7 @@ Línea de tiempo vertical:
 
 Texto de cada evento:
 
-- quién hizo qué ("Lo vio Carla"), en Figtree 700 15;
+- quién hizo qué ("Lo vio Carla"), en Urbanist 700 15;
 - la nota, en `cuerpo`;
 - para quien publicó el caso, en cada aviso de otra persona, "Escribirle": botón `fantasma` con ícono de globo, de 44 de alto (no 54, porque va dentro de la fila) y alineado con el texto;
 - la fecha, en `pequeno` y `textoSecundario`.
@@ -492,12 +501,12 @@ Todos van con radio `l` y relleno de 14 a 16. El indicador de carga usa `primari
 Una imagen de 1080 × 1920 que se arma en el celular (`src/features/historias/disenio.ts`) para las historias de Instagram o los estados de WhatsApp. Sigue la apariencia de la app (claro u oscuro). Instagram tapa unos 200 px arriba y abajo: todo va entre 200 y 1720.
 
 - **Fondo:** el color dominante de la foto (como las tapas de Spotify), llevado hacia `superficie` en claro o hacia `fondo` en oscuro, de a 5 %, hasta que `texto` tenga 5,5:1; siempre se mueve al menos 35 % (claro) o 25 % (oscuro), para que la foto se despegue. Sin foto que se pueda dibujar, el mismo cálculo desde el color de la especie (`ColorHistoria` en `tema.ts`: perro `#A0703F`, gato `#5E7189`, otro `#556B2F`), que solo se usa acá.
-- **Etiqueta** (x 80, y 214): cápsula de 84 de alto en `superficie`, relleno de 36, con un punto de 24 en `perdido` o `encontrado` y "SE PERDIÓ" o "ENCONTRADO" en Figtree 700 38, en `textoPerdido` o `textoEncontrado`. Es la única mayúscula sostenida del diseño: un cartel.
+- **Etiqueta** (x 80, y 214): cápsula de 84 de alto en `superficie`, relleno de 36, con un punto de 24 en `perdido` o `encontrado` y "SE PERDIÓ" o "ENCONTRADO" en Urbanist 700 38, en `textoPerdido` o `textoEncontrado`. Es la única mayúscula sostenida del diseño: un cartel.
 - **Foto** (x 80, y 334, 920 × 856, radio 64): llena el recuadro, recortada y centrada. Sin foto, el recuadro en `superficieSuave` con la chapita (`spot-marca` del esquema) de 240 en el centro.
-- **Nombre** (línea de base 1306): el nombre o, si no tiene (o parece un contacto), la especie, en Fredoka 600 112 (se achica hasta 64 si no entra; después se corta con "…").
-- **Qué animal** (1378): con nombre, "Perro marrón"; sin nombre, el color y el tamaño ("Gris, mediano"). Figtree 600 46. Si no hay nada, no va.
-- **Fecha** (1444, o 1378 si no hay línea anterior): "Se perdió el 17 de octubre" o "Lo encontraron el 21 de octubre". Figtree 400 42.
-- **Pedido** (1566): "Ayudá a encontrarlo en Spot" o "Ayudá a encontrar a su familia en Spot", Figtree 700 44.
+- **Nombre** (línea de base 1306): el nombre o, si no tiene (o parece un contacto), la especie, en Urbanist 700 112 (se achica hasta 64 si no entra; después se corta con "…").
+- **Qué animal** (1378): con nombre, "Perro marrón"; sin nombre, el color y el tamaño ("Gris, mediano"). Urbanist 600 46. Si no hay nada, no va.
+- **Fecha** (1444, o 1378 si no hay línea anterior): "Se perdió el 17 de octubre" o "Lo encontraron el 21 de octubre". Urbanist 500 42.
+- **Pedido** (1566): "Ayudá a encontrarlo en Spot" o "Ayudá a encontrar a su familia en Spot", Urbanist 700 44.
 - **Logo** (x 80, y 1600, 288 de ancho): el completo del esquema (`spot-logo.svg` o `spot-logo-oscuro.svg`), sobre el fondo liso.
 - Todo el texto en `texto` del esquema. **Nunca** contactos, quién publicó, la descripción libre ni la ubicación.
 - **La hoja** "Compartir en historias" (`MenuOpciones`): la vista previa de 320 de alto (9:16, radio `m`, sobre `superficieSuave`), un mensaje de información con la pista del sticker de enlace y el botón `primario` "Compartir la imagen" (`share-outline`) o, si el navegador no puede mandar archivos, "Descargar la imagen" (`download-outline`). Al copiar el link, el mensaje pasa a éxito: "Copiamos el link: sumalo con el sticker de enlace de Instagram.". Mientras se arma, el indicador y "Armando la imagen…"; si falla, el error y "Probar de nuevo".
@@ -508,8 +517,8 @@ La misma base de 6.18 (fondo, foto, logo y medidas), para compartir una historia
 
 - **Etiqueta:** "VOLVIÓ A CASA", con el punto en `encontrado` y el texto en `textoEncontrado`: el verde de "ya está en casa".
 - **Nombre** (1306): el nombre si la familia quiso mostrarlo o, si no, la especie ("Perro").
-- **Días** (1378): "Volvió a casa después de 5 días" o "el mismo día", Figtree 600 46 (se achica hasta 36).
-- **La frase** (1440), entre comillas latinas («»), Figtree 400 38, en dos líneas como mucho con 50 de interlineado; si no entra, la segunda termina en "…»" (`partirEnLineas`).
+- **Días** (1378): "Volvió a casa después de 5 días" o "el mismo día", Urbanist 600 46 (se achica hasta 36).
+- **La frase** (1440), entre comillas latinas («»), Urbanist 500 38, en dos líneas como mucho con 50 de interlineado; si no entra, la segunda termina en "…»" (`partirEnLineas`).
 - **Pedido** (1566): "Conocé más reencuentros en Spot".
 - Lleva la frase porque la imagen la ve antes quien la comparte; nunca quién ayudó, contactos ni dónde. El link que se copia es el de la historia (`/reencuentros/<id>`).
 
@@ -612,7 +621,7 @@ Columna de 640 (`AnchoMaximo.detalle`) en todas las disposiciones. Sin mapa, zon
 - Control de dos opciones, Novedades y Mensajes, con el estilo de chips (activo en `inverso`).
 - Filas de la lista:
   - ícono de 18 dentro de un círculo de 40 en `primarioSuave`;
-  - título en Figtree 700 15;
+  - título en Urbanist 700 15;
   - cuerpo en `secundario`;
   - tiempo en `pequeno`;
   - punto de no leída en `primario`;
@@ -630,7 +639,7 @@ Columna de 640 (`AnchoMaximo.detalle`) en todas las disposiciones. Sin mapa, zon
 ### 7.6 Perfil
 
 - **Título.**
-- **Tarjeta de la persona:** avatar circular en `primarioSuave` con la inicial en Fredoka, el nombre y la nota de privacidad.
+- **Tarjeta de la persona:** avatar circular en `primarioSuave` con la inicial en Urbanist 700, el nombre y la nota de privacidad.
 - **Apariencia** (sección nueva):
   - chips Automático, Claro y Oscuro;
   - ayuda: "Automático sigue la configuración de tu teléfono o computadora."
@@ -664,7 +673,7 @@ Debajo del botón primario (en Ingresar, debajo de "¿Olvidaste tu contraseña?"
 
 - **Moderación:** arriba, chips "Denuncias", "Errores" y "Reconocimiento" (activo en `inverso`). El aviso de un error nuevo abre "Errores".
   - *Denuncias:* misma lista que Actividad. La marca "Oculta" usa una etiqueta con `peligroSuave` y `peligro`. La denuncia de una historia del muro lleva la etiqueta "Historia del reencuentro", la frase y los botones "Ver la historia" y "Ocultar la historia" (o "Volver a mostrar la historia"), aparte de los del caso.
-  - *Errores:* chips "Pendientes (n)" y "Resueltos (n)". Cada reporte es una fila con la etiqueta "Pendiente" (`avisoFondo` y `texto`) o "Resuelto" (`superficieSuave` y `textoSecundario`), "Sin cuenta" si se mandó así, quién y cuándo en `pequeno`, qué pasó en `cuerpo` y un bloque `superficieSuave` de radio `l` con los datos (cada etiqueta en Figtree 700). "Ver la captura" (botón `fantasma`) la muestra entera, de 320 de alto, sobre `superficieSuave`. Los pendientes terminan con un campo "Nota para quien lo reportó (opcional)" y el botón `primario` "Marcar como resuelto"; los resueltos, con quién lo resolvió, cuándo y la nota.
+  - *Errores:* chips "Pendientes (n)" y "Resueltos (n)". Cada reporte es una fila con la etiqueta "Pendiente" (`avisoFondo` y `texto`) o "Resuelto" (`superficieSuave` y `textoSecundario`), "Sin cuenta" si se mandó así, quién y cuándo en `pequeno`, qué pasó en `cuerpo` y un bloque `superficieSuave` de radio `l` con los datos (cada etiqueta en Urbanist 700). "Ver la captura" (botón `fantasma`) la muestra entera, de 320 de alto, sobre `superficieSuave`. Los pendientes terminan con un campo "Nota para quien lo reportó (opcional)" y el botón `primario` "Marcar como resuelto"; los resueltos, con quién lo resolvió, cuándo y la nota.
   - *Reconocimiento:* el estado del reconocimiento con IA, sin la dirección de la función ni su secreto.
     - Arriba, una línea en `secundario` que explica qué hace: "La inteligencia artificial describe cada foto nueva…" (sin nombrar la marca; siempre confirma una persona).
     - Una tarjeta (borde de 1 en `borde`, radio `xl`, relleno de 16) con cada dato: el nombre en `secundario` y, debajo, el valor en `cuerpoFuerte`.
@@ -705,7 +714,7 @@ Lo que se ve desde el primer instante, antes de que llegue el JS: es solo HTML y
 - "¿Qué pasó?" (obligatorio, de 10 a 1000 caracteres) y "¿Qué estabas haciendo? (opcional)", campos de varias líneas;
 - con cuenta, "Captura de pantalla (opcional)": vista previa entera (`contain`) de 220 de alto sobre `superficieSuave`, radio `m`, con "Elegir una captura" o "Cambiar la captura" (`secundario`) y "Quitar la captura" (`fantasma`);
 - sin cuenta, "Tu contacto (opcional)", con la ayuda de que solo lo ven los moderadores;
-- un bloque `superficieSuave` de radio `l` con lo que se suma solo (pantalla anterior, navegador y sistema, tamaño de pantalla y versión), cada etiqueta en Figtree 700;
+- un bloque `superficieSuave` de radio `l` con lo que se suma solo (pantalla anterior, navegador y sistema, tamaño de pantalla y versión), cada etiqueta en Urbanist 700;
 - al pie, "Mandar el reporte" (`primario`, `send-outline`). Los errores de cada campo aparecen al intentar mandarlo.
 
 ### 7.11 Mails
@@ -716,7 +725,7 @@ Los mails de la cuenta (confirmar, recuperar la contraseña, cambiar el email y 
 - Una tarjeta `superficie` con borde de 1 en `borde` y radio `xl` (24): el título en 22/28 y `texto`, el párrafo en 16/25 y `textoCuerpo`.
 - El botón: cápsula `primario` con el texto en `textoSobrePrimario`, 16 en negrita. Debajo, en 14 y `textoSecundario`, cuánto dura el link y el mismo link escrito, en `primario`, por si el botón no anda.
 - Al pie, en 13 y `textoSecundario`: por qué llegó el mail y qué hacer si no lo pidió la persona, y "Spot · Animales perdidos y encontrados en Montevideo".
-- Ancho máximo de 480; en el celular ocupa todo el ancho con 16 de margen. Fuente del sistema (los clientes de correo no cargan Fredoka ni Figtree).
+- Ancho máximo de 480; en el celular ocupa todo el ancho con 16 de margen. Fuente del sistema (los clientes de correo no cargan Urbanist).
 - Solo la paleta clara: los clientes de correo oscurecen por su cuenta, y con estos contrastes se sigue leyendo.
 
 ## 8. Adaptación a cualquier celular y computadora

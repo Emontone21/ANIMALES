@@ -80,6 +80,8 @@ La app se usa en momentos de angustia, así que busca calma y claridad. Verde ol
 
 ## 2026-10-19 · Fuentes Fredoka y Figtree, con excepción de licencia OFL
 
+Desde el 25 de octubre de 2026 la app usa Urbanist: ver "La tipografía pasa a Urbanist". La excepción de licencia sigue.
+
 Fredoka 600 para títulos y nombres de animales (redondeada, amable) y Figtree 400, 600 y 700 para todo lo demás (muy legible en tamaños chicos). Se instalan con `@expo-google-fonts/fredoka` y `@expo-google-fonts/figtree` y se cargan con `useFonts` en `src/app/_layout.tsx`, manteniendo la pantalla de carga hasta que estén listas; si fallan, se usa la fuente del sistema. Los paquetes son MIT y las fuentes SIL OFL 1.1: OFL permite incluirlas en una app cerrada pero no está en la lista de licencias de `AGENTS.md`, así que el dueño del proyecto aprobó la excepción para fuentes tipográficas. En Android `fontWeight` no elige el peso de una fuente cargada (cada peso es una familia), por eso `tema.ts` define `Fuentes` con la familia exacta de cada variante; en web se agrega una pila de respaldo del sistema con su peso.
 
 ## 2026-10-19 · Modo oscuro con preferencia del usuario
@@ -682,7 +684,7 @@ Con Expo Router 58, tocar **Editar el reporte** en Más opciones cambiaba la URL
 
 `AGENTS.md` pedía Apache 2.0, MIT o BSD, y la revisión de la auditoría 2 encontró otras licencias en las dependencias. Queda esta lista:
 - **Permisivas, en cualquier lado (también en lo que se publica):** MIT, MIT-0, Apache 2.0, BSD (2 y 3 cláusulas), 0BSD, ISC, BlueOak 1.0, Unlicense, CC0, Python 2.0 y Zlib.
-- **Fuentes tipográficas:** SIL OFL 1.1, la excepción que ya había aprobado el dueño (Fredoka, Figtree).
+- **Fuentes tipográficas:** SIL OFL 1.1, la excepción que ya había aprobado el dueño (hoy Urbanist; antes Fredoka y Figtree).
 - **Solo en herramientas que no se distribuyen** (build, pruebas, medición): MPL 2.0 (por ejemplo `lightningcss`, que trae Expo, y axe-core, que se usó para medir y no está en el repo) y CC BY 4.0 (`caniuse-lite`, datos de browserslist).
 - **Nunca:** GPL, AGPL, LGPL, SSPL ni licencias que prohíban el uso comercial. Una dual (como node-forge, BSD o GPL) se usa por su lado permisivo.
 - **Cómo se revisa:** `npx license-checker-rseidelsohn --production --summary` y, para lo que llega a la web, los source maps del build (`npx expo export -p web --source-maps`). En la auditoría 2, lo que llega a la web es MIT, BSD y 0BSD, más las fuentes OFL.
@@ -762,3 +764,14 @@ Con `signInWithOAuth`, Google vuelve primero a `<proyecto>.supabase.co/auth/v1/c
 - **Después de entrar, lo de siempre:** la sesión la guarda el mismo cliente, el perfil lo crea `handle_new_user` y los términos se aceptan con `aceptar_terminos` (AuthProvider), como quien entraba con Google antes. Google no lleva captcha: Supabase no lo pide para un token de identidad.
 - **Las vistas previas de Vercel usan el respaldo:** Google pide cada origen exacto en "Authorized JavaScript origins", sin comodines, y cada vista previa tiene su dirección. Por eso la variable va solo en Production.
 - **Riesgo:** si el origen del sitio no está autorizado en Google Cloud, el script carga y dibuja su botón, pero el botón no funciona (Google responde 403 dentro de su iframe) y la app no se entera, así que no cae al respaldo. El orden del cierre importa: primero el origen en Google Cloud, después la variable en Vercel.
+
+## 2026-10-25 · La tipografía pasa a Urbanist
+
+Fredoka, la de los títulos, se veía infantil para una app a la que alguien llega preocupado por su animal. La app pasa a una sola familia, Urbanist: moderna y amable sin ser empresarial. El dueño aprobó el cambio con capturas de la app real, con solo las fuentes cambiadas.
+- **Pesos:** títulos y negrita en Bold (700), seminegrita en SemiBold (600) y el texto corrido en Medium (500).
+- **El texto va en Medium, no en Regular:** la Regular de Urbanist es finita y en el celular se lee débil; la Medium tiene el peso visual que tenía Figtree 400.
+- **Un archivo menos:** títulos y negrita comparten `Urbanist_700Bold`, que se declara y se carga una sola vez. En web pasan de 4 archivos (170 724 B) a 3 (128 116 B), un 25 % menos, y siguen fuera de la carga inicial.
+- **Tamaños e interlineados, los mismos:** las capturas aprobadas los usan así, y el texto de 12 y 13 se lee bien con la Medium. No hizo falta subir ninguno.
+- **El logo no cambia:** la palabra "Spot" está dibujada en formas.
+- **Licencia:** SIL OFL 1.1, como Fredoka y Figtree, dentro de la excepción para fuentes tipográficas que ya había aprobado el dueño. El paquete `@expo-google-fonts/urbanist` es MIT.
+- **Las historias de Instagram** dibujan sus textos con las mismas familias de `FAMILIAS`: cambian solas.

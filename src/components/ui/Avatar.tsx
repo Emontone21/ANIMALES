@@ -17,7 +17,8 @@ type Props = {
 
 /**
  * Avatar circular en primarioSuave (7.6): la foto de perfil si hay, si no la
- * inicial del nombre en Fredoka, y sin nombre el ícono de persona.
+ * inicial del nombre en la fuente de los títulos (Urbanist Bold), y sin
+ * nombre el ícono de persona.
  */
 export function Avatar({ nombre, fotoPath, fotoUri, tamanio = 56 }: Props) {
   const { c } = useTema();

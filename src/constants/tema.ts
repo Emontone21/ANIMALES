@@ -246,12 +246,17 @@ export const AnchoMaximo = {
 
 // --- Tipografía --------------------------------------------------------------
 
-/** Familias cargadas en src/app/_layout.tsx con useFonts. */
+/**
+ * Urbanist, una sola familia (docs/DISENO.md, sección 3). Cada peso es su
+ * archivo: en nativo los carga useFuentes y en web los declara
+ * public/index.html. El texto corrido va en Medium (500): la Regular se lee
+ * débil en el celular. `titulo` y `negrita` son el mismo archivo.
+ */
 export const FAMILIAS = {
-  titulo: 'Fredoka_600SemiBold',
-  regular: 'Figtree_400Regular',
-  seminegrita: 'Figtree_600SemiBold',
-  negrita: 'Figtree_700Bold',
+  titulo: 'Urbanist_700Bold',
+  regular: 'Urbanist_500Medium',
+  seminegrita: 'Urbanist_600SemiBold',
+  negrita: 'Urbanist_700Bold',
 } as const;
 
 const PILA_WEB = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
@@ -268,8 +273,8 @@ function fuente(familia: string, peso: TextStyle['fontWeight']): TextStyle {
 }
 
 export const Fuentes = {
-  titulo: fuente(FAMILIAS.titulo, '600'),
-  regular: fuente(FAMILIAS.regular, '400'),
+  titulo: fuente(FAMILIAS.titulo, '700'),
+  regular: fuente(FAMILIAS.regular, '500'),
   seminegrita: fuente(FAMILIAS.seminegrita, '600'),
   negrita: fuente(FAMILIAS.negrita, '700'),
 } as const;
