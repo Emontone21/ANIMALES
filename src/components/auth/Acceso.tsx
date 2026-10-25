@@ -38,6 +38,18 @@ export function MarcaAcceso() {
   );
 }
 
+/** La línea con "o" entre el email y Google, en ingresar y registrarse. */
+export function SeparadorO() {
+  const estilos = useEstilos(crear);
+  return (
+    <View style={estilos.separador}>
+      <View style={estilos.linea} />
+      <Texto variante="pequeno">{t.auth.o}</Texto>
+      <View style={estilos.linea} />
+    </View>
+  );
+}
+
 /** Pregunta y enlace para pasar de ingresar a registrarse, o al revés. */
 export function CambiarAcceso({
   pregunta,
@@ -60,9 +72,11 @@ export function CambiarAcceso({
   );
 }
 
-const crear = crearEstilos(() => ({
+const crear = crearEstilos((c) => ({
   marca: { alignItems: 'center', gap: Espacio.s, marginBottom: Espacio.s },
   logo: { width: ANCHO_LOGO, aspectRatio: PROPORCION_LOGO },
   centrado: { textAlign: 'center' },
   cambiar: { alignItems: 'center', marginTop: Espacio.s },
+  separador: { flexDirection: 'row', alignItems: 'center', gap: Espacio.m },
+  linea: { flex: 1, height: 1, backgroundColor: c.borde },
 }));

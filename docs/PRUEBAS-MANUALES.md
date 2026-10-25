@@ -9,6 +9,7 @@ Recorrido de toda la app, paso a paso, para hacer en la web publicada (https://s
   - **[Captcha]** necesita el captcha configurado: la clave del sitio de Cloudflare Turnstile en Vercel (`EXPO_PUBLIC_TURNSTILE_SITE_KEY`) y la secreta en Supabase. Sin eso, ingresar y registrarse no muestran la comprobación.
   - **[Visión]** necesita el reconocimiento con IA configurado: la función `reconocer` desplegada y su dirección en `config_app.vision_url`. Sin eso, ese paso se simula con el SQL que está ahí mismo.
   - **[Push]** necesita las notificaciones del celular configuradas: la función `avisar` desplegada con sus claves VAPID, `config_app.avisar_url` y `avisar_secret`, y `EXPO_PUBLIC_VAPID_PUBLIC_KEY` en Vercel (pasos en `docs/reportes/2026-10-22-avisos-historias.md`). Sin eso, Perfil no muestra el interruptor y después de publicar no se pregunta.
+  - **[Google]** necesita el botón de Google configurado: `EXPO_PUBLIC_GOOGLE_CLIENT_ID` en Vercel (Production), el sitio en **Authorized JavaScript origins** del cliente de Google y ese client ID en **Client IDs** del proveedor de Google de Supabase (pasos en `docs/reportes/2026-10-25-google-boton.md`). Sin eso, Ingresar muestra el botón de respaldo, que pasa por Supabase.
 - **Si algo falla:** anotá el número del paso, el dispositivo y una captura. Los problemas que ya se conocen están al final.
 
 Tené a mano dos fotos parecidas de un mismo perro (o de dos perros parecidos) en cada celular.
@@ -743,6 +744,27 @@ Esperado:
 - **Vecina y familia:** el caso de siempre, con el mapa, el historial y "Cómo volvió".
 - Reabierto, sin cuenta se ve todo otra vez; reunido de nuevo, vuelve a lo básico.
 - En la base, una cuenta que no participó tampoco lee los avisos, el historial ni la descripción pidiendo las tablas: lo prueba `supabase/tests/privacidad_reunidos.sql`.
+
+## 34. Ingresar con Google: el botón de Google · 8 min · [Google]
+
+Cuentas: una cuenta de Google que todavía no entró a Spot (para los términos) y la familia. Sin sesión abierta. Para el paso 5, WhatsApp con un chat donde mandarte el link.
+
+1. Computadora, Chrome, con las herramientas de desarrollo abiertas (**Consola** y **Red**): abrí un caso desde su link y después **Perfil → Ingresar**.
+2. Tocá **Continuar con Google**, elegí la cuenta y aceptá.
+3. Volvé a la app: aceptá los términos y mirá **Perfil**. Cerrá la sesión y entrá de nuevo con Google en **Registrarse**.
+4. **Perfil → Apariencia → Oscuro** y abrí **Ingresar**.
+5. Celular: mandate por WhatsApp el link de **Ingresar** (`<sitio>/auth/ingresar`) y abrilo desde el chat, sin salir de WhatsApp. Tocá **Copiar el link**. Después ingresá ahí con el email y la contraseña de la familia. Repetí desde Instagram (un link en tu perfil o en un mensaje), si podés.
+6. Abrí el mismo link en Chrome (Android) o Safari (iPhone) e ingresá con Google.
+7. Computadora: bloqueá `accounts.google.com` (**Red → clic derecho en `client` → Block request domain**), recargá **Ingresar** y tocá **Continuar con Google**. Al terminar, sacá el bloqueo.
+
+Esperado:
+- **Carga:** al abrir el caso, la pestaña **Red** no pide nada de `accounts.google.com`; al abrir Ingresar, sí (`gsi/client`).
+- **El botón:** "Continuar con Google" en español, con el logo de Google, en forma de píldora y del ancho de los campos, debajo de "o". No salta la pantalla cuando aparece. En oscuro, el botón es negro.
+- **La ventana de Google** (la del navegador, en Chrome) dice que vas a entrar a Spot o al sitio (`spot-uy.vercel.app`), nunca a `…supabase.co`. La página no se va a otra dirección: después de elegir la cuenta, la pantalla de Ingresar se cierra sola con la sesión abierta, y la URL no tiene `?code=` ni `#access_token`.
+- **La primera vez,** pide aceptar los términos como siempre; después, **Perfil** muestra el nombre de la cuenta de Google. Desde **Registrarse** entra igual.
+- **En WhatsApp e Instagram:** en vez del botón, "Para entrar con Google, abrí este link en Chrome o Safari: Google no deja hacerlo desde el navegador de WhatsApp…" con el link y **Copiar el link** ("Listo, copiamos el link."). El email y la contraseña andan igual. En Chrome o Safari, el botón de Google aparece y entra.
+- **Con Google bloqueado:** enseguida aparece el botón de siempre ("Continuar con Google", con el ícono de Google) y lleva a la pantalla de Google, que ahí sí muestra la dirección de Supabase y vuelve con la sesión abierta.
+- **Consola:** ningún `[Report Only] Refused to…` de `accounts.google.com` ni un error de Google (`[GSI_LOGGER]`). Si aparece "The given origin is not allowed for the given client ID", falta el sitio en los orígenes autorizados.
 
 - [ ] Android · Chrome
 - [ ] iPhone · Safari

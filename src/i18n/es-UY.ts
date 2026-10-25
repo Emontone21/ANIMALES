@@ -925,6 +925,15 @@ export const t = {
     nombrePlaceholder: 'Cómo te van a ver los demás',
     nombreAyuda: 'No mostramos tu email ni tu teléfono a nadie.',
     conGoogle: 'Continuar con Google',
+    /**
+     * El botón de Google en Ingresar y Registrarse (web). El botón lo dibuja
+     * Google, con su texto ("Continuar con Google", en español).
+     */
+    google: {
+      /** En el navegador de WhatsApp, Instagram o Facebook, Google no deja ingresar. */
+      navegadorInterno: (app: string) =>
+        `Para entrar con Google, abrí este link en Chrome o Safari: Google no deja hacerlo desde el navegador de ${app}. Con email y contraseña podés seguir acá.`,
+    },
     olvidaste: '¿Olvidaste tu contraseña?',
     aceptoTerminos: 'Leí y acepto los términos de uso y la política de privacidad.',
     recuperar: {

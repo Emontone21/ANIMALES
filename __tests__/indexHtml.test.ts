@@ -240,6 +240,15 @@ describe('encabezados de seguridad', () => {
     expect(directiva('frame-src')).toContain('https://challenges.cloudflare.com');
   });
 
+  test('la CSP deja usar el botón de Google: el script, su estilo, el iframe y las conexiones', () => {
+    expect(directiva('script-src')).toContain('https://accounts.google.com/gsi/client');
+    expect(directiva('style-src')).toContain('https://accounts.google.com/gsi/style');
+    expect(directiva('frame-src')).toContain('https://accounts.google.com/gsi/');
+    expect(directiva('connect-src')).toContain('https://accounts.google.com/gsi/');
+    // Solo lo de Google Identity Services, no todo accounts.google.com.
+    expect(csp).not.toMatch(/https:\/\/accounts\.google\.com(?!\/gsi\/)/);
+  });
+
   test('los que ya se aplican', () => {
     expect(valor('X-Frame-Options')).toBe('DENY');
     expect(valor('X-Content-Type-Options')).toBe('nosniff');

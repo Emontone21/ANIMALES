@@ -653,6 +653,13 @@ Contenido centrado, de 420 de ancho como máximo:
 - el botón primario;
 - un enlace `fantasma` para cambiar entre ingresar y registrarse.
 
+Debajo del botón primario (en Ingresar, debajo de "¿Olvidaste tu contraseña?"), una línea de 1 en `borde` a cada lado de "o" en `pequeno`, y Google:
+
+- **El botón de Google** (web, con el ID de cliente): el oficial de Google Identity Services, que dibuja Google con su logo, su tipografía y "Continuar con Google" en español. Píldora, grande (40 de alto), centrado y del ancho de la columna (entre 200 y 400, lo que acepta Google). Con el esquema claro, el de borde (`outline`); con el oscuro, el negro (`filled_black`). No se le cambian colores ni texto: Google pide usarlo así. Ocupa sus 40 de alto desde que se abre la pantalla, para que nada salte cuando aparece. Mientras se ingresa (con email o con Google) queda a media opacidad y no se toca, con el indicador de carga en `primario` encima.
+- **El botón de respaldo,** si el script de Google no carga o falla, sin el ID de cliente y en la app nativa: el botón `secundario` "Continuar con Google" con el ícono `logo-google`, como antes.
+- **En el navegador de WhatsApp, Instagram o Facebook,** ni uno ni otro: un mensaje informativo ("Para entrar con Google, abrí este link en Chrome o Safari…"), el link de la pantalla en `cuerpoFuerte`, centrado y seleccionable, y el botón `secundario` "Copiar el link" (`copy-outline`), con el resultado en un mensaje debajo.
+- Un error al entrar con Google, en un mensaje de error arriba del botón.
+
 ### 7.8 Moderación y página no encontrada
 
 - **Moderación:** arriba, chips "Denuncias", "Errores" y "Reconocimiento" (activo en `inverso`). El aviso de un error nuevo abre "Errores".

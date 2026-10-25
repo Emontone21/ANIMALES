@@ -56,6 +56,12 @@ export const ENV = {
    * solo en la función. Sin ella, la app no ofrece notificaciones.
    */
   vapidPublicKey: process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY?.trim() || null,
+  /**
+   * El ID de cliente web de Google (público): el botón de Google Identity
+   * Services en Ingresar y Registrarse. Sin él, el botón de siempre
+   * (signInWithOAuth).
+   */
+  googleClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID?.trim() || null,
   /** Sitio publicado: base de los links que se comparten (<sitio>/animal/<id>). */
   siteUrl: (process.env.EXPO_PUBLIC_SITE_URL?.trim() || 'https://spot-uy.vercel.app').replace(
     /\/+$/,
