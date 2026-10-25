@@ -64,7 +64,7 @@ cp .env.example .env
 ```
 
 Completá `EXPO_PUBLIC_SUPABASE_URL` y `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (o, de respaldo, `EXPO_PUBLIC_SUPABASE_ANON_KEY`; si están las dos, se usa la publishable). En Vercel van en **Settings → Environment Variables**. Opcionales:
-- `EXPO_PUBLIC_SITE_URL`: la base de los links que se comparten (`<sitio>/animal/<id>`); si falta, `https://animales-blue.vercel.app`.
+- `EXPO_PUBLIC_SITE_URL`: la base de los links que se comparten (`<sitio>/animal/<id>`); si falta, `https://spot-uy.vercel.app`.
 - `EXPO_PUBLIC_TURNSTILE_SITE_KEY`: la clave del sitio de Cloudflare Turnstile; sin ella no hay captcha.
 - `EXPO_PUBLIC_VAPID_PUBLIC_KEY`: la clave VAPID pública de las notificaciones en el celular (paso 6); sin ella la app no las ofrece.
 
@@ -206,7 +206,7 @@ Conviene tener dos cuentas: la que publica y otra.
 2. **Editar:** en tu reporte, **Más opciones → Editar el reporte**. Cambiá el color, el tamaño o la descripción (en un perdido, también el nombre y el contacto) y tocá **Guardar cambios**: volvés al detalle con los datos nuevos. La foto, la ubicación y el tipo no se editan. Con la otra cuenta, **Más opciones** no muestra Editar ni Borrar. Si cambiás la especie, las coincidencias pendientes desaparecen y las fotos vuelven a la cola de reconocimiento.
 3. **Borrar:** **Más opciones → Borrar el reporte**. La confirmación dice qué se pierde, con la cantidad de avisos de otras personas. Al confirmar volvés al mapa y el caso ya no está; en Storage desaparecieron tus fotos del caso con sus miniaturas (las de otras personas quedan).
 4. **Compartir:** en el celular, el botón de compartir del detalle abre la hoja del sistema con un texto como "Se perdió Toby, perro marrón. Si lo viste, avisá acá: <link>". En una computadora sin hoja de compartir aparecen **Mandar por WhatsApp** y **Copiar el link**.
-5. **Vista previa del link:** pegá el link de un caso en WhatsApp o Telegram, o en el [depurador de Facebook](https://developers.facebook.com/tools/debug/): aparecen el título ("Se perdió Toby", "Perro encontrado"), una descripción corta y la miniatura. Un caso oculto o inexistente muestra la vista previa genérica. Desde una terminal: `curl -s -A "facebookexternalhit/1.1" https://animales-blue.vercel.app/animal/<id> | grep 'og:'`. Abierto en el navegador, el link muestra la app de siempre.
+5. **Vista previa del link:** pegá el link de un caso en WhatsApp o Telegram, o en el [depurador de Facebook](https://developers.facebook.com/tools/debug/): aparecen el título ("Se perdió Toby", "Perro encontrado"), una descripción corta y la miniatura. Un caso oculto o inexistente muestra la vista previa genérica. Desde una terminal: `curl -s -A "facebookexternalhit/1.1" https://spot-uy.vercel.app/animal/<id> | grep 'og:'`. Abierto en el navegador, el link muestra la app de siempre.
 6. **Ver lista:** en el celular, en la hoja **Cerca tuyo**, **Ver lista** abre todos los casos con los filtros del mapa, del más cercano al más lejano, con miniatura, etiqueta y distancia. Si cambiás un filtro ahí, el mapa también cambia.
 
 Editar y borrar, probados directo en la base: `supabase/tests/fase8_casos.sql`.

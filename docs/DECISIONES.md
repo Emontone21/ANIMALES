@@ -200,7 +200,7 @@ Se descartó una capa de símbolos con la foto como ícono: en web obliga a reco
 
 ## 2026-10-19 · Compartir: la hoja del sistema y, si no hay, WhatsApp y copiar
 
-El botón Compartir del detalle usa `navigator.share` en web y `Share` en nativo. En web el link va aparte del texto y la app elegida lo pone después; en nativo va dentro del mensaje, porque Android ignora el campo `url` y en iOS, con los dos, sale repetido. Si no hay hoja de compartir (la mayoría de las computadoras), o falla por otra cosa que no sea que la persona la cerró, aparece una hoja con "Mandar por WhatsApp" (`https://wa.me/?text=`) y "Copiar el link", con el link a la vista por si copiar no funciona. El texto depende del tipo y del estado y sale de `t.compartir`. Un caso oculto por moderación no muestra el botón. El link usa `EXPO_PUBLIC_SITE_URL`, con `https://animales-blue.vercel.app` por defecto: los links compartidos desde una preview también llevan a producción.
+El botón Compartir del detalle usa `navigator.share` en web y `Share` en nativo. En web el link va aparte del texto y la app elegida lo pone después; en nativo va dentro del mensaje, porque Android ignora el campo `url` y en iOS, con los dos, sale repetido. Si no hay hoja de compartir (la mayoría de las computadoras), o falla por otra cosa que no sea que la persona la cerró, aparece una hoja con "Mandar por WhatsApp" (`https://wa.me/?text=`) y "Copiar el link", con el link a la vista por si copiar no funciona. El texto depende del tipo y del estado y sale de `t.compartir`. Un caso oculto por moderación no muestra el botón. El link usa `EXPO_PUBLIC_SITE_URL`, con `https://spot-uy.vercel.app` por defecto: los links compartidos desde una preview también llevan a producción.
 
 ## 2026-10-19 · Vista previa del link: primera pieza de servidor propia, solo para bots
 
@@ -645,7 +645,7 @@ Las plantillas de confirmar la cuenta, recuperar la contraseña y cambiar el ema
 - **Google sigue con PKCE:** siempre vuelve al mismo navegador.
 - **El link viejo sigue andando** en el navegador que lo pidió (`?code=`), para los mails que salieron antes de cargar las plantillas nuevas. También muestra la cuenta y "No es mi cuenta".
 - **Orden del cierre:** primero el deploy de la app que entiende `/auth/confirmar`, después las plantillas. Al revés, los links nuevos llevarían a una ruta que no existe.
-- **`{{ .SiteURL }}`** es la URL de configuración de Auth en Supabase, sin barra al final. En producción, `https://animales-blue.vercel.app`; en el proyecto de pruebas, la URL donde se pruebe la app.
+- **`{{ .SiteURL }}`** es la URL de configuración de Auth en Supabase, sin barra al final. En producción, `https://spot-uy.vercel.app`; en el proyecto de pruebas, la URL donde se pruebe la app.
 
 ## 2026-10-21 · Encabezados de seguridad, con la CSP primero en modo reporte
 
@@ -740,4 +740,11 @@ Cuando el animal volvió, el mapa, la zona donde se perdió, los avisos, el hist
 - **Reabrir lo vuelve público** sin hacer nada: la regla mira el estado de ahora. Volver a reunirlo lo vuelve a cerrar.
 - **Reportes unidos:** valen lo que el caso principal. Si el principal está reunido, su reporte unido muestra lo mismo que el principal (lo básico o todo) y la app sigue redirigiendo al principal; participar en cualquier reporte del árbol cuenta para todo el caso. Una coincidencia que quedó pendiente con un caso que después se reunió deja de verla quien no participó en él (ya no se crean coincidencias con casos cerrados).
 - **Se descartó** poner la regla solo en la pantalla (cualquiera puede pedir las tablas con la clave pública) y bloquear las conversaciones nuevas con la familia de un caso reunido (no da datos del caso; queda anotado como posible ajuste).
+
+## 2026-10-25 · El sitio pasa a spot-uy.vercel.app; la dirección vieja redirige para siempre
+
+El sitio publicado pasa de `https://animales-blue.vercel.app` a `https://spot-uy.vercel.app`. Es la base de los links que se comparten (`EXPO_PUBLIC_SITE_URL`, con la nueva por defecto en `src/lib/env.ts`), la Site URL de Supabase Auth (a donde llevan los links de los mails) y el contacto de la función `avisar` cuando no hay `VAPID_SUBJECT`. Decisiones:
+- **`animales-blue.vercel.app` tiene que seguir redirigiendo a `spot-uy.vercel.app` para siempre, conservando la ruta y los parámetros.** Hay links ya compartidos por WhatsApp e Instagram (`/animal/<id>`, `/reencuentros/<id>`) y mails que ya salieron (`/auth/confirmar?token_hash=…`). Sin la redirección, esos links quedan rotos. Además, un subdominio de `vercel.app` que se libera lo puede tomar otra cuenta, y los links viejos llevarían a su sitio. Por eso no se borra ese dominio del proyecto de Vercel.
+- **Los reportes viejos (`docs/reportes/`) siguen con la dirección vieja:** son el registro de lo que se hizo en su momento.
+- **Lo que depende del origen no viaja con la redirección.** La sesión, la app instalada y el permiso de notificaciones son de cada dirección. Quien usaba la vieja vuelve a ingresar, a instalar y a activar las notificaciones en la nueva.
 

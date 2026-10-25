@@ -1,6 +1,6 @@
 # Pruebas manuales
 
-Recorrido de toda la app, paso a paso, para hacer en la web publicada (https://animales-blue.vercel.app). Lleva unos 100 minutos en un dispositivo; en los otros dos se repite marcando la casilla de cada uno.
+Recorrido de toda la app, paso a paso, para hacer en la web publicada (https://spot-uy.vercel.app). Lleva unos 100 minutos en un dispositivo; en los otros dos se repite marcando la casilla de cada uno.
 
 - **Dispositivos:** Android con Chrome, iPhone con Safari y una computadora (cualquier navegador). Cada flujo tiene una casilla por dispositivo.
 - **Cuentas:** dos, que en esta lista se llaman **familia** (publica un perro perdido) y **vecina** (lo encuentra y lo ve). Para probar de a una persona: familia en el celular y vecina en la computadora, o una en una ventana privada.
@@ -624,7 +624,7 @@ Esperado:
 - **Google:** queda la sesión abierta y la URL sin `?code=`.
 - **Link con tokens:** no abre ninguna sesión (Perfil muestra Ingresar).
 - **Desde el menú:** Editar abre el formulario (no solo cambia la URL) y Borrar vuelve al mapa sin el caso.
-- **Confirmación en otro navegador:** el link empieza con `https://animales-blue.vercel.app/auth/confirmar?token_hash=`. Dice "Tu cuenta está confirmada", y ese navegador queda sin sesión hasta que ingresás con la contraseña.
+- **Confirmación en otro navegador:** el link empieza con `https://spot-uy.vercel.app/auth/confirmar?token_hash=`. Dice "Tu cuenta está confirmada", y ese navegador queda sin sesión hasta que ingresás con la contraseña.
 
 - [ ] Computadora · Chrome
 - [ ] Android · Chrome

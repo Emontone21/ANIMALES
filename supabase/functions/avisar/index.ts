@@ -16,7 +16,7 @@ const supabaseUrl = (Deno.env.get('SUPABASE_URL') ?? '').replace(/\/+$/, '');
 const publica = (Deno.env.get('VAPID_PUBLIC_KEY') ?? '').trim();
 const privada = (Deno.env.get('VAPID_PRIVATE_KEY') ?? '').trim();
 // El sitio de la app: el servicio de push sabe de quién es el envío.
-const contacto = (Deno.env.get('VAPID_SUBJECT') ?? '').trim() || 'https://animales-blue.vercel.app';
+const contacto = (Deno.env.get('VAPID_SUBJECT') ?? '').trim() || 'https://spot-uy.vercel.app';
 
 // Con claves que no son un par, la función contesta 503 y no manda nada.
 const claves = publica && privada ? await importarClaves(publica, privada).catch(() => null) : null;

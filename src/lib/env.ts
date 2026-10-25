@@ -57,7 +57,7 @@ export const ENV = {
    */
   vapidPublicKey: process.env.EXPO_PUBLIC_VAPID_PUBLIC_KEY?.trim() || null,
   /** Sitio publicado: base de los links que se comparten (<sitio>/animal/<id>). */
-  siteUrl: (process.env.EXPO_PUBLIC_SITE_URL?.trim() || 'https://animales-blue.vercel.app').replace(
+  siteUrl: (process.env.EXPO_PUBLIC_SITE_URL?.trim() || 'https://spot-uy.vercel.app').replace(
     /\/+$/,
     '',
   ),

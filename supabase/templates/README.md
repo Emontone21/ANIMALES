@@ -12,7 +12,7 @@ Estos archivos son la fuente de verdad de los mails que manda Supabase Auth con 
 - **El asunto** está en el `<title>` de cada archivo y en `supabase/config.toml` (`[auth.email.template.*]`). `__tests__/marca.test.ts` comprueba que sean iguales.
 - **El formato** sirve para Gmail y el celular: tablas, estilos en línea y nada externo (ni imágenes ni fuentes). Los colores son de la paleta clara de `src/constants/tema.ts`, y la prueba también lo comprueba.
 - **El link:** `{{ .SiteURL }}/auth/confirmar?token_hash={{ .TokenHash }}&amp;type=…` (`signup`, `recovery` o `email_change`), que la app canjea con `verifyOtp` (`src/features/auth/linkDeMail.ts`). Sirve en cualquier navegador, una sola vez, y vence en una hora (`mailer_otp_exp`). No uses `{{ .ConfirmationURL }}`: pasa por Supabase y vuelve con un `?code=` que solo sirve en el navegador que pidió el mail (PKCE). `__tests__/marca.test.ts` comprueba la ruta y el `type` de cada plantilla.
-- **`{{ .SiteURL }}`** es **Authentication → URL Configuration → Site URL**, sin barra al final. En producción, `https://animales-blue.vercel.app`. En el proyecto de pruebas, la URL donde se pruebe la app.
+- **`{{ .SiteURL }}`** es **Authentication → URL Configuration → Site URL**, sin barra al final. En producción, `https://spot-uy.vercel.app`. En el proyecto de pruebas, la URL donde se pruebe la app.
 - **Otras variables:** en el cambio de email, `{{ .Email }}` y `{{ .NewEmail }}`. Cada una de las dos direcciones recibe su propio `{{ .TokenHash }}`.
 - **Sin el nombre público:** los mails no dicen el nombre que la persona puso al registrarse. Cualquiera puede crear una cuenta con el email de otro y un "nombre" con un link, y así lo mandaríamos nosotros.
 
