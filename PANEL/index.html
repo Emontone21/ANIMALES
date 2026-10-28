@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es-UY">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="color-scheme" content="light dark" />
+    <!-- El título y el aviso sin JavaScript dicen lo mismo que i18n/es-UY.js (lo comprueba herramientas/verificar.mjs). -->
+    <title>Panel de SPOT</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link
+      rel="preload"
+      href="fuentes/IBMPlexSans-Regular-Latin1.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="estilos.css" />
+    <!-- supabase-js 2.117.3 (MIT), solo para el ingreso y la sesión. Versión fija con hash: ver DISEÑO.md, "Seguridad". -->
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"
+      integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script type="module" src="js/app.js"></script>
+  </head>
+  <body>
+    <!-- Íconos de trazo (24 × 24). Los usa js/componentes.js con <use>. -->
+    <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" hidden>
+      <symbol id="i-huella" viewBox="0 0 24 24">
+        <path
+          fill="currentColor"
+          stroke="none"
+          d="M12 12.2c-2.9 0-5.6 2.7-5.6 5.3 0 1.7 1.2 2.8 2.8 2.8 1.2 0 1.8-.6 2.8-.6s1.6.6 2.8.6c1.6 0 2.8-1.1 2.8-2.8 0-2.6-2.7-5.3-5.6-5.3z"
+        />
+        <ellipse fill="currentColor" stroke="none" cx="5.6" cy="10.6" rx="1.9" ry="2.4" transform="rotate(-24 5.6 10.6)" />
+        <ellipse fill="currentColor" stroke="none" cx="9.4" cy="6.4" rx="2" ry="2.6" transform="rotate(-8 9.4 6.4)" />
+        <ellipse fill="currentColor" stroke="none" cx="14.6" cy="6.4" rx="2" ry="2.6" transform="rotate(8 14.6 6.4)" />
+        <ellipse fill="currentColor" stroke="none" cx="18.4" cy="10.6" rx="1.9" ry="2.4" transform="rotate(24 18.4 10.6)" />
+      </symbol>
+      <symbol id="i-ok" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M8 12.4l2.7 2.7L16 9.6" />
+      </symbol>
+      <symbol id="i-atencion" viewBox="0 0 24 24">
+        <path d="M12 3.6 2.6 19.8h18.8z" />
+        <path d="M12 10v4.4" />
+        <path d="M12 17.3v.1" />
+      </symbol>
+      <symbol id="i-falla" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M9.2 9.2l5.6 5.6M14.8 9.2l-5.6 5.6" />
+      </symbol>
+      <symbol id="i-pendiente" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7.5V12l3 2" />
+      </symbol>
+      <symbol id="i-sinConfigurar" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M8 12h8" />
+      </symbol>
+      <symbol id="i-actualizar" viewBox="0 0 24 24">
+        <path d="M20 11a8 8 0 0 0-14.4-4.6L4 8" />
+        <path d="M4 4v4h4" />
+        <path d="M4 13a8 8 0 0 0 14.4 4.6L20 16" />
+        <path d="M20 20v-4h-4" />
+      </symbol>
+      <symbol id="i-salir" viewBox="0 0 24 24">
+        <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3" />
+        <path d="M10 17l-5-5 5-5" />
+        <path d="M5 12h11" />
+      </symbol>
+      <symbol id="i-externo" viewBox="0 0 24 24">
+        <path d="M14 4h6v6" />
+        <path d="M20 4l-9 9" />
+        <path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4" />
+      </symbol>
+      <symbol id="i-flecha" viewBox="0 0 24 24">
+        <path d="M9 6l6 6-6 6" />
+      </symbol>
+    </svg>
+    <noscript>
+      <p class="centrada">El panel necesita JavaScript. Activalo y recargá la página.</p>
+    </noscript>
+    <div id="raiz"></div>
+  </body>
+</html>

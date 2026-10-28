@@ -1,0 +1,10 @@
+# Lo que no se publica en el proyecto del panel (Root Directory PANEL):
+# documentación, propuestas, pruebas y herramientas. La página, js/, i18n/,
+# fuentes/ (con su licencia) y api/ sí van.
+/*.md
+.env.example
+.gitignore
+docs/
+propuestas/
+pruebas/
+herramientas/

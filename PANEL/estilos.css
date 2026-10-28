@@ -1,0 +1,939 @@
+/*
+ * Panel de SPOT · estilos.
+ * Los valores salen de DISEÑO.md, "Diseño visual". Todo color es una variable
+ * de :root: no escribas colores en otro lado (única excepción, favicon.svg).
+ */
+
+/* ---------------------------------------------------------------------------
+ * Fuentes: IBM Plex (SIL OFL 1.1, ver fuentes/LICENSE.txt y fuentes/ORIGEN.md)
+ * ------------------------------------------------------------------------- */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fuentes/IBMPlexSans-Regular-Latin1.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('fuentes/IBMPlexSans-Medium-Latin1.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fuentes/IBMPlexSans-SemiBold-Latin1.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fuentes/IBMPlexSans-Bold-Latin1.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fuentes/IBMPlexMono-Regular-Latin1.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('fuentes/IBMPlexMono-Medium-Latin1.woff2') format('woff2');
+}
+
+/* ---------------------------------------------------------------------------
+ * Colores: modo claro por defecto, oscuro según el sistema
+ * ------------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+
+  --fondo: #F3F4F1;
+  --superficie: #FFFFFF;
+  --borde-tarjeta: #DADDD6;
+  --borde-boton: #C9CEC6;
+  --separador: #E4E7E1;
+  --borde-punteado: #B9BFB6;
+  --texto: #17201B;
+  --texto-secundario: #4F5A54;
+  --acento: #0B5D57;
+  --acento-hover: #08443F;
+  --texto-sobre-acento: #FFFFFF;
+  --menu-activo: #E2EDEB;
+  --barra-suave: #BFD9D5;
+  --barra-pista: #E4E7E1;
+
+  --ok-texto: #1D6B43;
+  --ok-fondo: #E6F2EA;
+  --atencion-texto: #8A4B00;
+  --atencion-fondo: #FDF0DC;
+  --falla-texto: #A4161A;
+  --falla-fondo: #FBE7E6;
+  --pendiente-texto: #1F4E8C;
+  --pendiente-fondo: #E7EEF8;
+  --sin-configurar-texto: #4F5A54;
+  --sin-configurar-fondo: #ECEEEA;
+
+  --fuente: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fuente-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --radio-tarjeta: 12px;
+  --radio-control: 8px;
+  --radio-pastilla: 999px;
+  --relleno-tarjeta: 20px;
+  --separacion-tarjetas: 16px;
+  --separacion-secciones: 40px;
+  --margen-pagina: 32px;
+  --ancho-maximo: 1360px;
+  --ancho-menu: 220px;
+  --alto-tocable: 44px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --fondo: #101513;
+    --superficie: #18201C;
+    --borde-tarjeta: #2A3530;
+    --borde-boton: #3A4842;
+    --separador: #2A3530;
+    --borde-punteado: #3A4842;
+    --texto: #E8EDE9;
+    --texto-secundario: #A3AFA8;
+    --acento: #5CC8B8;
+    --acento-hover: #8FDCD0;
+    --texto-sobre-acento: #0D1A17;
+    --menu-activo: #1F3A36;
+    --barra-suave: #2F4A45;
+    --barra-pista: #2A3530;
+
+    --ok-texto: #7FD4A4;
+    --ok-fondo: #173225;
+    --atencion-texto: #F3B566;
+    --atencion-fondo: #3A2A12;
+    --falla-texto: #F4908C;
+    --falla-fondo: #3D1A19;
+    --pendiente-texto: #8DB8F2;
+    --pendiente-fondo: #18263B;
+    --sin-configurar-texto: #A3AFA8;
+    --sin-configurar-fondo: #232C28;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Base
+ * ------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: var(--fuente);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+h3 {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+code,
+.mono {
+  font-family: var(--fuente-mono);
+  font-size: 0.93em;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+a {
+  color: var(--acento);
+}
+
+a:hover {
+  color: var(--acento-hover);
+}
+
+:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.solo-lectores {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.saltar {
+  position: absolute;
+  left: 16px;
+  top: -100px;
+  z-index: 10;
+}
+
+.saltar:focus {
+  top: 12px;
+}
+
+.secundario {
+  color: var(--texto-secundario);
+  font-size: 14px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Íconos (de trazo; la huella de la marca es rellena)
+ * ------------------------------------------------------------------------- */
+.icono {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---------------------------------------------------------------------------
+ * Marca
+ * ------------------------------------------------------------------------- */
+.marca {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.marca__simbolo {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--acento);
+  color: var(--texto-sobre-acento);
+}
+
+.marca__simbolo .icono {
+  width: 26px;
+  height: 26px;
+}
+
+.marca__textos {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.marca__nombre {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+.marca__subtitulo {
+  color: var(--texto-secundario);
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.marca--grande .marca__simbolo {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+}
+
+.marca--grande .marca__simbolo .icono {
+  width: 36px;
+  height: 36px;
+}
+
+.marca--grande .marca__nombre {
+  font-size: 20px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Botones y links "Abrir en…"
+ * ------------------------------------------------------------------------- */
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--alto-tocable);
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--radio-control);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.boton--primario {
+  background: var(--acento);
+  color: var(--texto-sobre-acento);
+}
+
+.boton--primario:hover {
+  background: var(--acento-hover);
+  color: var(--texto-sobre-acento);
+}
+
+.boton--secundario {
+  background: var(--superficie);
+  border-color: var(--borde-boton);
+  color: var(--texto);
+}
+
+.boton--secundario:hover {
+  border-color: var(--acento);
+  color: var(--acento);
+}
+
+.boton--ancho {
+  width: 100%;
+}
+
+.boton[disabled],
+.boton[aria-busy='true'] {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.boton--primario[disabled]:hover,
+.boton--primario[aria-busy='true']:hover {
+  background: var(--acento);
+}
+
+.boton .icono {
+  width: 18px;
+  height: 18px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Pastillas de estado: color, ícono y texto, siempre juntos
+ * ------------------------------------------------------------------------- */
+.pastilla {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: var(--radio-pastilla);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.pastilla .icono {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.5;
+}
+
+.pastilla--ok {
+  background: var(--ok-fondo);
+  color: var(--ok-texto);
+}
+
+.pastilla--atencion {
+  background: var(--atencion-fondo);
+  color: var(--atencion-texto);
+}
+
+.pastilla--falla {
+  background: var(--falla-fondo);
+  color: var(--falla-texto);
+}
+
+.pastilla--pendiente {
+  background: var(--pendiente-fondo);
+  color: var(--pendiente-texto);
+}
+
+.pastilla--sinConfigurar {
+  background: var(--sin-configurar-fondo);
+  color: var(--sin-configurar-texto);
+}
+
+/* ---------------------------------------------------------------------------
+ * Mensajes (errores del ingreso, avisos de configuración)
+ * ------------------------------------------------------------------------- */
+.mensaje {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radio-control);
+  font-size: 14px;
+}
+
+.mensaje .icono {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+}
+
+.mensaje__cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.mensaje--falla {
+  background: var(--falla-fondo);
+  color: var(--falla-texto);
+}
+
+.mensaje--atencion {
+  background: var(--atencion-fondo);
+  color: var(--atencion-texto);
+}
+
+.mensaje--info {
+  background: var(--pendiente-fondo);
+  color: var(--pendiente-texto);
+}
+
+/* ---------------------------------------------------------------------------
+ * Pantallas centradas: cargando, ingreso, acceso denegado, error
+ * ------------------------------------------------------------------------- */
+.centrada {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 32px 16px;
+}
+
+.centrada__columna {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.centrada__titulos {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.centrada .marca {
+  justify-content: center;
+}
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.campo label {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* 16 px y no 15: con menos, el iPhone agranda la pantalla al tocar el campo. */
+.campo input {
+  min-height: var(--alto-tocable);
+  padding: 8px 12px;
+  border: 1px solid var(--borde-boton);
+  border-radius: var(--radio-control);
+  background: var(--superficie);
+  color: var(--texto);
+  font-family: inherit;
+  font-size: 16px;
+}
+
+.campo input:focus-visible {
+  border-color: var(--acento);
+}
+
+.nota {
+  color: var(--texto-secundario);
+  font-size: 14px;
+  text-align: center;
+}
+
+/* ---------------------------------------------------------------------------
+ * Inicio: cabecera, menú y contenido
+ * ------------------------------------------------------------------------- */
+.cabecera {
+  background: var(--superficie);
+  border-bottom: 1px solid var(--borde-tarjeta);
+}
+
+.cabecera__interior {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: var(--ancho-maximo);
+  margin: 0 auto;
+  padding: 12px var(--margen-pagina);
+}
+
+.cabecera__acciones {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.actualizado {
+  color: var(--texto-secundario);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.actualizado--celular {
+  display: none;
+}
+
+.cuerpo {
+  display: grid;
+  grid-template-columns: var(--ancho-menu) minmax(0, 1fr);
+  gap: 32px;
+  max-width: var(--ancho-maximo);
+  margin: 0 auto;
+  padding: var(--margen-pagina);
+}
+
+.menu {
+  position: sticky;
+  top: 24px;
+  align-self: start;
+}
+
+.menu ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.menu a {
+  display: flex;
+  align-items: center;
+  min-height: var(--alto-tocable);
+  padding: 0 12px;
+  border-radius: var(--radio-control);
+  color: var(--texto);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.menu a:hover {
+  color: var(--acento);
+}
+
+.menu a[aria-current='page'] {
+  background: var(--menu-activo);
+  color: var(--acento);
+  font-weight: 600;
+}
+
+.contenido {
+  min-width: 0;
+}
+
+.contenido:focus {
+  outline: none;
+}
+
+.titulo-pagina {
+  margin-bottom: 24px;
+}
+
+.titulo-pagina:focus {
+  outline: none;
+}
+
+.seccion + .seccion {
+  margin-top: var(--separacion-secciones);
+}
+
+.seccion__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin-bottom: 16px;
+}
+
+.seccion__bajada {
+  color: var(--texto-secundario);
+  font-size: 14px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Listas: avisos, configuración del panel y tokens
+ * ------------------------------------------------------------------------- */
+.lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--superficie);
+  border: 1px solid var(--borde-tarjeta);
+  border-radius: var(--radio-tarjeta);
+}
+
+.lista--pendiente {
+  border-style: dashed;
+  border-color: var(--borde-punteado);
+}
+
+.lista__fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  padding: 16px var(--relleno-tarjeta);
+}
+
+.lista__fila > .lista__textos {
+  flex: 1 1 260px;
+}
+
+.lista__fila + .lista__fila {
+  border-top: 1px solid var(--separador);
+}
+
+.lista__textos {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.lista__titulo {
+  font-weight: 600;
+}
+
+.lista__detalle {
+  color: var(--texto-secundario);
+  font-size: 14px;
+}
+
+.lista__fila > .pastilla,
+.lista__fila > .boton {
+  flex: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * Tarjetas
+ * ------------------------------------------------------------------------- */
+.grilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--separacion-tarjetas);
+}
+
+.grilla--servicios {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: var(--relleno-tarjeta);
+  background: var(--superficie);
+  border: 1px solid var(--borde-tarjeta);
+  border-radius: var(--radio-tarjeta);
+}
+
+.tarjeta--pendiente {
+  border-style: dashed;
+  border-color: var(--borde-punteado);
+}
+
+.tarjeta__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.tarjeta__descripcion {
+  color: var(--texto-secundario);
+  font-size: 14px;
+}
+
+.tarjeta__falta {
+  font-size: 14px;
+}
+
+.tarjeta__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+}
+
+/* Componentes para cuando haya datos (prompt "Datos internos" y siguientes). */
+.numero {
+  font-size: 36px;
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.barras {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 40px;
+}
+
+.barras__barra {
+  flex: 1;
+  min-height: 2px;
+  border-radius: 3px 3px 0 0;
+  background: var(--barra-suave);
+}
+
+.barras__barra--hoy {
+  background: var(--acento);
+}
+
+.uso {
+  height: 8px;
+  overflow: hidden;
+  border-radius: var(--radio-pastilla);
+  background: var(--barra-pista);
+}
+
+.uso__relleno {
+  height: 100%;
+  border-radius: var(--radio-pastilla);
+  background: var(--acento);
+}
+
+/* ---------------------------------------------------------------------------
+ * Filas tocables (Infraestructura y Redes en el celular)
+ * ------------------------------------------------------------------------- */
+.filas {
+  display: none;
+}
+
+.fila + .fila {
+  border-top: 1px solid var(--separador);
+}
+
+.fila__boton {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 12px 14px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fila__boton:focus-visible {
+  outline-offset: -2px;
+}
+
+.fila__flecha {
+  transition: transform 0.15s ease;
+}
+
+.fila__boton[aria-expanded='true'] .fila__flecha {
+  transform: rotate(90deg);
+}
+
+.fila__contenido {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 14px 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fila__flecha {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Celular
+ * ------------------------------------------------------------------------- */
+@media (max-width: 760px) {
+  :root {
+    --relleno-tarjeta: 16px;
+    --separacion-secciones: 28px;
+    --margen-pagina: 16px;
+  }
+
+  h1 {
+    font-size: 22px;
+  }
+
+  h2 {
+    font-size: 19px;
+  }
+
+  .numero {
+    font-size: 30px;
+  }
+
+  .cabecera__interior {
+    gap: 8px;
+    padding: 8px var(--margen-pagina);
+  }
+
+  .boton--icono-celular {
+    width: var(--alto-tocable);
+    padding: 0;
+  }
+
+  .boton--icono-celular .boton__texto,
+  .actualizado--compu {
+    display: none;
+  }
+
+  .actualizado--celular {
+    display: block;
+    margin: -16px 0 20px;
+  }
+
+  .cuerpo {
+    display: block;
+    padding-top: 0;
+  }
+
+  /* Pestañas horizontales con scroll en lugar del menú lateral. */
+  .menu {
+    top: 0;
+    z-index: 2;
+    margin: 0 calc(-1 * var(--margen-pagina)) 20px;
+    padding: 8px var(--margen-pagina);
+    overflow-x: auto;
+    background: var(--fondo);
+    border-bottom: 1px solid var(--separador);
+    scrollbar-width: thin;
+  }
+
+  .menu ul {
+    flex-direction: row;
+  }
+
+  .menu a {
+    white-space: nowrap;
+  }
+
+  .lista__fila--aviso {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lista__fila--aviso > .pastilla {
+    align-self: flex-start;
+  }
+
+  .lista__fila--aviso > .boton {
+    width: 100%;
+  }
+
+  .tarjeta {
+    padding: 14px;
+  }
+
+  .grilla--numeros {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .grilla--numeros .tarjeta__acciones .boton {
+    width: 100%;
+    padding: 8px 10px;
+  }
+
+  .grilla--servicios {
+    display: none;
+  }
+
+  .filas {
+    display: block;
+  }
+}
