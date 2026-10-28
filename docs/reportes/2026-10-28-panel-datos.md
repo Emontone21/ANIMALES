@@ -15,7 +15,12 @@
 - **Pruebas SQL:** `supabase/tests/panel_admin.sql`.
 - **Tipos:** `es_admin` y `admin_resumen` en `src/types/database.ts`.
 - **Documentación:** `AGENTS.md`, `README.md` y `supabase/tests/README.md`.
-- **En producción,** se validó dentro de una transacción con `rollback` (más abajo). **No quedó aplicada:** el control de permisos de la sesión frenó el cambio en la base de producción. Los pasos para aplicarla están en la sección 4.
+- **En producción:**
+  1. primero se validó dentro de una transacción con `rollback`;
+  2. el primer intento de aplicarla lo frenó el control de permisos de la sesión;
+  3. con la autorización del dueño, se aplicó y registró, se cargó su cuenta en `administradores` y se corrieron las 15 pruebas SQL.
+
+  Todo en la sección 3.
 
 ## 2. Cambios
 
@@ -23,7 +28,7 @@
 | --- | --- |
 | `supabase/migrations/20261028000028_panel_admin.sql` | Nueva. La tabla `administradores`, `es_admin()` y `admin_resumen()`. Los datos de demo (`es_foto_de_demo`) no cuentan como casos, y los días son los de Montevideo. Las funciones son `security definer` con `search_path = ''`; solo `authenticated` las ejecuta, y `admin_resumen()` comprueba `es_admin()` antes de nada. |
 | `supabase/tests/panel_admin.sql` | Nueva. Comprueba: <ul><li>sin cuenta, ni `es_admin()` ni el resumen;</li><li>una cuenta común recibe `false` y 42501;</li><li>nadie lee ni escribe `administradores` por la API;</li><li>el resumen tiene todas sus claves, 7 días que terminan hoy en Montevideo, y nada que no sea un número;</li><li>un caso nuevo suma, uno de demo no, y uno oculto suma en nuevos y en ocultos pero no en abiertos;</li><li>al borrar la cuenta se borra su fila.</li></ul> |
-| `src/types/database.ts` | `es_admin` y `admin_resumen` en `Functions`, a mano con el mismo formato: la migración todavía no está aplicada. La app no las usa. |
+| `src/types/database.ts` | `es_admin` y `admin_resumen` en `Functions`, a mano con el mismo formato (se escribieron antes de aplicar la migración). La app no las usa. |
 | `AGENTS.md` | Migraciones 0001–0028, `panel_admin.sql` en Estructura, la línea de `PANEL/` y la fase del panel. |
 | `README.md`, `supabase/tests/README.md` | El rango de migraciones y la fila de `panel_admin.sql`. |
 
@@ -45,9 +50,28 @@
 - una transacción de control con un `raise` a propósito dio el error esperado, así que la consulta sí llegaba a ejecutarse;
 - después, `to_regclass('public.administradores')` seguía en null y la última migración registrada seguía siendo `20261022000027`.
 
+**La migración aplicada** (API de gestión, en una sola transacción):
+- el archivo de la migración;
+- su registro en `supabase_migrations.schema_migrations` (`20261028000028`, `panel_admin`);
+- la cuenta del dueño en `administradores`, buscada por su email.
+
+Comprobado después:
+
+| Qué | Resultado |
+| --- | --- |
+| Última migración registrada | `20261028000028`, `panel_admin` |
+| Filas en `administradores` | 1, y es el mismo id de `ADMIN_USER_IDS` en Vercel |
+| `admin_resumen()` | `anon` no la ejecuta; `authenticated`, sí |
+| `administradores` | `authenticated` no la lee y tiene RLS |
+
+**Las 15 pruebas SQL en producción**, cada una dentro de su transacción con `rollback`:
+- terminan sin error: `auditoria_2`, `avisos_push`, `contacto_al_cerrar`, `errores`, `fase5_permisos` a `fase9_revision`, `panel_admin`, `privacidad_reunidos`, `reconocimiento_ia`, `reencuentros` y `vision`;
+- `fase7_cuenta` devuelve su fila de `set_config`, como siempre;
+- después no quedó ningún usuario `@spot.test` y `administradores` sigue con 1 fila.
+
 ## 4. Pasos manuales
 
-Lo hago yo si me lo autorizás. Si no, en el **SQL Editor** de Supabase, en este orden:
+**Ya hechos en producción** (sección 3). Quedan como referencia, para otro proyecto o para sumar una cuenta. En el **SQL Editor** de Supabase, en este orden:
 
 1. **Aplicar la migración.** Pegá el archivo `supabase/migrations/20261028000028_panel_admin.sql` entero, agregá al final esta línea y tocá Run:
    ```sql
@@ -67,11 +91,9 @@ Lo hago yo si me lo autorizás. Si no, en el **SQL Editor** de Supabase, en este
 
 ## 5. Pendientes y riesgos
 
-- **La migración 0028 no está aplicada en producción** (sección 4). Hasta que se aplique, el panel muestra esas tarjetas en Pendiente, con el aviso "Falta aplicar en Supabase la migración 0028". No falla ni inventa números.
 - **Dos listas para lo mismo:**
   - `ADMIN_USER_IDS` en Vercel decide quién usa el panel;
   - `administradores` en la base decide quién lee los datos.
 
   Si se suma una cuenta en una, hay que sumarla en la otra. Si no, el panel muestra "Tu cuenta no está en la tabla administradores".
 - **El resumen hace un `count(*)` por grupo en cada actualización.** Con el volumen del piloto es instantáneo. Si `animales` o `cola_vision` crecen mucho, convendría un índice por `created_at` o un resumen cacheado.
-- **Lo que no se probó:** las otras 14 pruebas SQL no se corrieron de nuevo, porque la 0028 no toca nada de lo que prueban. Conviene correrlas cuando se aplique.
