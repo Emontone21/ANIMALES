@@ -36,8 +36,8 @@
 | Dónde | Qué |
 | --- | --- |
 | GitHub | PR #23 mergeado con merge commit, `72e224e` en `main`. |
-| Vercel, proyecto `animales` | `commandForIgnoringBuildStep`: `[ -n "$VERCEL_GIT_PREVIOUS_SHA" ] && git diff --quiet "$VERCEL_GIT_PREVIOUS_SHA" HEAD -- . ':(exclude)PANEL'`. |
-| Vercel, proyecto `panel` | Root Directory `PANEL`, Framework Other, Build Command vacío, sin archivos de fuera del Root Directory y el Ignored Build Step `[ -n "$VERCEL_GIT_PREVIOUS_SHA" ] && git diff --quiet "$VERCEL_GIT_PREVIOUS_SHA" HEAD -- .`. |
+| Vercel, proyecto `animales` | `commandForIgnoringBuildStep`: `[ -n "$VERCEL_GIT_PREVIOUS_SHA" ] && [ "$VERCEL_GIT_PREVIOUS_SHA" != "$VERCEL_GIT_COMMIT_SHA" ] && git diff --quiet "$VERCEL_GIT_PREVIOUS_SHA" HEAD -- . ':(exclude)PANEL'`. |
+| Vercel, proyecto `panel` | Root Directory `PANEL`, Framework Other, Build Command vacío, sin archivos de fuera del Root Directory y el Ignored Build Step `[ -n "$VERCEL_GIT_PREVIOUS_SHA" ] && [ "$VERCEL_GIT_PREVIOUS_SHA" != "$VERCEL_GIT_COMMIT_SHA" ] && git diff --quiet "$VERCEL_GIT_PREVIOUS_SHA" HEAD -- .`. |
 | Vercel, variables de `panel` (Production) | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `ADMIN_USER_IDS` (Sensitive), `LINK_APP_URL`, `LINK_VERCEL_TEAM` y `LINK_VERCEL_PROJECT`, cada una con un comentario. |
 | Vercel, deploy de `panel` | De producción, desde `main` (`72e224e`): READY. |
 
@@ -75,6 +75,9 @@
 - **`animales`, merge del panel:** cancelado por el Ignored Build Step. La app sigue en el deploy anterior.
 - **`panel`, primer intento** (creado desde el dashboard): ERROR. Usó otra carpeta como Root Directory, corrió `npx expo export` y no encontró `package.json`.
 - **`panel`, después de corregir los ajustes:** READY.
+- **`panel`, redeploy para aplicar `VERCEL_API_TOKEN`** (la cargó el dueño): primero se **canceló**. El Ignored Build Step comparaba el commit consigo mismo, veía un diff vacío y salía con 0.
+  - Se corrigió el comando en los dos proyectos: ahora solo compara si el commit cambió (`"$VERCEL_GIT_PREVIOUS_SHA" != "$VERCEL_GIT_COMMIT_SHA"`).
+  - Se repitió el redeploy: **READY**, con la variable nueva.
 
 ## 4. Pasos manuales
 

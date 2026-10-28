@@ -538,17 +538,18 @@ Vercel corre el comando antes de cada build:
 
 Los dos comandos usan `VERCEL_GIT_PREVIOUS_SHA`, el commit del último deploy bueno de la rama:
 - si no está, o no está en el clone (Vercel clona con `--depth=10`), el comando falla y el build sigue. Ante la duda, despliega.
+- si es el mismo commit que se despliega, el comando no compara y el build sigue. Así funciona un **Redeploy** después de cambiar una variable: sin esa condición, el diff vacío lo cancelaba. Pasó en el primer redeploy del panel.
 - los builds cancelados igual cuentan en la cuota de deploys.
 
 En cada proyecto: **Settings → Git → Ignored Build Step → Run my custom command**.
 
 - **Proyecto del panel** (corre dentro de `PANEL`):
   ```sh
-  [ -n "$VERCEL_GIT_PREVIOUS_SHA" ] && git diff --quiet "$VERCEL_GIT_PREVIOUS_SHA" HEAD -- .
+  [ -n "$VERCEL_GIT_PREVIOUS_SHA" ] && [ "$VERCEL_GIT_PREVIOUS_SHA" != "$VERCEL_GIT_COMMIT_SHA" ] && git diff --quiet "$VERCEL_GIT_PREVIOUS_SHA" HEAD -- .
   ```
 - **Proyecto de la app** (`animales`, corre en la raíz del repo):
   ```sh
-  [ -n "$VERCEL_GIT_PREVIOUS_SHA" ] && git diff --quiet "$VERCEL_GIT_PREVIOUS_SHA" HEAD -- . ':(exclude)PANEL'
+  [ -n "$VERCEL_GIT_PREVIOUS_SHA" ] && [ "$VERCEL_GIT_PREVIOUS_SHA" != "$VERCEL_GIT_COMMIT_SHA" ] && git diff --quiet "$VERCEL_GIT_PREVIOUS_SHA" HEAD -- . ':(exclude)PANEL'
   ```
 
 La alternativa más simple de la documentación es `git diff HEAD^ HEAD --quiet -- <carpeta>`. Compara solo el último commit, así que un push con varios commits puede saltearse un cambio.
