@@ -15,13 +15,11 @@ Cada tarjeta muestra sus números, con los umbrales de Atención y Falla de la s
 
 **El servicio de visión** ahora es la función `reconocer`, mirada desde la base. Así quedó resuelta la decisión 1. Se sacaron `LINK_VISION_URL` y la parte "Servicio de visión" de la configuración.
 
-**Qué falta para verlo en producción:**
-1. aplicar la migración 0028 en Supabase y cargar la cuenta en `administradores`;
-2. desplegar el panel (merge del PR).
-
-El control de permisos de la sesión frenó el cambio en la base de producción. Los pasos están en la sección 4. Mientras tanto, el panel ya desplegado sigue como estaba. Con este código y sin la migración:
-- Vercel y el token muestran datos;
-- La app y Supabase dicen "Falta aplicar en Supabase la migración 0028".
+**En producción:**
+- **La migración 0028 está aplicada,** con la cuenta del dueño en `administradores` y las 15 pruebas SQL en verde.
+  - El control de permisos de la sesión frenó el primer intento.
+  - Se aplicó cuando el dueño lo autorizó. Detalle en `docs/reportes/2026-10-28-panel-datos.md`, sección 3.
+- **El panel se despliega con el merge del PR.**
 
 ## 2. Cambios
 
@@ -107,12 +105,12 @@ El control de permisos de la sesión frenó el cambio en la base de producción.
 
 ## 4. Pasos manuales
 
-1. **Supabase:** aplicar la migración 0028, cargar la cuenta del panel en `administradores` y correr `supabase/tests/panel_admin.sql`. Los pasos exactos, con el SQL, están en `docs/reportes/2026-10-28-panel-datos.md` (el de la raíz), sección 4. Si me lo autorizás, lo hago yo.
+1. **Supabase:** hecho. La migración 0028 está aplicada, la cuenta del panel está en `administradores` y las pruebas SQL pasan. Para sumar otra cuenta, el SQL está en `docs/reportes/2026-10-28-panel-datos.md` (el de la raíz), sección 4, junto con `ADMIN_USER_IDS` en Vercel.
 2. **GitHub:** mergear el PR de la rama `claude/animales-repo-mxm2ja`. El proyecto `panel` de Vercel despliega solo. El de la app también construye, porque cambian archivos fuera de `PANEL/` (la migración, los tipos y la documentación), pero sale el mismo bundle.
 3. **Vercel, proyecto `panel`:** no hay que cambiar variables. `LINK_VISION_URL` ya no se usa, y no estaba cargada.
 4. **Probar:** entrá al panel y tocá **Actualizar**.
    - Las tarjetas de La app, Supabase, el servicio de visión, Vercel y el token tienen que mostrar números o fechas.
-   - Si "Datos de la app" dice "Tu cuenta no está en la tabla administradores", falta el paso 1.
+   - Si "Datos de la app" dice "Tu cuenta no está en la tabla administradores", esa cuenta falta en la tabla (paso 1).
 
 ## 5. Cambios necesarios fuera de `PANEL/`
 
@@ -128,7 +126,6 @@ Sin cambios: supabase-js 2.117.3 con el mismo SRI, y las mismas fuentes IBM Plex
 
 ## 7. Pendientes y riesgos
 
-- **La migración 0028 no está aplicada** (sección 4.1): hasta entonces, La app y Supabase quedan en Pendiente.
 - **El token de Vercel puede hacer más que leer:** Vercel no tiene tokens de solo lectura (sección 6.2). Va solo en el header, solo en la función, y nunca vuelve al navegador.
 - **Rutas del dashboard de Supabase todavía a confirmar:**
   - `/functions` del servicio de visión y de "Fotos trabadas";

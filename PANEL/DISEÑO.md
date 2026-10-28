@@ -591,7 +591,7 @@ Para enterarse sin entrar al panel:
 
 Uno por integración, en este orden. Cada uno respeta `PANEL/CLAUDE.md` y actualiza este documento.
 
-1. **Datos internos** **(hecho)**: la migración 0028 con sus pruebas (`supabase/tests/panel_admin.sql`) y los tipos; `admin_resumen()` desde `api/estado`; las tarjetas de La app y de Supabase con los números, la gráfica de 7 días, las barras de uso y los umbrales. Se aplica en producción y se carga `administradores` con los pasos de `docs/reportes/2026-10-28-panel-datos.md`; mientras tanto, esas tarjetas dicen que falta la migración.
+1. **Datos internos** **(hecho)**: la migración 0028 con sus pruebas (`supabase/tests/panel_admin.sql`) y los tipos; `admin_resumen()` desde `api/estado`; las tarjetas de La app y de Supabase con los números, la gráfica de 7 días, las barras de uso y los umbrales. Aplicada en producción el 28 de octubre de 2026, con la cuenta del dueño en `administradores` (`docs/reportes/2026-10-28-panel-datos.md`).
 2. **Vercel y servicio de visión** **(hecho)**: el último deploy de producción, con "Ver log en Vercel" si falló, y el vencimiento del token; el servicio de visión, desde la base (decisión 1).
 3. **Facebook e Instagram:** app de Meta, token de página, seguidores, alcance y últimas publicaciones (sin su texto), y el vencimiento del token.
 4. **LinkedIn:** si la Community Management API está aprobada, seguidores y publicaciones; si no, el plan B (solo el link). El vencimiento del token.
