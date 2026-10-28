@@ -399,7 +399,7 @@ Las dos listas llevan las mismas cuentas, y se cambian a mano en los dos lugares
 
 **Sin indexar:** `robots.txt` bloquea todo, la página tiene `<meta name="robots" content="noindex, nofollow">` y va el header `X-Robots-Tag`.
 
-**Lo que no se publica:** `.vercelignore` deja afuera `*.md`, `docs/`, `propuestas/`, `pruebas/`, `herramientas/`, `.env.example` y `.gitignore`. Después del primer deploy hay que comprobar que `/DISEÑO.md` dé 404 (sección 7).
+**Lo que no se publica:** `.vercelignore` deja afuera `*.md`, `docs/`, `propuestas/`, `pruebas/`, `herramientas/`, `.env.example` y `.gitignore`. Vercel lo aplica también en los deploys desde Git: lo dice el log de cada deploy ("Removed … ignored files"). En el primer deploy del panel, `/DISEÑO.md`, `/CLAUDE.md`, `/propuestas/…` y `/.env.example` dieron 404.
 
 **Abuso:** el ingreso lo limita Supabase Auth. Las funciones llaman a `/auth/v1/user` una vez por pedido. Si alguien las llamara mucho con tokens inventados, se puede sumar una regla de Vercel Firewall (sección 10).
 
@@ -492,6 +492,7 @@ Para cada una: requisitos de acceso, permisos mínimos de solo lectura, límites
 2. **Project Name:** uno propio, por ejemplo `spot-panel` (sección 10). La dirección queda `https://<nombre>.vercel.app`.
 3. **Framework Preset:** Other.
 4. **Root Directory:** `PANEL`. Dejá apagado "Include files outside the root directory in the Build Step".
+   - **Ojo:** al importar, Vercel puede proponer otra carpeta del repo, como `services/vision`. Con otra carpeta el build falla: corre el de la app (`npx expo export`) y no encuentra su `package.json`. Revisalo en Settings → Build and Deployment.
 5. **Build and Output Settings:**
    - Build Command: override y vacío (sin build);
    - Output Directory: dejalo como viene (con "Other" es `public` si existe; `PANEL` no tiene, así que publica la carpeta);
@@ -500,7 +501,7 @@ Para cada una: requisitos de acceso, permisos mínimos de solo lectura, límites
 7. **Environment Variables:** las de `.env.example`, **solo en Production** (sección 7.2). Así las vistas previas no pueden entrar.
 8. **Deploy.** Después:
    - `https://<panel>/` muestra el ingreso;
-   - `https://<panel>/DISEÑO.md` da 404 (si no, `.vercelignore` no se aplicó: avisá);
+   - `https://<panel>/DISEÑO.md` da 404;
    - `https://<panel>/api/config` responde un JSON;
    - en la consola del navegador no hay errores.
 
