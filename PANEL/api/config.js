@@ -21,7 +21,6 @@ import {
   urlDeFacebook,
   urlDeInstagram,
   urlDeLinkedin,
-  urlDeVision,
   validarSesion,
 } from './_comun.js';
 
@@ -38,7 +37,6 @@ export function enlacesDe(env, base) {
     facebookUrl: urlDeFacebook(leer(env, 'LINK_FACEBOOK_URL')),
     instagramUrl: urlDeInstagram(leer(env, 'LINK_INSTAGRAM_URL')),
     linkedinUrl: urlDeLinkedin(leer(env, 'LINK_LINKEDIN_URL')),
-    visionUrl: urlDeVision(leer(env, 'LINK_VISION_URL')),
   };
 }
 

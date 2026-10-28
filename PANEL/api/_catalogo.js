@@ -1,14 +1,14 @@
 /**
- * Qué necesita cada parte del panel y cada tarjeta, y en qué estado queda.
- * Los ids son los mismos de js/catalogo.js (lo comprueba
- * pruebas/catalogo.test.mjs). En esta etapa ninguna tarjeta tiene datos: el
- * estado dice qué falta (una variable) o qué prompt la completa.
+ * Qué necesita cada parte del panel y cada tarjeta, y en qué estado queda
+ * según las variables. Los ids son los mismos de js/catalogo.js (lo comprueba
+ * pruebas/catalogo.test.mjs). Los datos y los umbrales están en _tarjetas.js.
  *
  * - `requiere`: variables sin las que la tarjeta no puede tener datos.
  * - `enlaces`: variables solo para su link "Abrir en…".
- * - `prompt`: el prompt que trae los datos (DISEÑO.md, "Plan de los prompts").
- * - `migracion`: necesita la migración de administradores
- *   (propuestas/migracion-admin.sql).
+ * - `fuente`: de dónde salen sus datos: `resumen` (admin_resumen(), migración
+ *   0028) o `vercel` (la API de Vercel).
+ * - `prompt`: el prompt que todavía tiene que traer sus datos (DISEÑO.md,
+ *   "Plan de los prompts").
  */
 
 import { estadoDeVariable } from './_comun.js';
@@ -20,7 +20,6 @@ export const ENLACES = [
   'LINK_FACEBOOK_URL',
   'LINK_INSTAGRAM_URL',
   'LINK_LINKEDIN_URL',
-  'LINK_VISION_URL',
 ];
 
 const VERCEL = ['VERCEL_API_TOKEN', 'LINK_VERCEL_TEAM', 'LINK_VERCEL_PROJECT'];
@@ -28,9 +27,8 @@ const VERCEL = ['VERCEL_API_TOKEN', 'LINK_VERCEL_TEAM', 'LINK_VERCEL_PROJECT'];
 export const PARTES = [
   { id: 'ingreso', requiere: ['SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY', 'ADMIN_USER_IDS'] },
   { id: 'enlaces', enlaces: ENLACES },
-  { id: 'datosInternos', prompt: 'datosInternos', migracion: true },
-  { id: 'vercel', requiere: VERCEL, prompt: 'vercelVision' },
-  { id: 'vision', requiere: ['LINK_VISION_URL'], prompt: 'vercelVision' },
+  { id: 'datosInternos', fuente: 'resumen' },
+  { id: 'vercel', requiere: VERCEL, fuente: 'vercel' },
   {
     id: 'meta',
     requiere: ['META_ACCESS_TOKEN', 'META_PAGE_ID', 'META_IG_USER_ID'],
@@ -40,18 +38,19 @@ export const PARTES = [
   { id: 'alertas', prompt: 'alertas' },
 ];
 
-const DATOS_INTERNOS = { prompt: 'datosInternos', migracion: true };
+const RESUMEN = { fuente: 'resumen' };
 
 export const TARJETAS = [
-  { id: 'app.casosNuevos', ...DATOS_INTERNOS },
-  { id: 'app.reunidos', ...DATOS_INTERNOS, enlaces: ['LINK_APP_URL'] },
-  { id: 'app.coincidencias', ...DATOS_INTERNOS },
-  { id: 'app.moderacion', ...DATOS_INTERNOS },
-  { id: 'app.usuarios', ...DATOS_INTERNOS },
-  { id: 'app.fotosTrabadas', ...DATOS_INTERNOS },
-  { id: 'infra.vercel', requiere: VERCEL, prompt: 'vercelVision' },
-  { id: 'infra.supabase', ...DATOS_INTERNOS },
-  { id: 'infra.vision', requiere: ['LINK_VISION_URL'], prompt: 'vercelVision', migracion: true },
+  { id: 'app.casosNuevos', ...RESUMEN },
+  { id: 'app.reunidos', ...RESUMEN, enlaces: ['LINK_APP_URL'] },
+  { id: 'app.coincidencias', ...RESUMEN },
+  { id: 'app.moderacion', ...RESUMEN },
+  { id: 'app.usuarios', ...RESUMEN },
+  { id: 'app.fotosTrabadas', ...RESUMEN },
+  { id: 'infra.vercel', requiere: VERCEL, fuente: 'vercel' },
+  { id: 'infra.supabase', ...RESUMEN },
+  // El reconocimiento con IA (función reconocer, 0018): sale de la base.
+  { id: 'infra.vision', ...RESUMEN },
   {
     id: 'redes.facebook',
     requiere: ['META_ACCESS_TOKEN', 'META_PAGE_ID'],
@@ -70,7 +69,7 @@ export const TARJETAS = [
     enlaces: ['LINK_LINKEDIN_URL'],
     prompt: 'linkedin',
   },
-  { id: 'tokens.vercel', requiere: ['VERCEL_API_TOKEN'], prompt: 'vercelVision' },
+  { id: 'tokens.vercel', requiere: ['VERCEL_API_TOKEN'], fuente: 'vercel' },
   { id: 'tokens.meta', requiere: ['META_ACCESS_TOKEN'], prompt: 'meta' },
   { id: 'tokens.linkedin', requiere: ['LINKEDIN_ACCESS_TOKEN'], prompt: 'linkedin' },
 ];
@@ -80,7 +79,8 @@ export const TARJETAS = [
  * - `falla`: alguna variable tiene un valor que no sirve;
  * - `sinConfigurar`: falta una que necesita para tener datos;
  * - `pendiente`: tiene lo suyo pero los datos llegan con un prompt;
- * - `ok`: no le falta nada (por ahora, solo `ingreso` y `enlaces`).
+ * - `ok`: no le falta nada. Si tiene `fuente`, _tarjetas.js le pone los datos
+ *   y el estado final.
  */
 export function estadoDe(item, env) {
   const requiere = item.requiere ?? [];
@@ -92,6 +92,7 @@ export function estadoDe(item, env) {
   if (invalidas.length > 0) estado = 'falla';
   else if (requiere.some((n) => faltan.includes(n))) estado = 'sinConfigurar';
   else if (item.prompt) estado = 'pendiente';
+  else if (item.fuente) estado = 'ok';
   else estado = faltan.length > 0 ? 'sinConfigurar' : 'ok';
 
   return {
@@ -100,6 +101,7 @@ export function estadoDe(item, env) {
     faltan,
     invalidas,
     prompt: item.prompt ?? null,
-    migracion: item.migracion === true,
+    motivo: null,
+    datos: null,
   };
 }

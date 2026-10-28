@@ -103,18 +103,6 @@ export const urlDeFacebook = (valor) => urlDeHosts(valor, HOSTS.facebook);
 export const urlDeInstagram = (valor) => urlDeHosts(valor, HOSTS.instagram);
 export const urlDeLinkedin = (valor) => urlDeHosts(valor, HOSTS.linkedin);
 
-/** El Space: `https://huggingface.co/spaces/<dueño>/<nombre>` o `https://<algo>.hf.space`. */
-export function urlDeVision(valor) {
-  const u = valor ? url(valor) : null;
-  if (!u) return null;
-  const host = u.hostname.toLowerCase();
-  const esPagina = host === 'huggingface.co' && /^\/spaces\/[\w.-]+\/[\w.-]+\/?$/.test(u.pathname);
-  const esApp = /^[a-z0-9-]+\.hf\.space$/.test(host);
-  if (!esPagina && !esApp) return null;
-  u.hash = '';
-  return u.href;
-}
-
 export const esSlug = (valor) => SLUG.test(valor ?? '');
 
 /**
@@ -132,7 +120,6 @@ const VALIDAR = {
   LINK_FACEBOOK_URL: (v) => urlDeFacebook(v) !== null,
   LINK_INSTAGRAM_URL: (v) => urlDeInstagram(v) !== null,
   LINK_LINKEDIN_URL: (v) => urlDeLinkedin(v) !== null,
-  LINK_VISION_URL: (v) => urlDeVision(v) !== null,
   VERCEL_API_TOKEN: (v) => TOKEN_OPACO.test(v),
   META_ACCESS_TOKEN: (v) => TOKEN_OPACO.test(v),
   META_PAGE_ID: (v) => ID_NUMERICO.test(v),

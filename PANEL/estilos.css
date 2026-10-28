@@ -745,7 +745,58 @@ a:hover {
   margin-top: auto;
 }
 
-/* Componentes para cuando haya datos (prompt "Datos internos" y siguientes). */
+/* Tarjetas con datos (js/vistaDeDatos.js). */
+.datos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dato {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.dato__etiqueta {
+  color: var(--texto-secundario);
+  font-size: 14px;
+}
+
+.dato__linea {
+  color: var(--texto-secundario);
+  font-size: 14px;
+}
+
+.dato__estado {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.uso__bloque {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.uso__texto {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 12px;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.uso__etiqueta {
+  font-weight: 600;
+}
+
+.lista__detalle--dato {
+  color: var(--texto);
+}
+
 .numero {
   font-size: 36px;
   font-weight: 600;
@@ -779,6 +830,7 @@ a:hover {
 }
 
 .uso__relleno {
+  min-width: 4px;
   height: 100%;
   border-radius: var(--radio-pastilla);
   background: var(--acento);

@@ -123,8 +123,9 @@ export function variables(nombres) {
 }
 
 /**
- * Qué le falta a una parte o tarjeta, según su estado: las variables que
- * faltan o no sirven, o el prompt que trae sus datos. Una o dos líneas.
+ * Qué le falta a una parte o tarjeta, o por qué está en Atención o Falla: el
+ * motivo, las variables que faltan o no sirven, o el prompt que trae sus
+ * datos. Una o dos líneas.
  */
 export function lineasDeFalta(item, { clase = 'tarjeta__falta' } = {}) {
   const lineas = [];
@@ -138,6 +139,9 @@ export function lineasDeFalta(item, { clase = 'tarjeta__falta' } = {}) {
     );
     return lineas;
   }
+  if (item.motivo && t.motivos[item.motivo]) {
+    lineas.push(el('p', { clase, texto: t.motivos[item.motivo] }));
+  }
   if (item.estado === 'falla' && item.invalidas.length > 0) {
     lineas.push(
       el('p', { clase }, variables(item.invalidas), ' ', t.falta.invalidas(item.invalidas.length)),
@@ -149,22 +153,22 @@ export function lineasDeFalta(item, { clase = 'tarjeta__falta' } = {}) {
     );
   }
   if (item.estado === 'pendiente' && item.prompt) {
-    const texto = item.migracion
-      ? `${t.falta.prompt(t.prompts[item.prompt])} ${t.falta.migracion}`
-      : t.falta.prompt(t.prompts[item.prompt]);
-    lineas.push(el('p', { clase, texto }));
-    if (item.faltan.length > 0) {
-      lineas.push(
-        el(
-          'p',
-          { clase: `${clase} secundario` },
-          `${t.falta.soloEnlace(item.faltan.length)} `,
-          variables(item.faltan),
-          '.',
-        ),
-      );
-    }
+    lineas.push(el('p', { clase, texto: t.falta.prompt(t.prompts[item.prompt]) }));
   }
-  if (item.estado === 'ok') lineas.push(el('p', { clase, texto: t.configuracion.listo }));
+  // Lo que falta solo para el link "Abrir en…".
+  if (item.estado !== 'sinConfigurar' && item.invalidas.length === 0 && item.faltan.length > 0) {
+    lineas.push(
+      el(
+        'p',
+        { clase: `${clase} secundario` },
+        `${t.falta.soloEnlace(item.faltan.length)} `,
+        variables(item.faltan),
+        '.',
+      ),
+    );
+  }
+  if (item.estado === 'ok' && !item.datos && lineas.length === 0) {
+    lineas.push(el('p', { clase, texto: t.configuracion.listo }));
+  }
   return lineas;
 }

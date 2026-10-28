@@ -90,6 +90,7 @@ export const t = {
     recien: 'recién',
     minutos: (n) => `hace ${n} min`,
     horas: (n) => `hace ${n} h`,
+    dias: (n) => `hace ${n} ${plural(n, 'día', 'días')}`,
   },
 
   vistas: {
@@ -139,7 +140,6 @@ export const t = {
       enlaces: 'Links a los servicios',
       datosInternos: 'Datos de la app',
       vercel: 'Vercel',
-      vision: 'Servicio de visión',
       meta: 'Facebook e Instagram',
       linkedin: 'LinkedIn',
       alertas: 'Alertas',
@@ -150,13 +150,10 @@ export const t = {
     variables: (n) => plural(n, 'Falta la variable', 'Faltan las variables'),
     invalidas: (n) => plural(n, 'tiene un valor que no sirve.', 'tienen un valor que no sirve.'),
     prompt: (nombre) => `Llega con el prompt "${nombre}".`,
-    migracion: 'Antes hay que aplicar la migración de administradores.',
     soloEnlace: (n) => plural(n, 'Para el link, falta', 'Para los links, faltan'),
   },
 
   prompts: {
-    datosInternos: 'Datos internos',
-    vercelVision: 'Vercel y servicio de visión',
     meta: 'Facebook e Instagram',
     linkedin: 'LinkedIn',
     alertas: 'Alertas',
@@ -197,7 +194,8 @@ export const t = {
     'infra.vercel': {
       titulo: 'Vercel',
       corto: 'Último deploy de la app',
-      descripcion: 'Estado, commit y hora del último deploy de producción de la app.',
+      descripcion:
+        'Estado, commit y hora del último deploy de producción de la app (sin contar los cancelados).',
     },
     'infra.supabase': {
       titulo: 'Supabase',
@@ -207,8 +205,9 @@ export const t = {
     },
     'infra.vision': {
       titulo: 'Servicio de visión',
-      corto: 'Reconocimiento de fotos',
-      descripcion: 'Si el servicio responde, cuántas fotos esperan y desde cuándo.',
+      corto: 'Reconocimiento con IA',
+      descripcion:
+        'El reconocimiento de fotos con IA (función reconocer): fotos en espera y llamadas a la IA de las últimas 24 horas.',
     },
     'redes.facebook': {
       titulo: 'Facebook',
@@ -228,7 +227,7 @@ export const t = {
     },
     'tokens.vercel': {
       titulo: 'Token de Vercel',
-      descripcion: 'Va a mostrar cuándo vence el token.',
+      descripcion: 'El que usa el panel para leer los deploys. Cuándo vence.',
     },
     'tokens.meta': {
       titulo: 'Token de Meta',
@@ -245,11 +244,92 @@ export const t = {
     supabase: 'Abrir en Supabase',
     vercel: 'Abrir en Vercel',
     app: 'Abrir en la app',
-    huggingface: 'Abrir en Hugging Face',
+    logVercel: 'Ver log en Vercel',
     facebook: 'Abrir en Facebook',
     instagram: 'Abrir en Instagram',
     linkedin: 'Abrir en LinkedIn',
     metaDesarrolladores: 'Abrir en Meta for Developers',
     linkedinDesarrolladores: 'Abrir en LinkedIn Developers',
+  },
+
+  /** Por qué una parte o tarjeta está en Atención, Falla o Pendiente. */
+  motivos: {
+    sinMigracion:
+      'Falta aplicar en Supabase la migración 0028 (administradores y resumen del panel).',
+    noAdministrador:
+      'Tu cuenta no está en la tabla administradores de la base. Sumala desde el editor SQL de Supabase.',
+    supabaseNoResponde:
+      'Supabase no respondió en 5 segundos. Puede estar caído o pausado por inactividad.',
+    datosIncompletos: 'La base respondió, pero sin los datos de esta tarjeta.',
+    tokenInvalido: 'Vercel no acepta el token de VERCEL_API_TOKEN: venció, se revocó o no sirve.',
+    tokenVencido: 'El token de Vercel venció. Creá otro y cargalo en VERCEL_API_TOKEN.',
+    tokenPorVencer:
+      'El token de Vercel vence en 14 días o menos. Creá otro y reemplazalo en VERCEL_API_TOKEN.',
+    limiteVercel: 'Vercel frenó los pedidos por un rato. Probá de nuevo en unos minutos.',
+    vercelNoResponde: 'Vercel no respondió en 5 segundos.',
+    proyectoNoEncontrado:
+      'Vercel no encuentra el proyecto de LINK_VERCEL_PROJECT en el equipo de LINK_VERCEL_TEAM.',
+    sinAccesoAlProyecto: 'El token de Vercel no tiene acceso al equipo o al proyecto de la app.',
+    sinDeploys: 'No hay ningún deploy de producción de la app.',
+    deployFallo: 'El último deploy de producción de la app falló.',
+    deployTrabado: 'Hay un deploy de producción en curso hace más de 15 minutos.',
+    sinCasos7d: 'Ningún caso nuevo en 7 días: revisá que publicar funcione.',
+    coincidenciasViejas: 'Hay coincidencias que esperan hace más de 3 días.',
+    denunciasPendientes: 'Hay denuncias sin revisar.',
+    erroresSinResolver: 'Hay reportes de error sin resolver.',
+    fotosTrabadas: 'Hay fotos que esperan hace más de 30 minutos.',
+    fotosSinReintentos: 'Hay fotos que se quedaron sin reintentos: no se van a procesar solas.',
+    colaDetenida:
+      'La foto más vieja espera hace más de 2 horas: el reconocimiento puede estar detenido.',
+    usoAlto: 'La base o Storage pasan el 80 % del plan gratuito.',
+    usoCasiLleno: 'La base o Storage pasan el 95 % del plan gratuito.',
+    iaSinCredito:
+      'La IA se quedó sin crédito y el reconocimiento está en pausa. Cargá crédito y reactivalo desde Moderación, en la app.',
+    iaApagada: 'El reconocimiento con IA está apagado (ia_activa en config_app).',
+    erroresIa: 'Alguna llamada a la IA falló en las últimas 24 horas.',
+  },
+
+  /** Lo que muestran las tarjetas con datos. */
+  datos: {
+    en24h: 'en 24 horas',
+    en7d: (n) => `${n} en 7 días`,
+    en7dYTotal: (n, total) => `${n} en 7 días · ${total} en total`,
+    casosPorDia: (dias) => `Casos nuevos por día, de hace 6 días a hoy: ${dias}.`,
+    enTotal: 'en total',
+    en30d: (n) => `${n} en los últimos 30 días`,
+    sinRevisar: 'sin revisar',
+    laMasVieja: (cuando) => `La más vieja, ${cuando}.`,
+    denunciasSinRevisar: (n) => plural(n, 'denuncia sin revisar', 'denuncias sin revisar'),
+    ocultos: (casos, historias) =>
+      `${casos} ${plural(casos, 'caso oculto', 'casos ocultos')} · ${historias} ${plural(historias, 'historia oculta', 'historias ocultas')}`,
+    erroresSinResolver: (n) =>
+      `${n} ${plural(n, 'reporte de error sin resolver', 'reportes de error sin resolver')}`,
+    esperanMasDe30: (n) => plural(n, 'espera hace más de 30 min', 'esperan hace más de 30 min'),
+    sinReintentos: (n) => `${n} sin reintentos`,
+    laMasViejaEspera: (cuando) => `La más vieja llegó ${cuando}.`,
+    deploy: {
+      READY: 'Listo',
+      ERROR: 'Con error',
+      BLOCKED: 'Bloqueado',
+      BUILDING: 'En curso',
+      INITIALIZING: 'En curso',
+      QUEUED: 'En cola',
+    },
+    commit: 'Commit',
+    creado: (fecha, cuando) => `${fecha} (${cuando})`,
+    base: 'Base de datos',
+    storage: 'Storage',
+    deLimite: (usado, limite, porcentaje) => `${usado} de ${limite} · ${porcentaje}`,
+    usoCorto: (base, storage) => `Base ${base} · Storage ${storage}`,
+    fotosEnEspera: (n) => plural(n, 'foto en espera', 'fotos en espera'),
+    llamadas: (n, errores) =>
+      `${n} ${plural(n, 'llamada', 'llamadas')} a la IA en 24 h · ${errores} con error`,
+    ultimaProcesada: (cuando) => `Última foto procesada ${cuando}.`,
+    iaApagada: 'La IA está apagada.',
+    vence: (fecha, dias) =>
+      dias === 0
+        ? `Vence el ${fecha}: hoy.`
+        : `Vence el ${fecha}, en ${dias} ${plural(dias, 'día', 'días')}.`,
+    noVence: 'No vence.',
   },
 };

@@ -37,16 +37,6 @@ function deHosts(valor, hosts) {
   return u && hosts.includes(u.hostname.toLowerCase()) ? u.href : null;
 }
 
-function deVision(valor) {
-  const u = https(valor);
-  if (!u) return null;
-  const host = u.hostname.toLowerCase();
-  const ok =
-    (host === 'huggingface.co' && u.pathname.startsWith('/spaces/')) ||
-    /^[a-z0-9-]+\.hf\.space$/.test(host);
-  return ok ? u.href : null;
-}
-
 const slug = (valor) => (typeof valor === 'string' && SLUG.test(valor) ? valor : null);
 
 export function armarEnlaces(datos) {
@@ -73,7 +63,6 @@ export function armarEnlaces(datos) {
     facebook: deHosts(d.facebookUrl, HOSTS.facebook),
     instagram: deHosts(d.instagramUrl, HOSTS.instagram),
     linkedin: deHosts(d.linkedinUrl, HOSTS.linkedin),
-    vision: deVision(d.visionUrl),
     fijos: FIJOS,
   };
 }
