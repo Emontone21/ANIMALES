@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "description": "Panel de SPOT: página sin build y dos funciones de Vercel, sin dependencias.",
+  "type": "module",
+  "scripts": {
+    "verificar": "node herramientas/verificar.mjs",
+    "probar": "node --test pruebas/*.test.mjs"
+  }
+}
