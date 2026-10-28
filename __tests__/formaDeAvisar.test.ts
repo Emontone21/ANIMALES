@@ -1,3 +1,4 @@
+import { formaDeInstalar } from '@/features/instalar/formaDeInstalar';
 import {
   claveDelServidor,
   comoDesbloquear,
@@ -81,6 +82,38 @@ describe('qué ofrecer para las notificaciones del celular', () => {
       expect(ofrecerAlPublicar(estado)).toBe(false);
     }
   });
+});
+
+describe('en Perfil, un solo botón para instalar o abrir en el navegador', () => {
+  // El interruptor de Perfil explica qué hacer sin botón propio: el botón es
+  // "Instalar la app" de Perfil, que abre la misma hoja. Si un día Perfil no lo
+  // mostrara en alguno de estos casos, la explicación quedaría sin botón.
+  const BOTON_DE_PERFIL: Record<string, string> = {
+    instalarPrimero: 'pasosIos',
+    abrirEnNavegador: 'abrirEnNavegador',
+  };
+
+  test.each([
+    ['iPhone en Safari', IPHONE, 5],
+    ['iPad que dice ser una Mac', IPAD_COMO_MAC, 5],
+    ['WhatsApp en Android', WHATSAPP, 5],
+    ['Instagram en iPhone', INSTAGRAM_IPHONE, 5],
+  ])(
+    '%s: lo que explica el interruptor lo cubre el botón de Perfil',
+    (_, userAgent, puntosDeToque) => {
+      const estado = estadoDeAvisos(datos({ userAgent, puntosDeToque }));
+      expect(Object.keys(BOTON_DE_PERFIL)).toContain(estado);
+      const enPerfil = formaDeInstalar({
+        plataforma: 'web',
+        userAgent,
+        puntosDeToque,
+        abiertaComoApp: false,
+        recienInstalada: false,
+        hayAviso: false,
+      });
+      expect(enPerfil).toBe(BOTON_DE_PERFIL[estado]);
+    },
+  );
 });
 
 describe('la clave VAPID pública', () => {

@@ -88,24 +88,30 @@ async function activarAhora(): Promise<EstadoAvisos> {
 
 type Hoja = 'pasosIos' | 'abrirEnNavegador' | null;
 
-/** iPhone sin instalar o navegador de una app: qué hacer, con su botón. */
+/**
+ * iPhone sin instalar o navegador de una app: qué hacer, con su botón. Sin
+ * `onHoja` (en Perfil) va solo la explicación: el botón es "Instalar la app" de
+ * Perfil, justo debajo, que abre la misma hoja (si no, aparecía dos veces).
+ */
 function ComoActivarlas({
   situacion,
   onHoja,
 }: {
   situacion: Situacion;
-  onHoja: (hoja: Exclude<Hoja, null>) => void;
+  onHoja?: (hoja: Exclude<Hoja, null>) => void;
 }) {
   if (situacion.estado === 'instalarPrimero') {
     return (
       <>
         <Texto variante="secundario">{t.celular.iphone}</Texto>
-        <Boton
-          titulo={t.instalar.boton}
-          icono="download-outline"
-          variante="secundario"
-          onPress={() => onHoja('pasosIos')}
-        />
+        {onHoja ? (
+          <Boton
+            titulo={t.instalar.boton}
+            icono="download-outline"
+            variante="secundario"
+            onPress={() => onHoja('pasosIos')}
+          />
+        ) : null}
       </>
     );
   }
@@ -115,12 +121,14 @@ function ComoActivarlas({
         <Texto variante="secundario">
           {t.celular.navegadorInterno(situacion.app ?? t.instalar.navegadorInterno.estaApp)}
         </Texto>
-        <Boton
-          titulo={t.celular.abrirEnNavegador}
-          icono="open-outline"
-          variante="secundario"
-          onPress={() => onHoja('abrirEnNavegador')}
-        />
+        {onHoja ? (
+          <Boton
+            titulo={t.celular.abrirEnNavegador}
+            icono="open-outline"
+            variante="secundario"
+            onPress={() => onHoja('abrirEnNavegador')}
+          />
+        ) : null}
       </>
     );
   }
@@ -149,7 +157,6 @@ export function InterruptorAvisos() {
   const { situacion, cambiarEstado } = useSituacion();
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState<{ texto: string; tipo: 'exito' | 'error' } | null>(null);
-  const [hoja, setHoja] = useState<Hoja>(null);
 
   if (!situacion || situacion.estado === 'sinConfigurar') return null;
   const { estado } = situacion;
@@ -188,7 +195,8 @@ export function InterruptorAvisos() {
         <Texto variante="etiquetaCampo">{t.celular.interruptor}</Texto>
       )}
       <Texto variante="secundario">{t.celular.ayuda}</Texto>
-      <ComoActivarlas situacion={situacion} onHoja={setHoja} />
+      {/* Sin botón: el de instalar o abrir en el navegador es el de Perfil. */}
+      <ComoActivarlas situacion={situacion} />
       {estado === 'bloqueadas' ? (
         <Mensaje texto={`${t.celular.bloqueadas} ${t.celular.comoDesbloquear[situacion.donde]}`} />
       ) : null}
@@ -196,7 +204,6 @@ export function InterruptorAvisos() {
         <Texto variante="secundario">{t.celular.noSoportado}</Texto>
       ) : null}
       {aviso ? <Mensaje texto={aviso.texto} tipo={aviso.tipo} /> : null}
-      <HojaParaActivar hoja={hoja} app={situacion.app} onCerrar={() => setHoja(null)} />
     </View>
   );
 }
