@@ -658,8 +658,8 @@ Esperado:
 - Apagado, no llega nada al celular (sí a **Actividad**); prendido, vuelve.
 - Bloqueadas, **Perfil** no muestra el interruptor sino cómo volver a permitirlas, según el dispositivo.
 - Después de cerrar sesión, ese celular no recibe más los avisos de la familia.
-- **iPhone sin instalar:** dice que las notificaciones llegan con Spot instalada, con **Instalar la app**, que abre los pasos. Instalada, funciona como en Android.
-- **WhatsApp e Instagram:** dice que su navegador no muestra notificaciones y ofrece abrir en Chrome o Safari (la misma hoja de 22).
+- **iPhone sin instalar:** dice que las notificaciones llegan con Spot instalada, con **Instalar la app**, que abre los pasos. En **Perfil**, **Instalar la app** aparece una sola vez, debajo de la explicación. Instalada, funciona como en Android.
+- **WhatsApp e Instagram:** dice que su navegador no muestra notificaciones y ofrece abrir en Chrome o Safari (la misma hoja de 22). En **Perfil**, un solo botón para eso: **Instalar la app**.
 
 - [ ] Android · Chrome
 - [ ] Android · instalada
