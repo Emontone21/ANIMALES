@@ -8,6 +8,7 @@ import { test } from 'node:test';
 import { PARTES as PARTES_SERVIDOR, TARJETAS as TARJETAS_SERVIDOR } from '../api/_catalogo.js';
 import { VARIABLES_CONOCIDAS } from '../api/_comun.js';
 import { t } from '../i18n/es-UY.js';
+import { MOTIVOS } from '../js/datos.js';
 import {
   ENLACE_DE_TARJETA,
   PARTES,
@@ -68,4 +69,22 @@ test('cada tarjeta, parte, vista y prompt tiene sus textos', () => {
 
 test('las vistas son Inicio más una por sección', () => {
   assert.deepEqual(VISTAS, ['inicio', ...SECCIONES.map((s) => s.id)]);
+});
+
+test('todo motivo que puede mandar el servidor lo conoce la página y tiene su texto', () => {
+  const fuentes = ['../api/_tarjetas.js', '../api/_fuentes.js', '../api/estado.js']
+    .map((ruta) => readFileSync(new URL(ruta, import.meta.url), 'utf8'))
+    .join('\n');
+  const delServidor = new Set(
+    [...fuentes.matchAll(/(?:falla|atencion|sinResumen)\('(\w+)'|motivo: '(\w+)'|return '(\w+)';/g)]
+      .map((m) => m[1] ?? m[2] ?? m[3])
+      .filter((m) => m !== 'ok' && m !== 'pendiente' && m !== 'falla'),
+  );
+  assert.ok(delServidor.size > 20, `encontré solo ${delServidor.size}`);
+  for (const motivo of delServidor) {
+    assert.ok(MOTIVOS.includes(motivo), `${motivo}: la página no lo conoce`);
+  }
+  for (const motivo of MOTIVOS) {
+    if (motivo !== 'adminInvalidos') assert.ok(t.motivos[motivo], `${motivo} sin texto`);
+  }
 });

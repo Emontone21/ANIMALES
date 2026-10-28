@@ -21,13 +21,12 @@ Cuando algo anda mal, cada tarjeta lleva con un link directo a la pantalla del s
 
 **Dónde vive:** en la carpeta `PANEL/` de este repo. Se despliega como un proyecto de Vercel aparte del de la app, con Root Directory `PANEL`. No comparte código con la app: lo que necesita de ella se copia y se anota de dónde salió.
 
-**Esta etapa (esqueleto):**
-- ingreso, acceso denegado y cierre de sesión;
-- el Inicio con todas las secciones y tarjetas, en computadora y celular, claro y oscuro;
-- `api/config` y `api/estado`;
-- la propuesta de migración (`propuestas/migracion-admin.sql`).
+**Lo hecho:**
+- **Esqueleto:** ingreso, acceso denegado y cierre de sesión; el Inicio con todas las secciones y tarjetas, en computadora y celular, claro y oscuro; `api/config` y `api/estado`.
+- **Datos internos:** la migración 0028 (`supabase/migrations/20261028000028_panel_admin.sql`: la tabla `administradores`, `es_admin()` y `admin_resumen()`) y las tarjetas de La app, Supabase y el servicio de visión, con datos.
+- **Vercel:** el último deploy de producción de la app y el vencimiento de `VERCEL_API_TOKEN`.
 
-Ninguna tarjeta tiene datos todavía: cada una dice qué le falta. Los datos llegan con los prompts de la sección 9.
+Redes, los tokens de Meta y LinkedIn y las alertas todavía dicen qué les falta: llegan con los prompts de la sección 9.
 
 ## 2. Arquitectura
 
@@ -43,8 +42,8 @@ No habla con ningún otro servicio.
 - `api/config`:
   - sin sesión, la URL y la clave pública de Supabase y qué variables faltan para entrar;
   - con una sesión de administración, además, los datos no secretos para armar los links.
-- `api/estado`: valida la sesión y el permiso, y devuelve el estado de cada parte del panel y de cada tarjeta.
-- Los archivos `api/_comun.js` y `api/_catalogo.js` son compartidos: Vercel no publica como función un archivo de `api/` que empieza con `_`.
+- `api/estado`: valida la sesión y el permiso, lee las fuentes (`admin_resumen()` con el token de la sesión y la API de Vercel) y devuelve el estado de cada parte del panel y de cada tarjeta, con sus datos.
+- Los archivos `api/_*.js` son compartidos: Vercel no publica como función un archivo de `api/` que empieza con `_`.
 
 **Los secretos** (tokens de Vercel, Meta y LinkedIn) viven solo en las variables del proyecto del panel en Vercel y solo los leen las funciones.
 
@@ -61,7 +60,6 @@ flowchart LR
   AUTH[("Supabase Auth<br/>(mismo proyecto que la app)")]
   BASE[("Postgres<br/>admin_resumen()")]
   VAPI["API de Vercel"]
-  HF["Hugging Face<br/>(Space de visión)"]
   META["Graph API de Meta"]
   LI["API de LinkedIn"]
 
@@ -71,14 +69,13 @@ flowchart LR
   PAG -- "Bearer token" --> ESTADO
   CONFIG -- "/auth/v1/user" --> AUTH
   ESTADO -- "/auth/v1/user" --> AUTH
-  ESTADO -. "Datos internos<br/>(token del usuario)" .-> BASE
-  ESTADO -. "Vercel y visión" .-> VAPI
-  ESTADO -. "Vercel y visión" .-> HF
+  ESTADO -- "admin_resumen()<br/>(token del usuario)" --> BASE
+  ESTADO -- "deploys y token<br/>(VERCEL_API_TOKEN)" --> VAPI
   ESTADO -. "Facebook e Instagram" .-> META
   ESTADO -. "LinkedIn" .-> LI
 ```
 
-Las líneas punteadas son de los prompts siguientes. Hoy `api/estado` solo mira qué variables están.
+Las líneas punteadas son de los prompts siguientes.
 
 **Archivos:**
 
@@ -90,18 +87,19 @@ Las líneas punteadas son de los prompts siguientes. Hoy `api/estado` solo mira 
 | `js/pantallas.js`, `js/inicio.js` | Las pantallas centradas y el Inicio. |
 | `js/componentes.js` | Piezas: marca, pastilla, botones, link "Abrir en…", líneas de "qué falta". |
 | `js/catalogo.js` | Qué tarjetas hay, en qué orden y a dónde lleva cada link. |
-| `js/datos.js` | Revisa lo que llega del servidor y de Supabase Auth (funciones puras). |
+| `js/datos.js` | Revisa lo que llega del servidor y de Supabase Auth, y arma los avisos (funciones puras). |
+| `js/vistaDeDatos.js`, `js/formato.js` | Lo que muestra una tarjeta con datos, y los números, tamaños y fechas en es-UY. |
 | `js/enlaces.js` | Arma las URLs de los links y las valida. |
 | `js/sesion.js`, `js/api.js`, `js/tiempo.js` | Sesión, pedidos a `api/` y "hace X min". |
 | `i18n/es-UY.js` | Todos los textos. |
 | `api/config.js`, `api/estado.js` | Las funciones. |
-| `api/_comun.js`, `api/_catalogo.js` | Variables, validaciones, sesión y el estado de cada parte y tarjeta. |
+| `api/_comun.js`, `api/_catalogo.js` | Variables, validaciones, sesión y el estado de cada parte y tarjeta según las variables. |
+| `api/_fuentes.js`, `api/_tarjetas.js` | Las fuentes de datos (`admin_resumen()` y la API de Vercel) y los umbrales de cada tarjeta. |
 | `fuentes/` | IBM Plex en woff2, la licencia OFL y `ORIGEN.md` (de dónde salió cada archivo). |
 | `vercel.json` | Encabezados de seguridad. |
 | `.vercelignore` | Lo que no se publica (documentación, propuestas, pruebas, herramientas). |
 | `pruebas/` | `node --test` de las funciones y la lógica de la página. |
 | `herramientas/verificar.mjs` | Revisa sintaxis, colores, secretos, textos y fuentes. |
-| `propuestas/migracion-admin.sql` | La migración propuesta (no se aplica desde acá). |
 
 ## 3. Pantallas y tarjetas
 
@@ -156,7 +154,6 @@ Cada tarjeta, fila o parte muestra uno de cinco estados, siempre con color, íco
    - Links a los servicios
    - Datos de la app
    - Vercel
-   - Servicio de visión
    - Facebook e Instagram
    - LinkedIn
    - Alertas
@@ -169,23 +166,24 @@ Cada tarjeta, fila o parte muestra uno de cinco estados, siempre con color, íco
 
 **Cómo leer esta sección:**
 - **Rutas:** las del dashboard de Supabase son relativas a `https://supabase.com/dashboard/project/<ref>`, con el ref sacado de `SUPABASE_URL`.
-- **Umbrales:** los de Atención y Falla son la propuesta inicial; los confirma el dueño (sección 10).
+- **Umbrales:** los de Atención y Falla son la propuesta inicial (sección 10, decisión 6). Están en `api/_tarjetas.js` (`UMBRALES` y `LIMITES`), con sus pruebas en `pruebas/api.test.mjs`.
+- **Motivos:** cada Atención o Falla lleva un código (`motivo`) con su texto en `t.motivos`. Lo que es de una fuente entera (Supabase no responde, el token de Vercel no sirve) lo avisa una sola vez su parte de la configuración, no cada tarjeta.
 - **Prompts:** el número entre paréntesis es el del plan de la sección 9.
 
 #### La app
 
-Todas salen de `admin_resumen()` (`propuestas/migracion-admin.sql`). La función de `api/estado` la llama por PostgREST (`POST /rest/v1/rpc/admin_resumen`):
+Todas salen de `admin_resumen()` (migración 0028). La función de `api/estado` la llama por PostgREST (`POST /rest/v1/rpc/admin_resumen`, cuerpo `{}`, 5 s de tope):
 - con el token de la sesión en `Authorization`;
 - con la clave pública en `apikey`.
 
-Variables: ninguna aparte de las de ingreso. Hasta que esté la migración, todas quedan en **Pendiente** (prompt 1, "Datos internos").
+Variables: ninguna aparte de las de ingreso. Si la función no existe (sin la migración), quedan en **Pendiente**; si la cuenta no está en `administradores` o la base no responde, en **Falla**. En los dos casos, sin números.
 
 | Tarjeta | Qué muestra | De dónde sale (`admin_resumen`) | Atención | Falla | "Abrir en…" |
 | --- | --- | --- | --- | --- | --- |
 | Casos nuevos | En 24 h y en 7 días, con la gráfica de 7 barras (hoy en acento, los demás en barra suave) | `casos.nuevos_24h`, `nuevos_7d`, `por_dia`: `animales.created_at`, sin datos de demo | Ningún caso en 7 días (puede ser que publicar esté roto) | — | Supabase, `/editor` (a confirmar la ruta directa a la tabla) |
 | Casos reunidos | Total y en los últimos 30 días | `casos.reunidos` (`estado = 'reunido'`) y `reunidos_30d` (`cambios_estado`) | — | — | La app, `<LINK_APP_URL>/reencuentros` |
 | Coincidencias pendientes | Cuántas y desde cuándo espera la más vieja | `coincidencias.pendientes`, `pendiente_desde` | Alguna espera hace más de 3 días | — | Supabase, `/editor` |
-| Denuncias y ocultos | Denuncias sin revisar, casos e historias ocultos y reportes de error sin resolver | `moderacion.*` | Alguna denuncia pendiente | — | Supabase, `/editor`. A futuro, la pantalla de moderación de la app (a confirmar su ruta) |
+| Denuncias y ocultos | Denuncias sin revisar, casos e historias ocultos y reportes de error sin resolver | `moderacion.*` | Alguna denuncia pendiente o algún reporte de error sin resolver | — | Supabase, `/editor`. A futuro, la pantalla de moderación de la app (a confirmar su ruta) |
 | Usuarios nuevos | En 24 h y en 7 días, y el total | `usuarios.*` (`perfiles.created_at`) | — | — | Supabase, `/auth/users` |
 | Fotos trabadas | Fotos de `cola_vision` que esperan hace más de 30 min y las que se quedaron sin reintentos | `vision.trabadas`, `sin_reintentos`, `esperando_desde` | Alguna trabada | Alguna sin reintentos, o la más vieja espera hace más de 2 h | Supabase, `/functions` (Edge Functions; a confirmar `/functions/reconocer/logs`) |
 
@@ -193,11 +191,11 @@ Variables: ninguna aparte de las de ingreso. Hasta que esté la migración, toda
 
 | Tarjeta | Qué muestra | De dónde y cómo | Variables | Atención | Falla | "Abrir en…" |
 | --- | --- | --- | --- | --- | --- | --- |
-| Vercel | Estado, commit (hash corto en mono) y hora del último deploy de producción de la app | API de Vercel: `GET /v6/deployments?projectId=<proyecto>&target=production&limit=5&slug=<equipo>` (a confirmar si `/v6` o `/v7`). Se toma el último que no esté CANCELED, porque el Ignored Build Step cancela builds a propósito. Hash: `meta.githubCommitSha` (a confirmar en la lista; si no viene, `GET /v13/deployments/<id>`). | `VERCEL_API_TOKEN` (secreta), `LINK_VERCEL_TEAM`, `LINK_VERCEL_PROJECT` | Un deploy en BUILDING o QUEUED hace más de 15 min | El último está en ERROR. Su botón primario es "Ver log en Vercel", al `inspectorUrl` de ese deploy | `https://vercel.com/<equipo>/<proyecto>/deployments` |
-| Supabase | Si el proyecto responde, y el tamaño de la base (de 500 MB) y de Storage (de 1 GB) con barras de uso contra el plan gratuito | `GET <SUPABASE_URL>/auth/v1/health` con la clave pública, y `admin_resumen()`: `almacenamiento.base_bytes` (`pg_database_size`) y `storage_bytes` (suma de `storage.objects.metadata->size`) | Las de ingreso | Base o Storage arriba del 80 % | No responde en 5 s (también si el proyecto se pausó por inactividad), o arriba del 95 % | `/reports/database` (Database Size) |
-| Servicio de visión | Si el servicio responde, cuántas fotos esperan y desde cuándo | API pública de Hugging Face, `GET https://huggingface.co/api/spaces/<dueño>/<nombre>` → `runtime.stage` (a confirmar sin token), más `admin_resumen()`: `vision.esperando`, `esperando_desde`, `errores_ia_24h` | `LINK_VISION_URL` (y `HF_TOKEN` si el Space es privado) | `SLEEPING` o `PAUSED`; alguna llamada a la IA con error en 24 h | `RUNTIME_ERROR`, `BUILD_ERROR` o `CONFIG_ERROR`; no responde; fotos sin reintentos | El Space (`LINK_VISION_URL`) |
+| Vercel | Estado, commit (hash corto en mono) y hora del último deploy de producción de la app | API de Vercel: `GET /v7/deployments?projectId=<proyecto>&slug=<equipo>&target=production&state=BUILDING,ERROR,INITIALIZING,QUEUED,READY,BLOCKED&limit=5`. El filtro de `state` deja afuera los CANCELED, porque el Ignored Build Step cancela builds a propósito. De la lista: `readyState`, `createdAt`, `inspectorUrl` y `meta.githubCommitSha` (comprobado con los deploys de la app). | `VERCEL_API_TOKEN` (secreta), `LINK_VERCEL_TEAM`, `LINK_VERCEL_PROJECT` | Un deploy en BUILDING, INITIALIZING o QUEUED hace más de 15 min, o ningún deploy | El último está en ERROR o BLOCKED: su botón primario es "Ver log en Vercel", al `inspectorUrl` de ese deploy. También si el token no sirve, Vercel no encuentra el proyecto o no responde en 5 s | `https://vercel.com/<equipo>/<proyecto>/deployments` |
+| Supabase | Si el proyecto responde, y el tamaño de la base (de 500 MB) y de Storage (de 1 GB) con barras de uso contra el plan gratuito | `admin_resumen()`: si responde, el proyecto responde (no hace falta `/auth/v1/health`). `almacenamiento.base_bytes` (`pg_database_size`) y `storage_bytes` (suma de `storage.objects.metadata->size`). Los límites, en unidades decimales (500 × 10⁶ y 10⁹ bytes). | Las de ingreso | Base o Storage en el 80 % o más | No responde en 5 s (también si el proyecto se pausó por inactividad), o en el 95 % o más | `/reports/database` (Database Size) |
+| Servicio de visión | El reconocimiento con IA (función `reconocer`, 0018): fotos en espera, llamadas a la IA en 24 h y sus errores, y la última foto procesada | `admin_resumen()`: `vision.esperando`, `llamadas_ia_24h`, `errores_ia_24h`, `ia_activa`, `ia_pausa` y `ultima_procesada` | Las de ingreso | La IA está apagada (`ia_activa`), o alguna llamada a la IA falló en 24 h | La IA se quedó sin crédito (`ia_pausa = 'sin_credito'`): se reactiva desde Moderación, en la app | Supabase, `/functions` (Edge Functions; a confirmar `/functions/reconocer/logs`) |
 
-**Ojo con el servicio de visión:** según `AGENTS.md`, hoy el reconocimiento lo hace la Edge Function `reconocer` con la API de Claude, y el Space quedó atrás. Ver la sección 10, decisión 1.
+**El servicio de visión es la función `reconocer`** (sección 10, decisión 1): se mira desde la base, sin variables ni tokens. Las fotos trabadas o sin reintentos las avisa solo "Fotos trabadas", para no repetir el aviso.
 
 #### Redes
 
@@ -217,7 +215,7 @@ Una lista con el vencimiento de cada token. **Al día** si vence en más de 14 d
 
 | Token | Cómo se lee el vencimiento | "Abrir en…" |
 | --- | --- | --- |
-| Vercel (`VERCEL_API_TOKEN`) | `GET /v5/user/tokens/current` → `expiresAt` (a confirmar si en milisegundos) | `https://vercel.com/account/tokens` (a confirmar la ruta actual) |
+| Vercel (`VERCEL_API_TOKEN`) | `GET /v5/user/tokens/current` → `token.expiresAt`, en milisegundos. Si no viene, el token no vence ("No vence", Al día). Con el token solo, sin equipo ni proyecto, igual se lee. | `https://vercel.com/account/tokens` (a confirmar la ruta actual) |
 | Meta (`META_ACCESS_TOKEN`) | `GET /debug_token?input_token=…` → `expires_at` (0 = no vence) y `data_access_expires_at` | El depurador de tokens de Meta for Developers |
 | LinkedIn (`LINKEDIN_ACCESS_TOKEN`) | `POST https://www.linkedin.com/oauth/v2/introspectToken` → `expires_at`. Necesita el client id y el secret de la app de LinkedIn (dos variables secretas más, en ese prompt). | LinkedIn Developers, "My apps" |
 
@@ -318,7 +316,14 @@ Cada estado combina siempre color, ícono y texto, para que se distinga aunque n
 - **Celular:** hasta 760 px de ancho. Las filas tocables de Infraestructura y Redes se abren en el lugar (`aria-expanded`) y muestran la descripción, qué falta y el link. Las pestañas son links con `aria-current="page"`.
 - **Marca en el ingreso:** 56 px con radio 14 px, el mismo radio proporcional que 10 sobre 40.
 - **Fuentes:** subconjuntos Latin1 de IBM Plex (unos 120 KB los seis archivos): cubren español y puntuación, no flechas. Los números de Plex Sans ya son tabulares; igual se declara `tabular-nums`.
-- **Componentes para datos:** las clases `.numero`, `.barras` (la de hoy en acento, las demás en barra suave) y `.uso` (pista y relleno en acento) ya están en `estilos.css`, sin usar hasta que haya datos.
+- **Tarjetas con datos** (`js/vistaDeDatos.js`):
+  - el número grande (`.numero`) con su etiqueta, y líneas de detalle en texto secundario;
+  - la gráfica de 7 barras (`.barras`): la de hoy en acento y las demás en barra suave, con `role="img"` y los valores de cada día en `aria-label`;
+  - las barras de uso (`.uso`, con pista y relleno en acento): `aria-hidden`, porque el texto de arriba dice lo mismo;
+  - alturas y anchos con `element.style` desde JavaScript: la CSP no bloquea el CSSOM, solo los atributos `style` del HTML;
+  - números con `Intl.NumberFormat('es-UY')`, tamaños en unidades decimales y fechas en la hora de Montevideo (`js/formato.js`).
+- **Botón de cada aviso:** "Ver la configuración" si es de una parte o de una variable; si es de una tarjeta con datos, su link "Abrir en…" o, si falló un deploy, "Ver log en Vercel" (primario).
+- **En el celular,** las filas de Infraestructura dicen el dato corto (por ejemplo, "Listo · 72e224e") en lugar de la descripción.
 - **Accesibilidad:**
   - link "Saltar al contenido";
   - el foco va al título de cada vista;
@@ -371,7 +376,12 @@ Las dos listas llevan las mismas cuentas, y se cambian a mano en los dos lugares
 
 **En la página:**
 - Todo dato se inserta con `textContent`. No hay `innerHTML`, `insertAdjacentHTML`, `eval` ni `new Function`; lo revisa `herramientas/verificar.mjs`.
-- Los links se validan dos veces, en la función y en la página: solo `https:` y, para las redes y el Space, solo sus dominios. Todos llevan `target="_blank"` y `rel="noopener noreferrer"`.
+- Los links se validan dos veces, en la función y en la página: solo `https:` y, para las redes, solo sus dominios; el log de un deploy, solo `https://vercel.com/`. Todos llevan `target="_blank"` y `rel="noopener noreferrer"`.
+
+**Datos de otros servicios:**
+- `api/_fuentes.js` toma de cada respuesta solo los campos que usa: números, fechas, el estado del deploy, el commit corto y el `inspectorUrl` si es de vercel.com. Nunca el mensaje del commit, quién lo hizo, la URL del deploy ni otra clave que traiga `admin_resumen()`.
+- La página los vuelve a validar (`normalizarDatos`): un campo con otra forma deja esa tarjeta sin datos ("No llegó su estado").
+- El token de Vercel va solo en el header `Authorization`, nunca en la URL. De un error de Supabase o de Vercel se devuelve solo un código propio (`motivo`), nunca su mensaje.
 
 **Encabezados** (`vercel.json`, para todo el sitio):
 - **CSP:**
@@ -399,7 +409,7 @@ Las dos listas llevan las mismas cuentas, y se cambian a mano en los dos lugares
 
 **Sin indexar:** `robots.txt` bloquea todo, la página tiene `<meta name="robots" content="noindex, nofollow">` y va el header `X-Robots-Tag`.
 
-**Lo que no se publica:** `.vercelignore` deja afuera `*.md`, `docs/`, `propuestas/`, `pruebas/`, `herramientas/`, `.env.example` y `.gitignore`. Después del primer deploy hay que comprobar que `/DISEÑO.md` dé 404 (sección 7).
+**Lo que no se publica:** `.vercelignore` deja afuera `*.md`, `docs/`, `propuestas/`, `pruebas/`, `herramientas/`, `.env.example` y `.gitignore`. Vercel lo aplica también en los deploys desde Git: lo dice el log de cada deploy ("Removed … ignored files"). En el primer deploy del panel, `/DISEÑO.md`, `/CLAUDE.md`, `/propuestas/…` y `/.env.example` dieron 404.
 
 **Abuso:** el ingreso lo limita Supabase Auth. Las funciones llaman a `/auth/v1/user` una vez por pedido. Si alguien las llamara mucho con tokens inventados, se puede sumar una regla de Vercel Firewall (sección 10).
 
@@ -411,7 +421,7 @@ Para cada una: requisitos de acceso, permisos mínimos de solo lectura, límites
 
 - **Acceso:**
   - `GET /auth/v1/user`, con `apikey` y `Authorization: Bearer <token>`: si responde 200, el token es válido.
-  - `GET /auth/v1/health`, con `apikey`, responde si Auth está vivo; no prueba la base.
+  - `GET /auth/v1/health`, con `apikey`, responde si Auth está vivo; no prueba la base. El panel no lo usa: si `admin_resumen()` responde, el proyecto responde.
   - Los conteos y tamaños salen de `admin_resumen()`, por PostgREST, con el token de la persona.
 - **Permisos:** solo `execute` de `admin_resumen()` y `es_admin()` para `authenticated`; la función decide.
 - **Límites del plan gratuito:** 500 MB de base, 1 GB de Storage y archivos de hasta 50 MB.
@@ -428,26 +438,23 @@ Para cada una: requisitos de acceso, permisos mínimos de solo lectura, límites
 - **Acceso:** token de la cuenta. El alcance se elige al crearlo (toda la cuenta, un equipo o un proyecto): usá **solo el equipo de la app**, o el proyecto si se puede, **con vencimiento** (de 1 día a 1 año).
 - **Permisos mínimos:** Vercel no ofrece tokens de solo lectura ni permisos por endpoint (a confirmar; no aparece en la doc). Por eso el token es el secreto más delicado del panel: puede hacer deploys y cambiar variables. Mitigación: alcance mínimo, vencimiento corto y nunca fuera de la función.
 - **Endpoints:**
-  - `GET /v6/deployments` (o `/v7`, a confirmar) con `projectId`, `target=production`, `limit` y `slug` o `teamId`;
-  - `GET /v13/deployments/<id>` para el detalle;
-  - `GET /v5/user/tokens/current` para el vencimiento.
+  - `GET /v7/deployments` (la versión de la documentación actual) con `projectId` (id o nombre), `slug` (el equipo), `target=production`, `state` (para dejar afuera los CANCELED) y `limit`;
+  - `GET /v5/user/tokens/current` para el vencimiento (`token.expiresAt`, en milisegundos).
 
-  `state` y `readyState` pueden diferir: usá `readyState`.
-- **Límites:** por endpoint, con 429 y un objeto `limit` (cifras a confirmar). El panel hace 1 o 2 pedidos por actualización.
+  `state` y `readyState` pueden diferir: el panel usa `readyState` y, si no viene, `state`.
+- **Errores:** 401 o 403 del token, "el token no sirve"; 403 solo de los deploys con un token que sí sirve, "sin acceso al proyecto"; 404, "no encuentra el proyecto"; 429, "frenó los pedidos".
+- **Límites:** por endpoint, con 429 y un objeto `limit` (cifras a confirmar). El panel hace 2 pedidos por actualización.
 - **Plan Hobby:**
   - 100 deploys por día;
   - funciones de hasta 300 s;
   - cron jobs una vez por día, con ±59 min de precisión;
   - solo uso personal o no comercial.
 
-### 6.3 Hugging Face (Space de visión)
+### 6.3 Servicio de visión
 
-- **Acceso:** `GET https://huggingface.co/api/spaces/<dueño>/<nombre>` → `runtime.stage`: `RUNNING`, `SLEEPING`, `BUILDING`, `RUNTIME_ERROR`, `BUILD_ERROR`, `CONFIG_ERROR`, `PAUSED`… Que venga sin token en un Space público está a confirmar. Si el Space es privado, `HF_TOKEN` de solo lectura (`read`).
-- **Límites:** sin token, 500 pedidos de API cada 5 minutos por IP; con token gratuito, 1000.
-- **Riesgos:**
-  - Los Spaces gratuitos duermen a las 48 h sin uso.
-  - Hoy crear Spaces Gradio o Docker con hardware propio pide cuenta PRO.
-  - El reconocimiento de la app ya no usa el Space (sección 10, decisión 1).
+- **Qué es:** el reconocimiento lo hace la Edge Function `reconocer` con la API de Claude (migración 0018). El panel lo mira desde la base, con `admin_resumen()`: la cola (`cola_vision`), las llamadas a la IA (`llamadas_ia`) y el interruptor y la pausa (`config_app`: `ia_activa` e `ia_pausa`).
+- **Acceso:** el mismo de la sección 6.1. Sin variables ni tokens propios.
+- **El Space de Hugging Face y el servicio de Cloud Run** quedaron sin uso. El panel ya no los consulta y `LINK_VISION_URL` se sacó (sección 10, decisión 1).
 
 ### 6.4 Meta (Facebook e Instagram)
 
@@ -492,6 +499,7 @@ Para cada una: requisitos de acceso, permisos mínimos de solo lectura, límites
 2. **Project Name:** uno propio, por ejemplo `spot-panel` (sección 10). La dirección queda `https://<nombre>.vercel.app`.
 3. **Framework Preset:** Other.
 4. **Root Directory:** `PANEL`. Dejá apagado "Include files outside the root directory in the Build Step".
+   - **Ojo:** al importar, Vercel puede proponer otra carpeta del repo, como `services/vision`. Con otra carpeta el build falla: corre el de la app (`npx expo export`) y no encuentra su `package.json`. Revisalo en Settings → Build and Deployment.
 5. **Build and Output Settings:**
    - Build Command: override y vacío (sin build);
    - Output Directory: dejalo como viene (con "Other" es `public` si existe; `PANEL` no tiene, así que publica la carpeta);
@@ -500,7 +508,7 @@ Para cada una: requisitos de acceso, permisos mínimos de solo lectura, límites
 7. **Environment Variables:** las de `.env.example`, **solo en Production** (sección 7.2). Así las vistas previas no pueden entrar.
 8. **Deploy.** Después:
    - `https://<panel>/` muestra el ingreso;
-   - `https://<panel>/DISEÑO.md` da 404 (si no, `.vercelignore` no se aplicó: avisá);
+   - `https://<panel>/DISEÑO.md` da 404;
    - `https://<panel>/api/config` responde un JSON;
    - en la consola del navegador no hay errores.
 
@@ -514,8 +522,7 @@ Para cada una: requisitos de acceso, permisos mínimos de solo lectura, límites
 | `LINK_APP_URL` | Pública | Dirección de la app. |
 | `LINK_VERCEL_TEAM`, `LINK_VERCEL_PROJECT` | Públicas | Equipo y proyecto de Vercel de la app, como en `vercel.com/<equipo>/<proyecto>`. |
 | `LINK_FACEBOOK_URL`, `LINK_INSTAGRAM_URL`, `LINK_LINKEDIN_URL` | Públicas | La página de cada red. |
-| `LINK_VISION_URL` | Pública | El Space de visión. |
-| `VERCEL_API_TOKEN` | Secreta | Prompt "Vercel y servicio de visión". |
+| `VERCEL_API_TOKEN` | Secreta | El último deploy de producción de la app y su propio vencimiento. Con alcance solo al equipo de la app y con vencimiento. |
 | `META_ACCESS_TOKEN` | Secreta | Prompt "Facebook e Instagram". |
 | `META_PAGE_ID`, `META_IG_USER_ID` | Privadas | Ids numéricos de la página y de la cuenta de Instagram. |
 | `LINKEDIN_ACCESS_TOKEN` | Secreta | Prompt "LinkedIn". |
@@ -537,17 +544,18 @@ Vercel corre el comando antes de cada build:
 
 Los dos comandos usan `VERCEL_GIT_PREVIOUS_SHA`, el commit del último deploy bueno de la rama:
 - si no está, o no está en el clone (Vercel clona con `--depth=10`), el comando falla y el build sigue. Ante la duda, despliega.
+- si es el mismo commit que se despliega, el comando no compara y el build sigue. Así funciona un **Redeploy** después de cambiar una variable: sin esa condición, el diff vacío lo cancelaba. Pasó en el primer redeploy del panel.
 - los builds cancelados igual cuentan en la cuota de deploys.
 
 En cada proyecto: **Settings → Git → Ignored Build Step → Run my custom command**.
 
 - **Proyecto del panel** (corre dentro de `PANEL`):
   ```sh
-  [ -n "$VERCEL_GIT_PREVIOUS_SHA" ] && git diff --quiet "$VERCEL_GIT_PREVIOUS_SHA" HEAD -- .
+  [ -n "$VERCEL_GIT_PREVIOUS_SHA" ] && [ "$VERCEL_GIT_PREVIOUS_SHA" != "$VERCEL_GIT_COMMIT_SHA" ] && git diff --quiet "$VERCEL_GIT_PREVIOUS_SHA" HEAD -- .
   ```
 - **Proyecto de la app** (`animales`, corre en la raíz del repo):
   ```sh
-  [ -n "$VERCEL_GIT_PREVIOUS_SHA" ] && git diff --quiet "$VERCEL_GIT_PREVIOUS_SHA" HEAD -- . ':(exclude)PANEL'
+  [ -n "$VERCEL_GIT_PREVIOUS_SHA" ] && [ "$VERCEL_GIT_PREVIOUS_SHA" != "$VERCEL_GIT_COMMIT_SHA" ] && git diff --quiet "$VERCEL_GIT_PREVIOUS_SHA" HEAD -- . ':(exclude)PANEL'
   ```
 
 La alternativa más simple de la documentación es `git diff HEAD^ HEAD --quiet -- <carpeta>`. Compara solo el último commit, así que un push con varios commits puede saltearse un cambio.
@@ -583,14 +591,8 @@ Para enterarse sin entrar al panel:
 
 Uno por integración, en este orden. Cada uno respeta `PANEL/CLAUDE.md` y actualiza este documento.
 
-1. **Datos internos** (después de aplicar la migración):
-   - pasar `propuestas/migracion-admin.sql` a `supabase/migrations/`, revisada contra el esquema de ese momento, con sus pruebas en `supabase/tests/` y los tipos;
-   - aplicarla en producción y cargar `administradores` con las cuentas de `ADMIN_USER_IDS`;
-   - en `api/estado`, llamar a `admin_resumen()` con el token de la sesión y a `/auth/v1/health`;
-   - llenar las tarjetas de La app y de Supabase, con los números, la gráfica de 7 días, las barras de uso y los umbrales.
-2. **Vercel y servicio de visión:**
-   - `VERCEL_API_TOKEN`: el último deploy de producción, con "Ver log en Vercel" si falló, y el vencimiento del token;
-   - el estado del Space y la cola, según lo que se decida en la sección 10, decisión 1.
+1. **Datos internos** **(hecho)**: la migración 0028 con sus pruebas (`supabase/tests/panel_admin.sql`) y los tipos; `admin_resumen()` desde `api/estado`; las tarjetas de La app y de Supabase con los números, la gráfica de 7 días, las barras de uso y los umbrales. Aplicada en producción el 28 de octubre de 2026, con la cuenta del dueño en `administradores` (`docs/reportes/2026-10-28-panel-datos.md`).
+2. **Vercel y servicio de visión** **(hecho)**: el último deploy de producción, con "Ver log en Vercel" si falló, y el vencimiento del token; el servicio de visión, desde la base (decisión 1).
 3. **Facebook e Instagram:** app de Meta, token de página, seguidores, alcance y últimas publicaciones (sin su texto), y el vencimiento del token.
 4. **LinkedIn:** si la Community Management API está aprobada, seguidores y publicaciones; si no, el plan B (solo el link). El vencimiento del token.
 5. **Alertas:** el monitor, el cron diario y el canal elegido.
@@ -599,9 +601,7 @@ Uno por integración, en este orden. Cada uno respeta `PANEL/CLAUDE.md` y actual
 
 Las tiene que tomar el dueño del proyecto.
 
-1. **¿Qué es el "servicio de visión"?** El pedido habla de un Space de Hugging Face, pero `AGENTS.md` dice que el reconocimiento lo hace la Edge Function `reconocer` con la API de Claude (migración 0018). El servicio de Cloud Run quedó sin desplegar.
-   - **Propuesta:** que la tarjeta mire `reconocer`: la cola, `llamadas_ia` y sus errores, con el link a sus logs en Supabase. El Space queda solo como link, si sigue existiendo.
-   - Si se confirma, `LINK_VISION_URL` deja de ser obligatoria.
+1. **¿Qué es el "servicio de visión"?** **Resuelta:** la tarjeta mira la función `reconocer` desde la base (la cola, `llamadas_ia` y sus errores, el interruptor y la pausa), con el link a las Edge Functions de Supabase. `LINK_VISION_URL` y la parte "Servicio de visión" de la configuración se sacaron.
 2. **Captcha en Supabase Auth.** Si está activado, el ingreso del panel falla con "pide un captcha". Opciones:
    - sumar Turnstile al panel: un script y un `frame-src` de `challenges.cloudflare.com` en la CSP, contra la regla de "solo supabase-js";
    - no activar el captcha.
@@ -609,9 +609,9 @@ Las tiene que tomar el dueño del proyecto.
 4. **Nombre y dirección del proyecto del panel** en Vercel, y si se le pone Vercel Authentication también en producción (doble barrera; a confirmar si el plan Hobby lo permite).
 5. **Quiénes son administradores.** Las mismas cuentas en `ADMIN_USER_IDS` y en `administradores`.
 6. **Umbrales** de Atención y Falla de la sección 3.4 (días sin casos, coincidencias viejas, porcentajes de uso, días antes de que venza un token).
-7. **Qué cuenta como caso nuevo:** hoy la propuesta suma también los ocultos y deja afuera los datos de demo.
+7. **Qué cuenta como caso nuevo:** hoy suma también los ocultos y deja afuera los datos de demo (`es_foto_de_demo`), como la migración 0028.
 8. **LinkedIn:** si vale pedir el nivel Standard, con su video y su revisión, o quedarse con el plan B.
 9. **Canal de alertas:** Telegram o mail.
 10. **Vercel Hobby es de uso no comercial.** Si SPOT pasa a tener fines comerciales, el plan Pro (para la app y para el panel).
-11. **Fases y nombre.** El pedido de esta etapa habla de las Fases 5 a 7 como futuras y de "Encontrados", pero `AGENTS.md` ya marca hechas las fases 1 a 9 y la app se llama Spot. La propuesta de migración conserva la frase pedida y avisa de esto en su encabezado.
+11. **Fases y nombre.** El pedido del esqueleto habla de las Fases 5 a 7 como futuras y de "Encontrados", pero `AGENTS.md` ya marca hechas las fases 1 a 9 y la app se llama Spot.
 12. **Vercel Firewall:** una regla de límite de pedidos para `/api/*` del panel, si se ve abuso.

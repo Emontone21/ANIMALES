@@ -9,6 +9,7 @@ import { ENLACE_DE_TARJETA, PARTES, SECCIONES, VARIABLE_DE_TOKEN, VISTAS } from 
 import { boton, el, enlaceExterno, icono, lineasDeFalta, marca, pastilla } from './componentes.js';
 import { avisosDe, faltaConfigurar, resumenDe } from './datos.js';
 import { haceCuanto } from './tiempo.js';
+import { cuerpoDeDatos, lineaDeVencimiento, resumenCorto } from './vistaDeDatos.js';
 
 const CADA_CUANTO_EL_RELOJ_MS = 30 * 1000;
 const VIEJO_DESPUES_DE_MS = 5 * 60 * 1000;
@@ -28,10 +29,21 @@ function enlaceDeTarjeta(id, enlaces, { primario = false } = {}) {
 
 const esPendiente = (item) => item.estado === 'pendiente' || item.estado === 'sinConfigurar';
 
-/** Una tarjeta. En esta etapa todas son pendientes o sin configurar: borde punteado. */
+/** Si el último deploy falló, el botón primario lleva a su log en Vercel. */
+function botonDeLog(id, item) {
+  const inspector = item.datos?.inspector;
+  if (id !== 'infra.vercel' || item.motivo !== 'deployFallo' || !inspector) return null;
+  return enlaceExterno({ texto: t.enlaces.logVercel, href: inspector, primario: true });
+}
+
+function accionesDe(id, item, enlaces) {
+  const botones = [botonDeLog(id, item), enlaceDeTarjeta(id, enlaces)].filter(Boolean);
+  return botones.length > 0 ? el('div', { clase: 'tarjeta__acciones' }, botones) : null;
+}
+
+/** Una tarjeta: borde punteado si está pendiente o sin configurar; con datos, borde continuo. */
 function tarjeta(id, item, enlaces, nivel) {
   const textos = t.tarjetas[id];
-  const acciones = enlaceDeTarjeta(id, enlaces);
   return el(
     'article',
     { clase: esPendiente(item) ? 'tarjeta tarjeta--pendiente' : 'tarjeta' },
@@ -42,8 +54,9 @@ function tarjeta(id, item, enlaces, nivel) {
       pastilla(item.estado),
     ),
     el('p', { clase: 'tarjeta__descripcion', texto: textos.descripcion }),
+    cuerpoDeDatos(id, item),
     lineasDeFalta(item),
-    acciones ? el('div', { clase: 'tarjeta__acciones' }, acciones) : null,
+    accionesDe(id, item, enlaces),
   );
 }
 
@@ -55,8 +68,9 @@ function fila(id, item, enlaces) {
     'div',
     { id: idDetalle, clase: 'fila__contenido', hidden: true },
     el('p', { clase: 'tarjeta__descripcion', texto: textos.descripcion }),
+    cuerpoDeDatos(id, item),
     lineasDeFalta(item),
-    enlaceDeTarjeta(id, enlaces),
+    accionesDe(id, item, enlaces),
   );
   const abrir = el(
     'button',
@@ -75,7 +89,7 @@ function fila(id, item, enlaces) {
       'span',
       { clase: 'lista__textos' },
       el('span', { clase: 'lista__titulo', texto: textos.titulo }),
-      el('span', { clase: 'lista__detalle', texto: textos.corto }),
+      el('span', { clase: 'lista__detalle', texto: resumenCorto(id, item) ?? textos.corto }),
     ),
     pastilla(item.estado),
     icono('flecha', 'icono fila__flecha'),
@@ -103,6 +117,7 @@ function filaDeToken(id, item, enlaces) {
             `${t.atencion.variableDelToken} `,
             el('code', { texto: variable }),
           ),
+      lineaDeVencimiento(item, 'lista__detalle lista__detalle--dato'),
       lineasDeFalta(item, { clase: 'lista__detalle' }),
     ),
     pastilla(item.estado, { alDia: true }),
@@ -153,6 +168,19 @@ function seccionDeTarjetas(seccion, s, conTitulo) {
   );
 }
 
+/**
+ * El botón de un aviso: lo de configuración (una parte, una variable que no
+ * sirve) lleva a ese bloque; lo de una tarjeta con datos, a su servicio, o al
+ * log si falló un deploy.
+ */
+function botonDeAviso(aviso, s, acciones) {
+  const deConfiguracion = aviso.tipo === 'parte' || aviso.invalidas.length > 0 || !aviso.motivo;
+  if (deConfiguracion) {
+    return boton({ texto: t.atencion.verConfiguracion, alTocar: acciones.irAConfiguracion });
+  }
+  return botonDeLog(aviso.id, aviso) ?? enlaceDeTarjeta(aviso.id, s.enlaces);
+}
+
 function tituloDeAviso(aviso) {
   return aviso.tipo === 'parte' ? t.configuracion.partes[aviso.id] : t.tarjetas[aviso.id].titulo;
 }
@@ -185,7 +213,6 @@ function seccionAtencion(s, acciones) {
   }
 
   for (const aviso of avisos) {
-    // Por ahora todo aviso es de configuración: el botón lleva a ese bloque.
     filas.push(
       el(
         'li',
@@ -197,7 +224,7 @@ function seccionAtencion(s, acciones) {
           el('span', { clase: 'lista__titulo', texto: tituloDeAviso(aviso) }),
           lineasDeFalta(aviso, { clase: 'lista__detalle' }),
         ),
-        boton({ texto: t.atencion.verConfiguracion, alTocar: acciones.irAConfiguracion }),
+        botonDeAviso(aviso, s, acciones),
       ),
     );
   }

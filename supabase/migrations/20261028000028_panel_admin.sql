@@ -1,39 +1,29 @@
--- NO APLICAR. Propuesta para pasar a supabase/migrations/ en un prompt aparte, después de la Fase 5.
 -- =============================================================================
--- Panel de SPOT · administradores y resumen (propuesta, sin probar en una base)
+-- 0028 · Panel de SPOT: administradores y resumen
 --
--- Nota: AGENTS.md ya marca como hechas las fases 1 a 9, y las migraciones
--- llegan a la 0027 (privacidad_reunidos). Esta propuesta usa solo tablas y
--- columnas de esas 27 migraciones. Ver PANEL/DISEÑO.md, "Decisiones abiertas".
+-- El panel de administración (PANEL/, otro proyecto de Vercel) lee la base con
+-- el token de quien entró, nunca con la service_role: llama a admin_resumen()
+-- por PostgREST (POST /rest/v1/rpc/admin_resumen). Ver PANEL/DISEÑO.md.
 --
--- Hay dos controles distintos (PANEL/DISEÑO.md, "Seguridad"):
---   1. ADMIN_USER_IDS, en Vercel: decide quién usa las funciones del panel.
---   2. public.administradores, en la base: decide quién lee los conteos con
---      admin_resumen(). Aunque alguien pasara el primer control, la base no le
---      da nada si no está en esta tabla. Las dos listas llevan las mismas cuentas.
+-- Dos controles distintos:
+--   1. ADMIN_USER_IDS, en las variables del panel en Vercel: quién usa las
+--      funciones del panel.
+--   2. public.administradores, acá: quién lee los conteos. Aunque alguien
+--      pasara el primer control, la base no le da nada si no está en la tabla.
+-- Las dos listas llevan las mismas cuentas.
 --
--- El panel llama a admin_resumen() con el token de la sesión de quien entró
--- (POST /rest/v1/rpc/admin_resumen, la clave pública en `apikey`). Nunca con
--- la service_role ni la secret.
---
--- Al pasarla a supabase/migrations/:
---   - el archivo se llama AAAAMMDDhhmmss_panel_admin.sql;
---   - las pruebas van en supabase/tests/panel_admin.sql (ver el final);
---   - los tipos se suman en src/types/database.ts (Functions: es_admin y
---     admin_resumen).
+-- admin_resumen() devuelve solo números y fechas agregadas: nunca filas,
+-- nombres, emails, mensajes, descripciones ni ubicaciones.
+-- Pruebas: supabase/tests/panel_admin.sql.
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
--- Administradores: aparte de perfiles.es_moderador, porque moderar no es
--- administrar el proyecto.
---
--- RLS activado, sin políticas y sin permisos para anon ni authenticated:
--- nadie la lee ni la escribe por la API. Solo la leen es_admin() y
--- admin_resumen(), que corren como su dueño. Se asigna desde el editor SQL:
---
+-- Administradores: aparte de perfiles.es_moderador (moderar no es administrar
+-- el proyecto). RLS activado, sin políticas y sin permisos para anon ni
+-- authenticated: nadie la lee ni la escribe por la API. Se asigna desde el
+-- editor SQL:
 --   insert into public.administradores (usuario_id) values ('<uuid>');
 --   delete from public.administradores where usuario_id = '<uuid>';
---
 -- Al borrar la cuenta se borra su fila. No guarda contenido publicado, así que
 -- no se suma a limpiar_cuenta.
 -- ---------------------------------------------------------------------------
@@ -49,8 +39,7 @@ alter table public.administradores enable row level security;
 revoke all on public.administradores from anon, authenticated;
 
 -- ---------------------------------------------------------------------------
--- es_admin(): si quien llama está en administradores. Mismo estilo que
--- es_moderador() (0006).
+-- es_admin(): si quien llama está en administradores (como es_moderador, 0006).
 -- ---------------------------------------------------------------------------
 create or replace function public.es_admin()
 returns boolean
@@ -68,13 +57,10 @@ revoke all on function public.es_admin() from public, anon;
 grant execute on function public.es_admin() to authenticated;
 
 -- ---------------------------------------------------------------------------
--- admin_resumen(): los conteos de la tarjeta "La app" y el tamaño de la base y
--- de Storage. Solo números y fechas agregadas: nunca filas, nombres, emails,
--- mensajes, descripciones ni ubicaciones.
---
--- - Los datos de demo (fotos que son una URL, es_foto_de_demo, 0026) no
---   cuentan como casos, igual que en el contador de reencuentros.
--- - Los días son los de Montevideo.
+-- admin_resumen(): los conteos de las tarjetas del panel y el tamaño de la base
+-- y de Storage. Los datos de demo (fotos que son una URL, es_foto_de_demo,
+-- 0026) no cuentan como casos, igual que en el contador de reencuentros. Los
+-- días son los de Montevideo.
 -- ---------------------------------------------------------------------------
 create or replace function public.admin_resumen()
 returns jsonb
@@ -166,12 +152,10 @@ begin
       'nuevos_7d', (
         select count(*) from public.perfiles where created_at >= v_ahora - interval '7 days'
       )
-      -- 'activos_7d': no hay de dónde sacarlo. La app no guarda la última visita,
-      -- y auth.users.last_sign_in_at es solo el último ingreso con contraseña o Google.
     ),
 
-    -- La cola de reconocimiento. "Esperando" es lo mismo que cuenta
-    -- estado_reconocimiento() (0018): lo que todavía se va a procesar.
+    -- El reconocimiento (función reconocer, 0018). "Esperando" es lo mismo que
+    -- cuenta estado_reconocimiento(): lo que todavía se va a procesar.
     'vision', jsonb_build_object(
       'esperando', (
         select count(*) from public.cola_vision
@@ -197,7 +181,10 @@ begin
         select count(*) from public.llamadas_ia
         where created_at >= v_ahora - interval '24 hours'
           and resultado not in ('ok', 'en_curso')
-      )
+      ),
+      'ia_activa', public.config_texto('ia_activa', 'true') = 'true',
+      'ia_pausa', nullif(public.config_texto('ia_pausa', ''), ''),
+      'ultima_procesada', (select max(procesado_en) from public.avistamientos)
     ),
 
     -- Tamaños en bytes. El panel los compara con el plan gratuito (500 MB de
@@ -206,38 +193,11 @@ begin
       'base_bytes', pg_database_size(current_database()),
       'storage_bytes', (
         select coalesce(sum((o.metadata ->> 'size')::bigint), 0) from storage.objects o
-      ),
-      'storage_por_bucket', (
-        select coalesce(jsonb_object_agg(b.bucket_id, b.bytes), '{}'::jsonb)
-        from (
-          select o.bucket_id, sum((o.metadata ->> 'size')::bigint) as bytes
-          from storage.objects o
-          group by o.bucket_id
-        ) b
       )
     )
-    -- 'proyecto_responde': no sale de la base. Si esta función contesta, la
-    -- base responde; la función del panel lo marca como Falla si no contesta.
   );
 end;
 $$;
 
 revoke all on function public.admin_resumen() from public, anon;
 grant execute on function public.admin_resumen() to authenticated;
-
--- ---------------------------------------------------------------------------
--- Pruebas para supabase/tests/panel_admin.sql (en el prompt que la aplique):
---   - anon no puede ejecutar es_admin() ni admin_resumen();
---   - una cuenta authenticated que no está en administradores recibe el error
---     42501 de admin_resumen() y false de es_admin();
---   - authenticated no puede leer, insertar, cambiar ni borrar en
---     administradores;
---   - un administrador recibe un jsonb con las claves de arriba, y por_dia
---     tiene 7 elementos;
---   - un caso de demo (foto con URL) no suma en casos y uno oculto sí suma en
---     nuevos y en casos_ocultos;
---   - al borrar la cuenta de un administrador se borra su fila.
--- ---------------------------------------------------------------------------
-
--- El esquema va a cambiar en las Fases 5 a 7: esta propuesta se revisa contra
--- las migraciones de ese momento antes de aplicarla.

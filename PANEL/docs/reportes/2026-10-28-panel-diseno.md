@@ -236,11 +236,11 @@ Si cambiás una variable, hacé **Redeploy**.
 **5. Ignored Build Step** (Settings → Git → Ignored Build Step → "Run my custom command"):
 - **Proyecto del panel:**
   ```sh
-  [ -n "$VERCEL_GIT_PREVIOUS_SHA" ] && git diff --quiet "$VERCEL_GIT_PREVIOUS_SHA" HEAD -- .
+  [ -n "$VERCEL_GIT_PREVIOUS_SHA" ] && [ "$VERCEL_GIT_PREVIOUS_SHA" != "$VERCEL_GIT_COMMIT_SHA" ] && git diff --quiet "$VERCEL_GIT_PREVIOUS_SHA" HEAD -- .
   ```
 - **Proyecto `animales` (la app):**
   ```sh
-  [ -n "$VERCEL_GIT_PREVIOUS_SHA" ] && git diff --quiet "$VERCEL_GIT_PREVIOUS_SHA" HEAD -- . ':(exclude)PANEL'
+  [ -n "$VERCEL_GIT_PREVIOUS_SHA" ] && [ "$VERCEL_GIT_PREVIOUS_SHA" != "$VERCEL_GIT_COMMIT_SHA" ] && git diff --quiet "$VERCEL_GIT_PREVIOUS_SHA" HEAD -- . ':(exclude)PANEL'
   ```
 
 Salida 0 cancela el build; ante cualquier duda (sin commit anterior, clone corto), construye.

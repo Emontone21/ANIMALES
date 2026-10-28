@@ -9,8 +9,44 @@ export const ESTADOS = ['ok', 'atencion', 'falla', 'pendiente', 'sinConfigurar']
 
 const VARIABLE = /^[A-Z][A-Z0-9_]{1,63}$/;
 const URL_SUPABASE = /^https:\/\/[a-z0-9]{20}\.supabase\.co$/;
-const PROMPTS = ['datosInternos', 'vercelVision', 'meta', 'linkedin', 'alertas'];
-const MOTIVOS = ['adminInvalidos'];
+const PROMPTS = ['meta', 'linkedin', 'alertas'];
+
+/** Motivos de una fuente (la base o Vercel): los avisa su parte de la configuración. */
+const MOTIVOS_DE_FUENTE = [
+  'sinMigracion',
+  'noAdministrador',
+  'supabaseNoResponde',
+  'tokenInvalido',
+  'limiteVercel',
+  'vercelNoResponde',
+  'proyectoNoEncontrado',
+  'sinAccesoAlProyecto',
+];
+
+export const MOTIVOS = [
+  'adminInvalidos',
+  ...MOTIVOS_DE_FUENTE,
+  'datosIncompletos',
+  'tokenVencido',
+  'tokenPorVencer',
+  'sinDeploys',
+  'deployFallo',
+  'deployTrabado',
+  'sinCasos7d',
+  'coincidenciasViejas',
+  'denunciasPendientes',
+  'erroresSinResolver',
+  'fotosTrabadas',
+  'fotosSinReintentos',
+  'colaDetenida',
+  'usoAlto',
+  'usoCasiLleno',
+  'iaSinCredito',
+  'iaApagada',
+  'erroresIa',
+];
+
+const ESTADOS_DE_DEPLOY = ['BUILDING', 'ERROR', 'INITIALIZING', 'QUEUED', 'READY', 'BLOCKED'];
 
 const variables = (lista) =>
   Array.isArray(lista) ? lista.filter((n) => typeof n === 'string' && VARIABLE.test(n)) : [];
@@ -36,19 +72,100 @@ const SIN_ESTADO = Object.freeze({
   faltan: [],
   invalidas: [],
   prompt: null,
-  migracion: false,
   motivo: 'sinEstado',
+  datos: null,
 });
+
+// Cada campo de `datos` que conoce el panel y cómo se valida. Un valor que no
+// cumple devuelve undefined: entonces no se muestra nada de esa tarjeta.
+const entero = (v) => (Number.isSafeInteger(v) && v >= 0 ? v : undefined);
+const fecha = (v) => {
+  if (v === null) return null;
+  const ms = typeof v === 'string' ? Date.parse(v) : NaN;
+  return Number.isFinite(ms) ? ms : undefined;
+};
+
+function linkDeVercel(v) {
+  if (v === null) return null;
+  try {
+    const u = new URL(v);
+    const ok = u.protocol === 'https:' && u.hostname === 'vercel.com' && !u.username && !u.port;
+    return ok && !u.password ? u.href : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function porDia(v) {
+  if (!Array.isArray(v) || v.length !== 7) return undefined;
+  const dias = v.map((d) => ({
+    dia: typeof d?.dia === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d.dia) ? d.dia : undefined,
+    casos: entero(d?.casos),
+  }));
+  return dias.every((d) => d.dia !== undefined && d.casos !== undefined) ? dias : undefined;
+}
+
+const CAMPOS = {
+  nuevos24h: entero,
+  nuevos7d: entero,
+  porDia,
+  reunidos: entero,
+  reunidos30d: entero,
+  pendientes: entero,
+  pendienteDesde: fecha,
+  denuncias: entero,
+  casosOcultos: entero,
+  historiasOcultas: entero,
+  errores: entero,
+  total: entero,
+  trabadas: entero,
+  sinReintentos: entero,
+  esperando: entero,
+  esperandoDesde: fecha,
+  llamadas24h: entero,
+  errores24h: entero,
+  iaActiva: (v) => (typeof v === 'boolean' ? v : undefined),
+  ultimaProcesada: fecha,
+  baseBytes: entero,
+  storageBytes: entero,
+  baseLimite: (v) => (entero(v) > 0 ? v : undefined),
+  storageLimite: (v) => (entero(v) > 0 ? v : undefined),
+  estado: (v) => (ESTADOS_DE_DEPLOY.includes(v) ? v : undefined),
+  commit: (v) => (v === null || (typeof v === 'string' && /^[0-9a-f]{7}$/.test(v)) ? v : undefined),
+  creado: fecha,
+  inspector: linkDeVercel,
+  vence: fecha,
+};
+
+/**
+ * Los datos de una tarjeta: solo los campos conocidos, cada uno validado, con
+ * las fechas en milisegundos. null si no hay datos; undefined si alguno no
+ * tiene la forma esperada.
+ */
+export function normalizarDatos(crudo) {
+  if (crudo === null || crudo === undefined) return null;
+  if (typeof crudo !== 'object' || Array.isArray(crudo)) return undefined;
+  const datos = {};
+  for (const [clave, validar] of Object.entries(CAMPOS)) {
+    if (!Object.hasOwn(crudo, clave)) continue;
+    const valor = validar(crudo[clave]);
+    if (valor === undefined) return undefined;
+    datos[clave] = valor;
+  }
+  return datos;
+}
 
 function normalizarItem(crudo) {
   if (!crudo || typeof crudo !== 'object' || !ESTADOS.includes(crudo.estado)) return null;
+  const datos = normalizarDatos(crudo.datos);
+  if (datos === undefined) return null;
   return {
     estado: crudo.estado,
     faltan: variables(crudo.faltan),
     invalidas: variables(crudo.invalidas),
     prompt: PROMPTS.includes(crudo.prompt) ? crudo.prompt : null,
-    migracion: crudo.migracion === true,
     motivo: MOTIVOS.includes(crudo.motivo) ? crudo.motivo : null,
+    datos,
   };
 }
 
@@ -78,13 +195,20 @@ export function normalizarEstado(respuesta) {
  * "Necesita atención": las fallas primero y después las de Atención, en el
  * orden en que aparecen en el panel. Lo pendiente o sin configurar no va acá:
  * va en "Configuración del panel". Una tarjeta que falla por una variable que
- * no sirve tampoco: ya la avisa la parte de la configuración que la tiene.
+ * no sirve, o por el mismo motivo que una parte (Supabase no responde, el
+ * token de Vercel no sirve), tampoco: ya la avisa esa parte.
  */
 export function avisosDe(estado) {
+  const motivosDePartes = new Set(
+    [...estado.partes.values()]
+      .filter((item) => item.estado === 'falla' || item.estado === 'atencion')
+      .map((item) => item.motivo)
+      .filter((motivo) => MOTIVOS_DE_FUENTE.includes(motivo)),
+  );
   const todos = [
     ...[...estado.partes].map(([id, item]) => ({ tipo: 'parte', id, ...item })),
     ...[...estado.tarjetas]
-      .filter(([, item]) => item.invalidas.length === 0)
+      .filter(([, item]) => item.invalidas.length === 0 && !motivosDePartes.has(item.motivo))
       .map(([id, item]) => ({ tipo: 'tarjeta', id, ...item })),
   ];
   return [

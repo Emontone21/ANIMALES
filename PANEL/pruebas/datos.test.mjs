@@ -11,12 +11,14 @@ import {
   codigoDeErrorDeIngreso,
   faltaConfigurar,
   normalizarConfig,
+  normalizarDatos,
   normalizarEstado,
   resumenDe,
 } from '../js/datos.js';
 import { armarEnlaces } from '../js/enlaces.js';
+import { bytes, diaDeSemana, fecha, fechaYHora, numero, porcentaje } from '../js/formato.js';
 import { vistaDeHash } from '../js/inicio.js';
-import { haceCuanto } from '../js/tiempo.js';
+import { diasHasta, haceCuanto } from '../js/tiempo.js';
 
 const REF = 'abcdefghijklmnopqrst';
 
@@ -26,7 +28,8 @@ const item = (id, estado, extra = {}) => ({
   faltan: [],
   invalidas: [],
   prompt: null,
-  migracion: false,
+  motivo: null,
+  datos: null,
   ...extra,
 });
 
@@ -54,9 +57,10 @@ test('normalizarEstado: un estado por cada id conocido, y falla si falta', () =>
     generadoEn: '2026-10-28T12:00:00.000Z',
     partes: [item('ingreso', 'ok'), item('desconocida', 'ok'), item('enlaces', 'raro')],
     tarjetas: [
-      item('app.casosNuevos', 'pendiente', {
-        prompt: 'datosInternos',
+      item('app.reunidos', 'ok', {
+        prompt: 'otroQueNoExiste',
         faltan: ['NO VALE', 'LINK_APP_URL'],
+        datos: { reunidos: 3, reunidos30d: 1, sobra: 'no' },
       }),
     ],
   });
@@ -66,8 +70,57 @@ test('normalizarEstado: un estado por cada id conocido, y falla si falta', () =>
   assert.equal(estado.partes.get('ingreso').estado, 'ok');
   assert.equal(estado.partes.get('enlaces').estado, 'falla');
   assert.equal(estado.partes.get('enlaces').motivo, 'sinEstado');
-  assert.deepEqual(estado.tarjetas.get('app.casosNuevos').faltan, ['LINK_APP_URL']);
+  assert.deepEqual(estado.tarjetas.get('app.reunidos').faltan, ['LINK_APP_URL']);
+  assert.equal(estado.tarjetas.get('app.reunidos').prompt, null);
+  assert.deepEqual(estado.tarjetas.get('app.reunidos').datos, { reunidos: 3, reunidos30d: 1 });
   assert.equal(estado.tarjetas.get('infra.vercel').motivo, 'sinEstado');
+});
+
+test('normalizarDatos: solo campos conocidos y con la forma esperada', () => {
+  assert.equal(normalizarDatos(null), null);
+  assert.equal(normalizarDatos(undefined), null);
+  assert.equal(normalizarDatos('texto'), undefined);
+  assert.equal(normalizarDatos([1]), undefined);
+  assert.deepEqual(
+    normalizarDatos({
+      estado: 'READY',
+      commit: '72e224e',
+      creado: '2026-10-28T12:00:00.000Z',
+      inspector: 'https://vercel.com/equipo/proyecto/abc',
+      nombre: 'Esto no se muestra',
+    }),
+    {
+      estado: 'READY',
+      commit: '72e224e',
+      creado: Date.parse('2026-10-28T12:00:00.000Z'),
+      inspector: 'https://vercel.com/equipo/proyecto/abc',
+    },
+  );
+  assert.deepEqual(normalizarDatos({ vence: null }), { vence: null });
+  // Un valor que no cumple invalida toda la tarjeta.
+  for (const malo of [
+    { nuevos24h: -1 },
+    { nuevos24h: 1.5 },
+    { total: '12' },
+    { estado: 'CANCELED' },
+    { commit: '<b>' },
+    { inspector: 'javascript:alert(1)' },
+    { inspector: 'https://vercel.com.example.org/x' },
+    { creado: 'ayer' },
+    { porDia: [{ dia: '2026-10-28', casos: 1 }] },
+    { baseLimite: 0 },
+  ]) {
+    assert.equal(normalizarDatos(malo), undefined, JSON.stringify(malo));
+  }
+  const sieteDias = Array.from({ length: 7 }, (_, i) => ({ dia: `2026-10-2${i}`, casos: i }));
+  assert.equal(normalizarDatos({ porDia: sieteDias }).porDia.length, 7);
+  // Si los datos no sirven, la tarjeta queda como "sin estado".
+  const estado = normalizarEstado({
+    partes: [],
+    tarjetas: [item('app.usuarios', 'ok', { datos: { total: 'muchos' } })],
+  });
+  assert.equal(estado.tarjetas.get('app.usuarios').motivo, 'sinEstado');
+  assert.equal(estado.tarjetas.get('app.usuarios').datos, null);
 });
 
 test('avisos: fallas primero; lo pendiente no avisa; la tarjeta con una variable inválida tampoco', () => {
@@ -96,6 +149,36 @@ test('avisos: fallas primero; lo pendiente no avisa; la tarjeta con una variable
   assert.equal(faltaConfigurar(base), true);
 });
 
+test('avisos: lo que ya avisa una parte no se repite en sus tarjetas', () => {
+  const estado = normalizarEstado({
+    partes: PARTES.map((id) =>
+      id === 'datosInternos' ? item(id, 'falla', { motivo: 'supabaseNoResponde' }) : item(id, 'ok'),
+    ),
+    tarjetas: TARJETAS.map((id) => {
+      if (id.startsWith('app.') || id === 'infra.supabase' || id === 'infra.vision') {
+        return item(id, 'falla', { motivo: 'supabaseNoResponde' });
+      }
+      if (id === 'tokens.vercel') return item(id, 'falla', { motivo: 'tokenInvalido' });
+      if (id === 'infra.vercel') {
+        return item(id, 'falla', {
+          motivo: 'deployFallo',
+          datos: { estado: 'ERROR', commit: null, creado: null, inspector: null },
+        });
+      }
+      return item(id, 'ok');
+    }),
+  });
+  assert.deepEqual(
+    avisosDe(estado).map((a) => `${a.tipo}:${a.id}:${a.motivo}`),
+    [
+      'parte:datosInternos:supabaseNoResponde',
+      'tarjeta:infra.vercel:deployFallo',
+      // La parte "Vercel" no lo avisa: entonces sí lo avisa su tarjeta.
+      'tarjeta:tokens.vercel:tokenInvalido',
+    ],
+  );
+});
+
 test('resumen de avisos con plurales', () => {
   assert.equal(t.atencion.resumen(1, 2), '1 falla · 2 avisos');
   assert.equal(t.atencion.resumen(2, 1), '2 fallas · 1 aviso');
@@ -118,7 +201,6 @@ test('los links: solo https y de los hosts esperados', () => {
     facebookUrl: 'javascript:alert(1)',
     instagramUrl: 'https://www.instagram.com/cuenta',
     linkedinUrl: 'https://linkedin.com.example.org/x',
-    visionUrl: 'https://huggingface.co/spaces/a/b',
   });
   assert.equal(e.supabase.editor, `https://supabase.com/dashboard/project/${REF}/editor`);
   assert.equal(e.supabase.usuarios, `https://supabase.com/dashboard/project/${REF}/auth/users`);
@@ -127,7 +209,7 @@ test('los links: solo https y de los hosts esperados', () => {
   assert.equal(e.facebook, null);
   assert.equal(e.instagram, 'https://www.instagram.com/cuenta');
   assert.equal(e.linkedin, null);
-  assert.equal(e.vision, 'https://huggingface.co/spaces/a/b');
+  assert.equal(e.supabase.funciones, `https://supabase.com/dashboard/project/${REF}/functions`);
   assert.equal(
     armarEnlaces({ supabaseRef: '../../x', vercelEquipo: 'a/b', vercelProyecto: 'c' }).supabase,
     null,
@@ -161,8 +243,37 @@ test('hace cuánto y las vistas del hash', () => {
   assert.equal(haceCuanto(ahora - 4 * 60 * 1000, ahora), 'hace 4 min');
   assert.equal(haceCuanto(ahora - 125 * 60 * 1000, ahora), 'hace 2 h');
   assert.equal(haceCuanto(ahora + 60 * 1000, ahora), 'recién');
+  assert.equal(haceCuanto(ahora - 47 * 60 * 60 * 1000, ahora), 'hace 47 h');
+  assert.equal(haceCuanto(ahora - 3 * 24 * 60 * 60 * 1000, ahora), 'hace 3 días');
+  assert.equal(diasHasta(ahora + 10.5 * 24 * 60 * 60 * 1000, ahora), 10);
+  assert.equal(diasHasta(ahora - 1000, ahora), 0);
   assert.equal(vistaDeHash(''), 'inicio');
   assert.equal(vistaDeHash('#/'), 'inicio');
   assert.equal(vistaDeHash('#/redes'), 'redes');
   assert.equal(vistaDeHash('#/cualquiera'), 'inicio');
+});
+
+test('números, tamaños y fechas en es-UY y en la hora de Montevideo', () => {
+  assert.equal(numero(12345), '12.345');
+  assert.equal(bytes(999), '999 B');
+  assert.equal(bytes(12_345_678), '12,3 MB');
+  assert.equal(bytes(1_000_000_000), '1 GB');
+  assert.equal(porcentaje(12_345_678, 500_000_000), '2,5 %');
+  assert.equal(porcentaje(2, 1), '100 %');
+  // 17:05 UTC son las 14:05 en Montevideo (UTC−3).
+  assert.equal(fechaYHora(Date.parse('2026-10-28T17:05:00Z')), '28/10/26, 14:05');
+  assert.equal(fecha(Date.parse('2026-12-01T12:00:00Z')), '1 de diciembre de 2026');
+  assert.equal(diaDeSemana('2026-10-28'), 'miércoles');
+});
+
+test('textos con números: plurales', () => {
+  assert.equal(t.datos.fotosEnEspera(1), 'foto en espera');
+  assert.equal(t.datos.fotosEnEspera(3), 'fotos en espera');
+  assert.equal(t.datos.ocultos(1, 2), '1 caso oculto · 2 historias ocultas');
+  assert.equal(t.datos.vence('1 de diciembre de 2026', 0), 'Vence el 1 de diciembre de 2026: hoy.');
+  assert.equal(
+    t.datos.vence('1 de diciembre de 2026', 1),
+    'Vence el 1 de diciembre de 2026, en 1 día.',
+  );
+  assert.equal(t.tiempo.dias(1), 'hace 1 día');
 });

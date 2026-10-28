@@ -1008,6 +1008,16 @@ export type Database = {
         Args: Record<string, never>;
         Returns: boolean;
       };
+      /** Panel de administración (0028): solo lo usa PANEL/, no la app. */
+      es_admin: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      /** Panel de administración (0028): conteos y tamaños; solo administradores. */
+      admin_resumen: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
       moderar_animal: {
         Args: { p_animal_id: string; p_oculto: boolean };
         Returns: undefined;

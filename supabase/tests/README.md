@@ -1,6 +1,6 @@
 # Pruebas SQL
 
-Un archivo por fase, para correr sobre una base con todas las migraciones aplicadas (hoy, 0001 a 0027):
+Un archivo por fase, para correr sobre una base con todas las migraciones aplicadas (hoy, 0001 a 0028):
 
 | Archivo | Qué prueba |
 |---|---|
@@ -18,6 +18,7 @@ Un archivo por fase, para correr sobre una base con todas las migraciones aplica
 | `reencuentros.sql` | Muro de reencuentros (0025 y 0026): solo la familia de un perdido reunido cuenta, edita o borra su historia (ni otra persona, ni un encontrado, ni un caso abierto u oculto, ni sin términos), con una foto propia que no use otra cosa; los teléfonos, links y emails de la frase y del mensaje se tapan y la base rechaza los que lleguen sin tapar; el muro y la historia sin cuenta devuelven solo las columnas públicas (nada de quién publicó, quién ayudó, contactos ni ubicación); el contador no cuenta ocultos ni datos de demo; quiénes participaron (sin la familia ni bloqueados), agradecer solo a ellos, una vez, con su aviso, y que "Ayudaste a reunir" cuente solo lo agradecido; denunciar y ocultar una historia aparte del caso; el aviso al celular agrupado aparte; y qué se borra con la historia, el reporte o la cuenta. Usa usuarios propios y cambia `config_app` solo dentro de la transacción. |
 | `privacidad_reunidos.sql` | Privacidad de los casos reunidos (0027), con cinco miradas (sin cuenta, una cuenta que no participó, la vecina que avisó que lo vio, la familia y una moderadora) y además quien lo resguardó, quien le escribió antes y después de que volviera, alguien a quien la familia bloqueó y quien publicó un reporte unido: abierto, todos ven todo; reunido, quien no participó ve solo lo básico en `animales_detalle` (la foto, la especie, el nombre y el estado) y nada de avistamientos, cambios de estado, coincidencias, contactos ni del mapa, también en el reporte unido; quien participó y moderación ven todo; el contacto de un encontrado reunido deja de ser público; la descripción y el nombre no se leen de la tabla; la historia sin el nombre lo saca también del caso; un caso oculto no sale por `vista_del_caso`; y al reabrirlo vuelve a verse todo. |
 | `contacto_al_cerrar.sql` | El contacto de la familia al cerrar el caso (0022): sigue al resguardarlo y al editar el caso abierto; se vacía al marcarlo como reunido (también en `animales_detalle`) o al quedar vinculado; al reabrirlo no vuelve, y la familia lo puede cargar de nuevo; no queda ningún caso cerrado con contacto. |
+| `panel_admin.sql` | Panel de administración (0028): sin cuenta no se llama a `es_admin()` ni a `admin_resumen()`; una cuenta común recibe `false` y el error 42501; nadie lee ni escribe `administradores` por la API (tampoco quien está en ella); un administrador recibe el resumen con todas sus claves, siete días que terminan hoy en Montevideo y solo números; un caso nuevo suma, uno de demo no, uno oculto suma en nuevos y en ocultos pero no en abiertos; y al borrar la cuenta se borra su fila. |
 
 ## Cómo correrlas
 
